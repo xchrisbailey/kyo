@@ -423,7 +423,21 @@ private struct CheckRow: View {
     var isTask = false
     var onToggle: (() -> Void)? = nil
 
+    @ViewBuilder
     var body: some View {
+        if onToggle == nil {
+            row
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title)
+                .accessibilityValue(isComplete ? "Completed" : "Not completed")
+                .accessibilityHint(trailing ?? "")
+        } else {
+            row
+                .accessibilityElement(children: .contain)
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: 10) {
             checkbox
 
@@ -444,7 +458,6 @@ private struct CheckRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
-        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder

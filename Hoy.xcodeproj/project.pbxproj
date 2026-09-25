@@ -13,6 +13,7 @@
 		A0F80D637E02CA08564D7E21 /* HoyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B84BB78ADFD3BAFCA8DF66F6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C839DD53AB05B6AB7BBAA313 /* ContentView.swift */; };
 		D17A1E13076A4DC79438F001 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AEE3A847C474E9AC9D102 /* TodayView.swift */; };
+		E11D2F40AD9048A9B920B877 /* WatchTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4C3319456014B2FA99D1122 /* WatchTodayView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +47,7 @@
 		9516BEC9168D8D67EE12987D /* Hoy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Hoy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C839DD53AB05B6AB7BBAA313 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		C12AEE3A847C474E9AC9D102 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		E4C3319456014B2FA99D1122 /* WatchTodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTodayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -70,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				6AE1A421D83B764237949C68 /* HoyWatchApp.swift */,
+				E4C3319456014B2FA99D1122 /* WatchTodayView.swift */,
 			);
 			path = HoyWatch;
 			sourceTree = "<group>";
@@ -176,6 +179,7 @@
 			files = (
 				B84BB78ADFD3BAFCA8DF66F6 /* ContentView.swift in Sources */,
 				9F68F119C61BD6AB6A62570E /* HoyWatchApp.swift in Sources */,
+				E11D2F40AD9048A9B920B877 /* WatchTodayView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

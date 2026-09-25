@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
+    @State private var activeSheet: TodayPreviewSheet?
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -51,6 +53,20 @@ struct TodayView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .scrollIndicators(.hidden)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                TodayBottomBar(
+                    openAdd: { activeSheet = .add },
+                    openCalendar: { activeSheet = .calendar }
+                )
+            }
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .add:
+                    AddPreviewSheet()
+                case .calendar:
+                    CalendarPreviewSheet()
+                }
+            }
         }
     }
 
@@ -114,6 +130,229 @@ struct TodayView: View {
 
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
+    }
+}
+
+private enum TodayPreviewSheet: String, Identifiable {
+    case add
+    case calendar
+
+    var id: String { rawValue }
+}
+
+private struct TodayBottomBar: View {
+    let openAdd: () -> Void
+    let openCalendar: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: {}) {
+                VStack(spacing: 3) {
+                    Image(systemName: "sun.max")
+                        .font(.system(size: 22, weight: .medium))
+                    Text("Today")
+                        .font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(accentColor)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(accentColor.opacity(0.09), in: Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Today")
+            .accessibilityAddTraits(.isSelected)
+
+            Button(action: openAdd) {
+                Image(systemName: "plus")
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 52, height: 52)
+                    .background(accentColor, in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add an item")
+            .accessibilityHint("Opens the add preview")
+
+            Button(action: openCalendar) {
+                VStack(spacing: 3) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 22, weight: .medium))
+                    Text("Calendar")
+                        .font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Calendar")
+            .accessibilityHint("Opens the past days preview")
+        }
+        .padding(6)
+        .frame(maxWidth: 430)
+        .background(.regularMaterial, in: Capsule())
+        .glassEffect(.regular, in: Capsule())
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var accentColor: Color {
+        HoyPalette.accent
+    }
+}
+
+private struct AddPreviewSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var itemType = "Task"
+    @State private var draft = ""
+
+    private let itemTypes = ["Task", "Habit", "Written memo"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            sheetHeader(title: "Add to today")
+
+            VStack(alignment: .leading, spacing: 14) {
+                Picker("Type", selection: $itemType) {
+                    ForEach(itemTypes, id: \.self) { type in
+                        Text(type).tag(type)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(HoyPalette.accent)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("What’s on your mind?")
+                        .font(.subheadline.weight(.medium))
+                    TextField("A little thing for today", text: $draft)
+                        .textFieldStyle(.plain)
+                        .padding(14)
+                        .frame(minHeight: 50)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityLabel("What’s on your mind?")
+                }
+            }
+
+            Button("Add") {
+                dismiss()
+            }
+            .font(.body.weight(.semibold))
+            .foregroundStyle(Color(uiColor: .systemBackground))
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(HoyPalette.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityHint("Closes this preview without creating an item")
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 14)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 520, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Add preview")
+    }
+
+    private func sheetHeader(title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.title2.bold())
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close add preview")
+        }
+    }
+}
+
+private struct CalendarPreviewSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedDate = Calendar(identifier: .gregorian).date(
+        from: DateComponents(year: 2026, month: 9, day: 23)
+    ) ?? .now
+
+    private let latestDate = Calendar(identifier: .gregorian).date(
+        from: DateComponents(year: 2026, month: 9, day: 24)
+    ) ?? .now
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("Past days")
+                    .font(.title2.bold())
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close calendar preview")
+            }
+
+            DatePicker("Choose a day", selection: $selectedDate, in: ...latestDate, displayedComponents: .date)
+                .datePickerStyle(.compact)
+                .font(.body)
+                .tint(HoyPalette.accent)
+                .padding(14)
+                .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                    .font(.headline)
+                    .accessibilityLabel(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
+                Text("No entries in this sketch.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+            .accessibilityElement(children: .combine)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 14)
+        .padding(.bottom, 24)
+        .frame(maxWidth: 520, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Calendar preview")
+    }
+}
+
+private enum HoyPalette {
+    static var accent: Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
+                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
+        })
     }
 }
 

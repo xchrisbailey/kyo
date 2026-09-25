@@ -72,7 +72,7 @@ Test approach proposed during specification review:
 
 ## Further Notes
 
-- Required model assignments for future implementation: **Sol, medium reasoning, as orchestrator; Luna, high reasoning, as coder; Astra, medium reasoning, as reviewer.** In the current model catalog these are `gpt-6-sol` / `medium`, `gpt-6-luna` / `high`, and `gpt-6-astra` / `medium` respectively.
-- These assignments are recorded for future execution. No implementation agents should be launched by this spec-writing request.
+- Execution policy for future implementation: the active orchestration model owns orchestration and review; the coder assignment is **Luna, high reasoning** (`gpt-6-luna`, `high`). The review role intentionally follows whichever model is running orchestration rather than naming a fixed reviewer model.
+- This policy is recorded for future execution. No implementation agents should be launched by this spec-writing request.
 - The product behavior above was confirmed in the design interview. Persistence, synchronization robustness, validation, and accurate summaries are supporting requirements for making that behavior work reliably.
 - Publish this specification to the configured GitHub issue tracker with the `ready-for-agent` label. That label describes specification readiness; it does not authorize implementation or launch implementation agents.

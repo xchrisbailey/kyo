@@ -4,7 +4,7 @@ import SwiftUI
 struct HoyApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TodayView()
         }
     }
 }

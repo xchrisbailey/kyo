@@ -11,3 +11,8 @@ Use the five default triage labels. See `docs/agents/triage-labels.md`.
 ### Domain docs
 
 Use a single-context layout. See `docs/agents/domain.md`.
+
+### Git workflow
+
+Use Conventional Commits for every commit, such as `feat: add task entry` or `docs: specify daily tasks`.
+Commit and push completed changes to the GitHub remote. Before pushing, check the working tree and confirm the branch is up to date with its remote counterpart.

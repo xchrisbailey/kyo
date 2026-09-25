@@ -10,69 +10,86 @@ struct TodayView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    summaryStats
-                    TodaySection(title: "Tasks", note: "For today") {
-                        VStack(spacing: 0) {
-                            ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                                if index > 0 { rowDivider }
-                                CheckRow(title: task.text, isComplete: task.isComplete, isTask: true)
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header
+                        summaryStats
+                        TodaySection(title: "Tasks", note: "For today") {
+                            VStack(spacing: 0) {
+                                if taskList.tasks.isEmpty && !isShowingTaskDraft {
+                                    Text("No tasks yet")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                                        .padding(.horizontal, 14)
+                                }
+                                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                                    if index > 0 { rowDivider }
+                                    CheckRow(title: task.text, isComplete: task.isComplete, isTask: true)
+                                }
+                                if isShowingTaskDraft {
+                                    if !taskList.tasks.isEmpty { rowDivider }
+                                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                                        .id("task-draft")
+                                }
                             }
-                            if isShowingTaskDraft {
-                                if !taskList.tasks.isEmpty { rowDivider }
-                                TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                        }
+                        TodaySection(title: "Habits", note: "Small steps, daily") {
+                            VStack(spacing: 0) {
+                                CheckRow(title: "Morning walk", trailing: "20 min", isComplete: true)
+                                rowDivider
+                                CheckRow(title: "Read a little", trailing: "10 pages", isComplete: false)
+                            }
+                        }
+                        TodaySection(title: "Memos", note: "Notes & voice") {
+                            VStack(spacing: 0) {
+                                MemoRow(icon: "text.alignleft", title: "An idea for the weekend", detail: "Try the trail by the lake. Bring coffee.")
+                                rowDivider
+                                VoiceMemoRow()
+                            }
+                        }
+                        TodaySection(title: "Meals", note: "2 logged") {
+                            VStack(spacing: 0) {
+                                MealSummary()
+                                    .padding(.horizontal, 16)
+                                rowDivider
+                                    .padding(.horizontal, 16)
+                                MealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
+                                rowDivider
+                                MealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
                             }
                         }
                     }
-                    TodaySection(title: "Habits", note: "Small steps, daily") {
-                        VStack(spacing: 0) {
-                            CheckRow(title: "Morning walk", trailing: "20 min", isComplete: true)
-                            rowDivider
-                            CheckRow(title: "Read a little", trailing: "10 pages", isComplete: false)
-                        }
+                    .frame(maxWidth: 680, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, horizontalPadding(for: geometry.size.width))
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                }
+                .background(Color(uiColor: .systemGroupedBackground))
+                .scrollIndicators(.hidden)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    TodayBottomBar(
+                        openAdd: beginTaskDraft,
+                        openCalendar: { activeSheet = .calendar }
+                    )
+                }
+                .sheet(item: $activeSheet) { sheet in
+                    switch sheet {
+                    case .calendar:
+                        CalendarPreviewSheet()
                     }
-                    TodaySection(title: "Memos", note: "Notes & voice") {
-                        VStack(spacing: 0) {
-                            MemoRow(icon: "text.alignleft", title: "An idea for the weekend", detail: "Try the trail by the lake. Bring coffee.")
-                            rowDivider
-                            VoiceMemoRow()
-                        }
-                    }
-                    TodaySection(title: "Meals", note: "2 logged") {
-                        VStack(spacing: 0) {
-                            MealSummary()
-                                .padding(.horizontal, 16)
-                            rowDivider
-                                .padding(.horizontal, 16)
-                            MealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
-                            rowDivider
-                            MealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
+                }
+                .onDisappear(perform: abandonTaskDraft)
+                .onChange(of: isShowingTaskDraft) { _, isShowing in
+                    if isShowing {
+                        withAnimation {
+                            scrollProxy.scrollTo("task-draft", anchor: .center)
                         }
                     }
                 }
-                .frame(maxWidth: 680, alignment: .leading)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, horizontalPadding(for: geometry.size.width))
-                .padding(.top, 12)
-                .padding(.bottom, 28)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                TodayBottomBar(
-                    openAdd: beginTaskDraft,
-                    openCalendar: { activeSheet = .calendar }
-                )
-            }
-            .sheet(item: $activeSheet) { sheet in
-                switch sheet {
-                case .calendar:
-                    CalendarPreviewSheet()
-                }
-            }
-            .onDisappear(perform: abandonTaskDraft)
         }
     }
 
@@ -102,7 +119,7 @@ struct TodayView: View {
 
     private var summaryStats: some View {
         HStack(alignment: .top, spacing: 0) {
-            SummaryStat(value: "\(taskList.tasks.filter(\.isComplete).count) / \(taskList.taskCount)", label: "Tasks done")
+            SummaryStat(value: "\(taskList.taskCount - taskList.incompleteCount) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
             SummaryStat(value: "1 / 2", label: "Habits done")
             statDivider

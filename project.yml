@@ -68,6 +68,19 @@ targets:
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.example.hoy
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         SKIP_INSTALL: YES
+  HoyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - HoyTests
+      - Shared/DailyTask.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy.tests
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: iphoneos iphonesimulator
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Hoy:
     build:
@@ -85,3 +98,11 @@ schemes:
       config: Debug
     archive:
       config: Release
+  HoyTests:
+    build:
+      targets:
+        HoyTests: all
+    test:
+      config: Debug
+      targets:
+        - HoyTests

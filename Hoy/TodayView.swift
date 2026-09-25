@@ -2,7 +2,11 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
+    @StateObject private var taskList = TaskListStore()
     @State private var activeSheet: TodayPreviewSheet?
+    @State private var isShowingTaskDraft = false
+    @State private var taskDraft = ""
+    @FocusState private var isTaskDraftFocused: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -12,11 +16,14 @@ struct TodayView: View {
                     summaryStats
                     TodaySection(title: "Tasks", note: "For today") {
                         VStack(spacing: 0) {
-                            CheckRow(title: "Send the design proposal", trailing: "11:00 AM", isComplete: false, isTask: true)
-                            rowDivider
-                            CheckRow(title: "Pick up groceries", isComplete: false, isTask: true)
-                            rowDivider
-                            CheckRow(title: "Book a haircut", isComplete: true, isTask: true)
+                            ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                                if index > 0 { rowDivider }
+                                CheckRow(title: task.text, isComplete: task.isComplete, isTask: true)
+                            }
+                            if isShowingTaskDraft {
+                                if !taskList.tasks.isEmpty { rowDivider }
+                                TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                            }
                         }
                     }
                     TodaySection(title: "Habits", note: "Small steps, daily") {
@@ -55,18 +62,17 @@ struct TodayView: View {
             .scrollIndicators(.hidden)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 TodayBottomBar(
-                    openAdd: { activeSheet = .add },
+                    openAdd: beginTaskDraft,
                     openCalendar: { activeSheet = .calendar }
                 )
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
-                case .add:
-                    AddPreviewSheet()
                 case .calendar:
                     CalendarPreviewSheet()
                 }
             }
+            .onDisappear(perform: abandonTaskDraft)
         }
     }
 
@@ -96,7 +102,7 @@ struct TodayView: View {
 
     private var summaryStats: some View {
         HStack(alignment: .top, spacing: 0) {
-            SummaryStat(value: "1 / 3", label: "Tasks done")
+            SummaryStat(value: "\(taskList.tasks.filter(\.isComplete).count) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
             SummaryStat(value: "1 / 2", label: "Habits done")
             statDivider
@@ -131,13 +137,57 @@ struct TodayView: View {
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
     }
+
+    private func beginTaskDraft() {
+        if !isShowingTaskDraft {
+            taskDraft = ""
+            isShowingTaskDraft = true
+        }
+        isTaskDraftFocused = true
+    }
+
+    private func saveTaskDraft() {
+        taskList.addTask(text: taskDraft)
+        abandonTaskDraft()
+    }
+
+    private func abandonTaskDraft() {
+        isTaskDraftFocused = false
+        isShowingTaskDraft = false
+        taskDraft = ""
+    }
 }
 
 private enum TodayPreviewSheet: String, Identifiable {
-    case add
     case calendar
 
     var id: String { rawValue }
+}
+
+private struct TaskDraftRow: View {
+    @Binding var text: String
+    var isFocused: FocusState<Bool>.Binding
+    let submit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .strokeBorder(Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .frame(width: 23, height: 23)
+                .accessibilityHidden(true)
+
+            TextField("New task", text: $text)
+                .font(.body)
+                .textFieldStyle(.plain)
+                .focused(isFocused)
+                .submitLabel(.done)
+                .onSubmit(submit)
+                .accessibilityLabel("New task")
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 55)
+    }
 }
 
 private struct TodayBottomBar: View {
@@ -172,7 +222,7 @@ private struct TodayBottomBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
-            .accessibilityHint("Opens the add preview")
+            .accessibilityHint("Adds a task to today's list")
 
             Button(action: openCalendar) {
                 VStack(spacing: 3) {
@@ -201,84 +251,6 @@ private struct TodayBottomBar: View {
 
     private var accentColor: Color {
         HoyPalette.accent
-    }
-}
-
-private struct AddPreviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var itemType = "Task"
-    @State private var draft = ""
-
-    private let itemTypes = ["Task", "Habit", "Written memo"]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            sheetHeader(title: "Add to today")
-
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("Type", selection: $itemType) {
-                    ForEach(itemTypes, id: \.self) { type in
-                        Text(type).tag(type)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(HoyPalette.accent)
-                .padding(.horizontal, 14)
-                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("What’s on your mind?")
-                        .font(.subheadline.weight(.medium))
-                    TextField("A little thing for today", text: $draft)
-                        .textFieldStyle(.plain)
-                        .padding(14)
-                        .frame(minHeight: 50)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                        .accessibilityLabel("What’s on your mind?")
-                }
-            }
-
-            Button("Add") {
-                dismiss()
-            }
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Color(uiColor: .systemBackground))
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .background(HoyPalette.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .accessibilityHint("Closes this preview without creating an item")
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 22)
-        .padding(.top, 14)
-        .padding(.bottom, 24)
-        .frame(maxWidth: 520, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Add preview")
-    }
-
-    private func sheetHeader(title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.title2.bold())
-            Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 44, height: 44)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close add preview")
-        }
     }
 }
 

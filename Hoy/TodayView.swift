@@ -2,69 +2,92 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
+    @StateObject private var taskList = TaskListStore()
     @State private var activeSheet: TodayPreviewSheet?
+    @State private var isShowingTaskDraft = false
+    @State private var taskDraft = ""
+    @FocusState private var isTaskDraftFocused: Bool
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    summaryStats
-                    TodaySection(title: "Tasks", note: "For today") {
-                        VStack(spacing: 0) {
-                            CheckRow(title: "Send the design proposal", trailing: "11:00 AM", isComplete: false, isTask: true)
-                            rowDivider
-                            CheckRow(title: "Pick up groceries", isComplete: false, isTask: true)
-                            rowDivider
-                            CheckRow(title: "Book a haircut", isComplete: true, isTask: true)
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header
+                        summaryStats
+                        TodaySection(title: "Tasks", note: "For today") {
+                            VStack(spacing: 0) {
+                                if taskList.tasks.isEmpty && !isShowingTaskDraft {
+                                    Text("No tasks yet")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                                        .padding(.horizontal, 14)
+                                }
+                                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                                    if index > 0 { rowDivider }
+                                    CheckRow(title: task.text, isComplete: task.isComplete, isTask: true)
+                                }
+                                if isShowingTaskDraft {
+                                    if !taskList.tasks.isEmpty { rowDivider }
+                                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                                        .id("task-draft")
+                                }
+                            }
+                        }
+                        TodaySection(title: "Habits", note: "Small steps, daily") {
+                            VStack(spacing: 0) {
+                                CheckRow(title: "Morning walk", trailing: "20 min", isComplete: true)
+                                rowDivider
+                                CheckRow(title: "Read a little", trailing: "10 pages", isComplete: false)
+                            }
+                        }
+                        TodaySection(title: "Memos", note: "Notes & voice") {
+                            VStack(spacing: 0) {
+                                MemoRow(icon: "text.alignleft", title: "An idea for the weekend", detail: "Try the trail by the lake. Bring coffee.")
+                                rowDivider
+                                VoiceMemoRow()
+                            }
+                        }
+                        TodaySection(title: "Meals", note: "2 logged") {
+                            VStack(spacing: 0) {
+                                MealSummary()
+                                    .padding(.horizontal, 16)
+                                rowDivider
+                                    .padding(.horizontal, 16)
+                                MealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
+                                rowDivider
+                                MealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
+                            }
                         }
                     }
-                    TodaySection(title: "Habits", note: "Small steps, daily") {
-                        VStack(spacing: 0) {
-                            CheckRow(title: "Morning walk", trailing: "20 min", isComplete: true)
-                            rowDivider
-                            CheckRow(title: "Read a little", trailing: "10 pages", isComplete: false)
-                        }
-                    }
-                    TodaySection(title: "Memos", note: "Notes & voice") {
-                        VStack(spacing: 0) {
-                            MemoRow(icon: "text.alignleft", title: "An idea for the weekend", detail: "Try the trail by the lake. Bring coffee.")
-                            rowDivider
-                            VoiceMemoRow()
-                        }
-                    }
-                    TodaySection(title: "Meals", note: "2 logged") {
-                        VStack(spacing: 0) {
-                            MealSummary()
-                                .padding(.horizontal, 16)
-                            rowDivider
-                                .padding(.horizontal, 16)
-                            MealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
-                            rowDivider
-                            MealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
-                        }
+                    .frame(maxWidth: 680, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, horizontalPadding(for: geometry.size.width))
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                }
+                .background(Color(uiColor: .systemGroupedBackground))
+                .scrollIndicators(.hidden)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    TodayBottomBar(
+                        openAdd: beginTaskDraft,
+                        openCalendar: { activeSheet = .calendar }
+                    )
+                }
+                .sheet(item: $activeSheet) { sheet in
+                    switch sheet {
+                    case .calendar:
+                        CalendarPreviewSheet()
                     }
                 }
-                .frame(maxWidth: 680, alignment: .leading)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, horizontalPadding(for: geometry.size.width))
-                .padding(.top, 12)
-                .padding(.bottom, 28)
-            }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .scrollIndicators(.hidden)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                TodayBottomBar(
-                    openAdd: { activeSheet = .add },
-                    openCalendar: { activeSheet = .calendar }
-                )
-            }
-            .sheet(item: $activeSheet) { sheet in
-                switch sheet {
-                case .add:
-                    AddPreviewSheet()
-                case .calendar:
-                    CalendarPreviewSheet()
+                .onDisappear(perform: abandonTaskDraft)
+                .onChange(of: isShowingTaskDraft) { _, isShowing in
+                    if isShowing {
+                        withAnimation {
+                            scrollProxy.scrollTo("task-draft", anchor: .center)
+                        }
+                    }
                 }
             }
         }
@@ -96,7 +119,7 @@ struct TodayView: View {
 
     private var summaryStats: some View {
         HStack(alignment: .top, spacing: 0) {
-            SummaryStat(value: "1 / 3", label: "Tasks done")
+            SummaryStat(value: "\(taskList.taskCount - taskList.incompleteCount) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
             SummaryStat(value: "1 / 2", label: "Habits done")
             statDivider
@@ -131,13 +154,57 @@ struct TodayView: View {
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
     }
+
+    private func beginTaskDraft() {
+        if !isShowingTaskDraft {
+            taskDraft = ""
+            isShowingTaskDraft = true
+        }
+        isTaskDraftFocused = true
+    }
+
+    private func saveTaskDraft() {
+        taskList.addTask(text: taskDraft)
+        abandonTaskDraft()
+    }
+
+    private func abandonTaskDraft() {
+        isTaskDraftFocused = false
+        isShowingTaskDraft = false
+        taskDraft = ""
+    }
 }
 
 private enum TodayPreviewSheet: String, Identifiable {
-    case add
     case calendar
 
     var id: String { rawValue }
+}
+
+private struct TaskDraftRow: View {
+    @Binding var text: String
+    var isFocused: FocusState<Bool>.Binding
+    let submit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .strokeBorder(Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .frame(width: 23, height: 23)
+                .accessibilityHidden(true)
+
+            TextField("New task", text: $text)
+                .font(.body)
+                .textFieldStyle(.plain)
+                .focused(isFocused)
+                .submitLabel(.done)
+                .onSubmit(submit)
+                .accessibilityLabel("New task")
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 55)
+    }
 }
 
 private struct TodayBottomBar: View {
@@ -172,7 +239,7 @@ private struct TodayBottomBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
-            .accessibilityHint("Opens the add preview")
+            .accessibilityHint("Adds a task to today's list")
 
             Button(action: openCalendar) {
                 VStack(spacing: 3) {
@@ -201,84 +268,6 @@ private struct TodayBottomBar: View {
 
     private var accentColor: Color {
         HoyPalette.accent
-    }
-}
-
-private struct AddPreviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var itemType = "Task"
-    @State private var draft = ""
-
-    private let itemTypes = ["Task", "Habit", "Written memo"]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            sheetHeader(title: "Add to today")
-
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("Type", selection: $itemType) {
-                    ForEach(itemTypes, id: \.self) { type in
-                        Text(type).tag(type)
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(HoyPalette.accent)
-                .padding(.horizontal, 14)
-                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("What’s on your mind?")
-                        .font(.subheadline.weight(.medium))
-                    TextField("A little thing for today", text: $draft)
-                        .textFieldStyle(.plain)
-                        .padding(14)
-                        .frame(minHeight: 50)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                        .accessibilityLabel("What’s on your mind?")
-                }
-            }
-
-            Button("Add") {
-                dismiss()
-            }
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Color(uiColor: .systemBackground))
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .background(HoyPalette.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .accessibilityHint("Closes this preview without creating an item")
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 22)
-        .padding(.top, 14)
-        .padding(.bottom, 24)
-        .frame(maxWidth: 520, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Add preview")
-    }
-
-    private func sheetHeader(title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.title2.bold())
-            Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 44, height: 44)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Close add preview")
-        }
     }
 }
 

@@ -422,6 +422,7 @@ private struct CheckRow: View {
     let isComplete: Bool
     var isTask = false
     var onToggle: (() -> Void)? = nil
+    @Environment(\.colorScheme) private var colorScheme
 
     @ViewBuilder
     var body: some View {
@@ -493,11 +494,9 @@ private struct CheckRow: View {
     }
 
     private var accentColor: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
-                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
-        })
+        colorScheme == .dark
+            ? Color(red: 0.57, green: 0.79, blue: 0.68)
+            : Color(red: 0.22, green: 0.43, blue: 0.34)
     }
 }
 

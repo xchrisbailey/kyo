@@ -81,6 +81,20 @@ targets:
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
+  HoyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - HoyUITests
+    dependencies:
+      - target: Hoy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy.uitests
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: iphoneos iphonesimulator
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Hoy:
     build:
@@ -106,3 +120,12 @@ schemes:
       config: Debug
       targets:
         - HoyTests
+  HoyUITests:
+    build:
+      targets:
+        Hoy: all
+        HoyUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - HoyUITests

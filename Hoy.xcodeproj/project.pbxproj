@@ -12,6 +12,7 @@
 		2F5B3BD62EF41BAB43099B36 /* HoyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F9A0B4EF7F1111507DB7 /* HoyApp.swift */; };
 		42F952AE457F94F11C5B98B6 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B79A89A003374D1BFAA84DB5 /* TodayView.swift */; };
 		502086876F9F3AF7AD6F0DB6 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
+		5783EA853003EC6577DE8AEF /* TaskCheckboxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */; };
 		9F68F119C61BD6AB6A62570E /* HoyWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE1A421D83B764237949C68 /* HoyWatchApp.swift */; };
 		A07DE67D7D4A48BF0CB1470F /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
 		A0F80D637E02CA08564D7E21 /* HoyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -27,6 +28,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 5DEAE53AE9B4A5EEA0321CF6;
 			remoteInfo = HoyWatch;
+		};
+		B4C2FA1A97BAE7B6991145A1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 55D10CFBE2E4EF1D33C4D5E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 77086442791E1D126FC0651E;
+			remoteInfo = Hoy;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -47,8 +55,10 @@
 /* Begin PBXFileReference section */
 		048AD8023E3A7BE8B9399947 /* HoyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HoyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17C0F9A0B4EF7F1111507DB7 /* HoyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyApp.swift; sourceTree = "<group>"; };
+		47CA0B336D18AEB50ABFD1F8 /* HoyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HoyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AE1A421D83B764237949C68 /* HoyWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyWatchApp.swift; sourceTree = "<group>"; };
 		6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HoyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckboxUITests.swift; sourceTree = "<group>"; };
 		9516BEC9168D8D67EE12987D /* Hoy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Hoy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A761A1D0920198935EF2C490 /* TaskListBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListBehaviorTests.swift; sourceTree = "<group>"; };
 		B79A89A003374D1BFAA84DB5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
@@ -71,6 +81,7 @@
 			children = (
 				9516BEC9168D8D67EE12987D /* Hoy.app */,
 				048AD8023E3A7BE8B9399947 /* HoyTests.xctest */,
+				47CA0B336D18AEB50ABFD1F8 /* HoyUITests.xctest */,
 				6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */,
 			);
 			name = Products;
@@ -99,10 +110,19 @@
 			children = (
 				EE23BAFB09A4E034E5AA8319 /* Hoy */,
 				0128491C548A6D535C0810D5 /* HoyTests */,
+				EA587AC8F2C821E66A340796 /* HoyUITests */,
 				C30D8A47B1B1551520857705 /* HoyWatch */,
 				8860F82056E65FB4EDD7CED5 /* Shared */,
 				5B126E461C1C201ECB318432 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		EA587AC8F2C821E66A340796 /* HoyUITests */ = {
+			isa = PBXGroup;
+			children = (
+				76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */,
+			);
+			path = HoyUITests;
 			sourceTree = "<group>";
 		};
 		EE23BAFB09A4E034E5AA8319 /* Hoy */ = {
@@ -170,6 +190,24 @@
 			productReference = 9516BEC9168D8D67EE12987D /* Hoy.app */;
 			productType = "com.apple.product-type.application";
 		};
+		9AB7DBB35CAEE8CABA269C57 /* HoyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 573DC2155CA67DE2A5249915 /* Build configuration list for PBXNativeTarget "HoyUITests" */;
+			buildPhases = (
+				C1880CEDF952526C6B2F6306 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CA2BD44EAF332BED3E7646C1 /* PBXTargetDependency */,
+			);
+			name = HoyUITests;
+			packageProductDependencies = (
+			);
+			productName = HoyUITests;
+			productReference = 47CA0B336D18AEB50ABFD1F8 /* HoyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -187,6 +225,10 @@
 					};
 					77086442791E1D126FC0651E = {
 						ProvisioningStyle = Automatic;
+					};
+					9AB7DBB35CAEE8CABA269C57 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 77086442791E1D126FC0651E;
 					};
 				};
 			};
@@ -206,6 +248,7 @@
 			targets = (
 				77086442791E1D126FC0651E /* Hoy */,
 				3079CF740DBF492D304CBD55 /* HoyTests */,
+				9AB7DBB35CAEE8CABA269C57 /* HoyUITests */,
 				5DEAE53AE9B4A5EEA0321CF6 /* HoyWatch */,
 			);
 		};
@@ -234,6 +277,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C1880CEDF952526C6B2F6306 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5783EA853003EC6577DE8AEF /* TaskCheckboxUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F0AB634769D00DAFB556348C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -250,6 +301,11 @@
 			isa = PBXTargetDependency;
 			target = 5DEAE53AE9B4A5EEA0321CF6 /* HoyWatch */;
 			targetProxy = 724811EF675FCA4260CF6E5B /* PBXContainerItemProxy */;
+		};
+		CA2BD44EAF332BED3E7646C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 77086442791E1D126FC0651E /* Hoy */;
+			targetProxy = B4C2FA1A97BAE7B6991145A1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -343,6 +399,18 @@
 			};
 			name = Debug;
 		};
+		7A2E4677D2DD7888F1A2ADD0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.hoy.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Hoy;
+			};
+			name = Debug;
+		};
 		8C1C468FB7F9D8A532B44532 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -353,6 +421,18 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		9EFD3D79D59D6C71B8EADA35 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.hoy.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Hoy;
+			};
+			name = Release;
 		};
 		DD26552E43AEB98F374BF567 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -386,6 +466,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		573DC2155CA67DE2A5249915 /* Build configuration list for PBXNativeTarget "HoyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A2E4677D2DD7888F1A2ADD0 /* Debug */,
+				9EFD3D79D59D6C71B8EADA35 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		8AD7DF2ACE381C644C71A002 /* Build configuration list for PBXProject "Hoy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

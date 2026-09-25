@@ -26,7 +26,12 @@ struct TodayView: View {
                                 }
                                 ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
                                     if index > 0 { rowDivider }
-                                    CheckRow(title: task.text, isComplete: task.isComplete, isTask: true)
+                                    CheckRow(
+                                        title: task.text,
+                                        isComplete: task.isComplete,
+                                        isTask: true,
+                                        onToggle: { taskList.toggleTask(id: task.id) }
+                                    )
                                 }
                                 if isShowingTaskDraft {
                                     if !taskList.tasks.isEmpty { rowDivider }
@@ -119,7 +124,7 @@ struct TodayView: View {
 
     private var summaryStats: some View {
         HStack(alignment: .top, spacing: 0) {
-            SummaryStat(value: "\(taskList.taskCount - taskList.incompleteCount) / \(taskList.taskCount)", label: "Tasks done")
+            SummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
             SummaryStat(value: "1 / 2", label: "Habits done")
             statDivider
@@ -416,21 +421,11 @@ private struct CheckRow: View {
     var trailing: String? = nil
     let isComplete: Bool
     var isTask = false
+    var onToggle: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .strokeBorder(isComplete ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
-                    .background(Circle().fill(isComplete ? accentColor : .clear))
-                    .frame(width: 23, height: 23)
-                if isComplete {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Color(uiColor: .secondarySystemBackground))
-                }
-            }
-            .accessibilityHidden(true)
+            checkbox
 
             Text(title)
                 .font(.body)
@@ -449,10 +444,39 @@ private struct CheckRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(isComplete ? "Completed" : "Not completed")
-        .accessibilityHint(trailing.map { $0 } ?? "")
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var checkbox: some View {
+        if let onToggle {
+            Button(action: onToggle) {
+                checkboxGlyph
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title)
+            .accessibilityValue(isComplete ? "Completed" : "Not completed")
+            .accessibilityHint(isComplete ? "Reopens this task" : "Marks this task complete")
+        } else {
+            checkboxGlyph
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var checkboxGlyph: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(isComplete ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .background(Circle().fill(isComplete ? accentColor : .clear))
+                .frame(width: 23, height: 23)
+            if isComplete {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+            }
+        }
     }
 
     private var accentColor: Color {

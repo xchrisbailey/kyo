@@ -1,17 +1,40 @@
 import Combine
 import Foundation
 
+struct TaskCompletionDay: Codable, Equatable {
+    let era: Int?
+    let year: Int
+    let month: Int
+    let day: Int
+
+    init(date: Date, calendar: Calendar) {
+        let components = calendar.dateComponents([.era, .year, .month, .day], from: date)
+        self.era = components.era
+        self.year = components.year ?? 0
+        self.month = components.month ?? 0
+        self.day = components.day ?? 0
+    }
+}
+
 struct DailyTask: Identifiable, Codable, Equatable {
     let id: UUID
     let text: String
     let creationOrder: Int64
     let isComplete: Bool
+    let completedOn: TaskCompletionDay?
 
-    init(id: UUID = UUID(), text: String, creationOrder: Int64, isComplete: Bool = false) {
+    init(
+        id: UUID = UUID(),
+        text: String,
+        creationOrder: Int64,
+        isComplete: Bool = false,
+        completedOn: TaskCompletionDay? = nil
+    ) {
         self.id = id
         self.text = text
         self.creationOrder = creationOrder
         self.isComplete = isComplete
+        self.completedOn = completedOn
     }
 }
 
@@ -19,8 +42,10 @@ struct DailyTask: Identifiable, Codable, Equatable {
 protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
     var taskCount: Int { get }
+    var completedCount: Int { get }
     var incompleteCount: Int { get }
     @discardableResult func addTask(text: String) -> DailyTask?
+    @discardableResult func toggleTask(id: UUID) -> DailyTask?
 }
 
 @MainActor
@@ -31,13 +56,23 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     private let userDefaults: UserDefaults
     private let storageKey: String
+    private let now: () -> Date
+    private let calendar: Calendar
 
     var taskCount: Int { tasks.count }
-    var incompleteCount: Int { tasks.filter { !$0.isComplete }.count }
+    var completedCount: Int { tasks.filter(\.isComplete).count }
+    var incompleteCount: Int { taskCount - completedCount }
 
-    init(userDefaults: UserDefaults = .standard, storageKey: String = TaskListStore.storageKey) {
+    init(
+        userDefaults: UserDefaults = .standard,
+        storageKey: String = TaskListStore.storageKey,
+        now: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current
+    ) {
         self.userDefaults = userDefaults
         self.storageKey = storageKey
+        self.now = now
+        self.calendar = calendar
 
         if let data = userDefaults.data(forKey: storageKey),
            let savedTasks = try? JSONDecoder().decode([DailyTask].self, from: data) {
@@ -60,6 +95,24 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         return task
     }
 
+    @discardableResult
+    func toggleTask(id: UUID) -> DailyTask? {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+
+        let task = tasks[index]
+        let updatedTask = DailyTask(
+            id: task.id,
+            text: task.text,
+            creationOrder: task.creationOrder,
+            isComplete: !task.isComplete,
+            completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar)
+        )
+        tasks[index] = updatedTask
+        tasks = Self.ordered(tasks)
+        persist()
+        return updatedTask
+    }
+
     private func persist() {
         guard let data = try? JSONEncoder().encode(tasks) else { return }
         userDefaults.set(data, forKey: storageKey)
@@ -67,6 +120,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     private static func ordered(_ tasks: [DailyTask]) -> [DailyTask] {
         tasks.sorted {
+            if $0.isComplete != $1.isComplete {
+                return !$0.isComplete
+            }
             if $0.creationOrder == $1.creationOrder {
                 return $0.id.uuidString < $1.id.uuidString
             }

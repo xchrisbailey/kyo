@@ -24,6 +24,62 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.taskCount, 0)
     }
 
+    func testEditingTrimsTextAndPreservesTaskIdentityOrderAndCompletion() throws {
+        let defaults = try makeDefaults()
+        let calendar = Calendar(identifier: .gregorian)
+        let completedAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25)))
+        let list = TaskListStore(
+            userDefaults: defaults,
+            storageKey: "tasks",
+            now: { completedAt },
+            calendar: calendar
+        )
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        let second = try XCTUnwrap(list.addTask(text: "Second"))
+        _ = list.toggleTask(id: first.id)
+        let completedFirst = try XCTUnwrap(list.tasks.first { $0.id == first.id })
+
+        let edited = try XCTUnwrap(list.editTask(id: first.id, text: "  Renamed first  "))
+
+        XCTAssertEqual(edited.id, first.id)
+        XCTAssertEqual(edited.text, "Renamed first")
+        XCTAssertEqual(edited.creationOrder, first.creationOrder)
+        XCTAssertEqual(edited.isComplete, completedFirst.isComplete)
+        XCTAssertEqual(edited.completedOn, completedFirst.completedOn)
+        XCTAssertEqual(list.tasks.map(\.id), [second.id, first.id])
+        XCTAssertEqual(list.completedCount, 1)
+        XCTAssertEqual(list.incompleteCount, 1)
+
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", calendar: calendar)
+        XCTAssertEqual(reopened.tasks, list.tasks)
+    }
+
+    func testBlankOrUnknownEditDoesNotChangeTask() throws {
+        let list = TaskListStore(userDefaults: try makeDefaults(), storageKey: "tasks")
+        let task = try XCTUnwrap(list.addTask(text: "Keep this"))
+
+        XCTAssertNil(list.editTask(id: task.id, text: " \n\t "))
+        XCTAssertNil(list.editTask(id: UUID(), text: "Unknown"))
+        XCTAssertEqual(list.tasks, [task])
+    }
+
+    func testDeletingTaskUpdatesCountsAndPersists() throws {
+        let defaults = try makeDefaults()
+        let list = TaskListStore(userDefaults: defaults, storageKey: "tasks")
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        _ = list.addTask(text: "Second")
+        let completedFirst = try XCTUnwrap(list.toggleTask(id: first.id))
+        XCTAssertEqual(list.completedCount, 1)
+
+        XCTAssertEqual(list.deleteTask(id: first.id), completedFirst)
+        XCTAssertNil(list.deleteTask(id: UUID()))
+        XCTAssertEqual(list.taskCount, 1)
+        XCTAssertEqual(list.completedCount, 0)
+        XCTAssertEqual(list.incompleteCount, 1)
+        XCTAssertEqual(list.tasks.map(\.text), ["Second"])
+        XCTAssertEqual(TaskListStore(userDefaults: defaults, storageKey: "tasks").tasks, list.tasks)
+    }
+
     func testSavedTasksSurviveReopeningTheList() throws {
         let defaults = try makeDefaults()
         let firstList: any TaskListBehavior = TaskListStore(userDefaults: defaults, storageKey: "tasks")

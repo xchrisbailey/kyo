@@ -1,8 +1,15 @@
 import SwiftUI
 
 struct WatchTodayView: View {
+    @StateObject private var taskList: TaskListStore
     @State private var activeSheet: WatchPreviewSheet?
+    @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        _taskList = StateObject(wrappedValue: TaskListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -14,11 +21,18 @@ struct WatchTodayView: View {
 
                         WatchSection(title: "Tasks") {
                             VStack(spacing: 0) {
-                                WatchCheckRow(title: "Send the design proposal", detail: "11:00 AM", completed: false, task: true)
-                                rowDivider
-                                WatchCheckRow(title: "Pick up groceries", completed: false, task: true)
-                                rowDivider
-                                WatchCheckRow(title: "Book a haircut", completed: true, task: true)
+                                if taskList.tasks.isEmpty {
+                                    Text("No tasks yet")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.vertical, 7)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                                        if index > 0 { rowDivider }
+                                        WatchCheckRow(title: task.text, completed: task.isComplete, task: true)
+                                    }
+                                }
                             }
                         }
                         WatchSection(title: "Habits") {
@@ -73,6 +87,22 @@ struct WatchTodayView: View {
                 WatchCalendarPreviewSheet()
             }
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await taskList.refreshAtEachDayBoundary()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                taskList.refreshForCurrentDay()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            taskList.refreshForCurrentDay()
+            dayBoundaryRefreshToken += 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+            taskList.refreshForCurrentDay()
+            dayBoundaryRefreshToken += 1
+        }
     }
 
     private var header: some View {
@@ -86,17 +116,17 @@ struct WatchTodayView: View {
                 .tracking(-0.5)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Text("Thursday, Sep 24")
+            Text(taskList.currentDate, format: .dateTime.weekday(.wide).month(.abbreviated).day())
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("Thursday, September 24, 2026")
+                .accessibilityLabel(taskList.currentDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var summary: some View {
         HStack(spacing: 5) {
-            WatchSummaryStat(value: "1 / 3", label: "Tasks")
+            WatchSummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks")
             WatchSummaryStat(value: "1 / 2", label: "Habits")
             WatchSummaryStat(value: "1,240", label: "kcal")
         }

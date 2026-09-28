@@ -47,6 +47,7 @@ Make Tasks a simple daily list of text entries and checkboxes within the existin
 - Watch supports adding, completing, and reopening tasks using suitable native text input. Editing and deleting on Watch are outside this scope.
 - Preserve accessible task names and completion state when converting the decorative checkbox rows into interactive controls.
 - Keep lasting target/build configuration changes in the project's XcodeGen definition and regenerate the checked-in project when necessary.
+- Phone/Watch synchronization uses phone-authoritative full-list snapshots delivered over WatchConnectivity `applicationContext`, reconciled by a hybrid-clock revision; see `docs/adr/0001-phone-authoritative-task-snapshots.md`.
 
 ## Testing Decisions
 

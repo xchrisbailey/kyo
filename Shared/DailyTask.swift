@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-struct TaskCompletionDay: Codable, Equatable {
+struct TaskCompletionDay: Codable, Equatable, Sendable {
     let era: Int?
     let year: Int
     let month: Int
@@ -16,7 +16,7 @@ struct TaskCompletionDay: Codable, Equatable {
     }
 }
 
-struct DailyTask: Identifiable, Codable, Equatable {
+struct DailyTask: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let text: String
     let creationOrder: Int64
@@ -62,6 +62,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     private let storageKey: String
     private let now: () -> Date
     private let calendar: Calendar
+    private let sync: TaskListSync?
+    private let revisionKey: String
+    private var revision: Int64?
 
     var taskCount: Int { tasks.count }
     var completedCount: Int { tasks.filter(\.isComplete).count }
@@ -71,12 +74,15 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         userDefaults: UserDefaults = .standard,
         storageKey: String = TaskListStore.storageKey,
         now: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        sync: TaskListSync? = nil
     ) {
         self.userDefaults = userDefaults
         self.storageKey = storageKey
         self.now = now
         self.calendar = calendar
+        self.sync = sync
+        self.revisionKey = storageKey + ".revision"
         self.currentDate = calendar.startOfDay(for: now())
 
         if let data = userDefaults.data(forKey: storageKey),
@@ -85,7 +91,35 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         } else {
             self.savedTasks = []
         }
+        if sync != nil {
+            self.revision = (userDefaults.object(forKey: revisionKey) as? NSNumber)?.int64Value
+        } else {
+            self.revision = nil
+        }
         refreshForCurrentDay()
+
+        switch sync {
+        case .publish(let transport):
+            // A fresh install or a reset UserDefaults suite has no stored revision yet. Seed
+            // one from the wall clock now, rather than publishing at revision 0 forever: a
+            // Watch that already applied a higher revision from a previous install would
+            // otherwise ignore this device's snapshots indefinitely. See the ADR's
+            // reinstalled-phone consequence.
+            if revision == nil {
+                let seeded = Int64(now().timeIntervalSince1970 * 1000)
+                revision = seeded
+                userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
+            }
+            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks))
+        case .mirror(let transport):
+            // Registered last: the transport may call the handler synchronously,
+            // and everything it touches (savedTasks, revision, tasks) must already exist.
+            transport.setSnapshotHandler { [weak self] snapshot in
+                self?.apply(snapshot)
+            }
+        case nil:
+            break
+        }
     }
 
     @discardableResult
@@ -98,6 +132,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         savedTasks.append(task)
         refreshForCurrentDay()
         persist()
+        publishChange()
         return task
     }
 
@@ -118,6 +153,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
         persist()
+        publishChange()
         return updatedTask
     }
 
@@ -127,6 +163,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let removedTask = savedTasks.remove(at: index)
         refreshForCurrentDay()
         persist()
+        publishChange()
         return removedTask
     }
 
@@ -145,6 +182,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
         persist()
+        publishChange()
         return updatedTask
     }
 
@@ -158,6 +196,48 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         tasks = Self.ordered(savedTasks.filter { task in
             !task.isComplete || task.completedOn == day
         })
+    }
+
+    /// Refreshes for the current day now, then again at every local midnight until cancelled.
+    /// Both `TodayView` and `WatchTodayView` drive their day rollover from this.
+    func refreshAtEachDayBoundary() async {
+        while !Task.isCancelled {
+            refreshForCurrentDay()
+            let today = calendar.startOfDay(for: now())
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return }
+            let delay = max(1, tomorrow.timeIntervalSince(now()))
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// Publishes the current task list to the counterpart device if this store is the
+    /// publishing (phone) side of a sync pair. Does nothing for `.mirror` or no sync role.
+    /// Bumps the revision with a hybrid clock: strictly increasing even across restarts and
+    /// reinstalls, since it is floored by the device's wall clock in milliseconds.
+    private func publishChange() {
+        guard case .publish(let transport) = sync else { return }
+        let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
+        revision = candidate
+        userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
+        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks))
+    }
+
+    /// Applies an incoming snapshot from the publishing (phone) side, per the reconciliation
+    /// rule in docs/adr/0001-phone-authoritative-task-snapshots.md: a snapshot is applied only
+    /// if its revision is strictly greater than the last one applied, or none has been applied
+    /// yet. Applying replaces the stored task list outright; older or repeated snapshots are
+    /// ignored, so redelivery and out-of-order delivery cannot duplicate or resurrect tasks.
+    private func apply(_ snapshot: TaskListSnapshot) {
+        if let revision, snapshot.revision <= revision { return }
+        savedTasks = Self.ordered(snapshot.tasks)
+        persist()
+        revision = snapshot.revision
+        userDefaults.set(NSNumber(value: snapshot.revision), forKey: revisionKey)
+        refreshForCurrentDay()
     }
 
     private func persist() {

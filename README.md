@@ -24,4 +24,15 @@ xcodebuild -project Hoy.xcodeproj -scheme Hoy -sdk iphonesimulator -destination 
 xcodebuild -project Hoy.xcodeproj -scheme HoyWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-App icons, persistence, and phone/watch synchronization are not configured yet.
+App icons are not configured yet.
+
+## Sync
+
+Tasks are saved to UserDefaults on each device (`Shared/DailyTask.swift`) and kept in sync
+between the paired iPhone and Watch over WatchConnectivity: the phone publishes a full snapshot
+of the current day's tasks after every change, and the Watch mirrors it. See
+`docs/adr/0001-phone-authoritative-task-snapshots.md` for the reconciliation rule.
+
+To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a
+paired device), install both apps, launch the Watch app, then run the `HoyUITests` target with
+`HOY_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).

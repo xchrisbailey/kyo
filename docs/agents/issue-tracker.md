@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live in GitHub Issues at `xchrisbailey/hoy`. Use the `gh` CLI for issue operations.
+Issues and specs for this repo live in GitHub Issues at `xchrisbailey/kyo`. Use the `gh` CLI for issue operations.
 
 ## Conventions
 

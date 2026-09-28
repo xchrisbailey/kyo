@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues for `xchrisbailey/hoy`. See `docs/agents/issue-tracker.md`.
+Issues and specs live in GitHub Issues for `xchrisbailey/kyo`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

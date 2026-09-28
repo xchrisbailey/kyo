@@ -8,7 +8,7 @@ Hoy presents one day at a time, but its Tasks section currently contains fixed s
 
 ## Solution
 
-Make Tasks a simple daily list of text entries and checkboxes within the existing layout. On iPhone and iPad, the bottom Add button starts a blank row directly in the list; Return saves the task. Completed tasks move below active tasks and appear gray. Unfinished tasks carry forward automatically. Apple Watch supports adding tasks and toggling completion against the same synchronized list.
+Make Tasks a simple daily list of text entries and checkboxes within the existing layout. On iPhone and iPad, the bottom Add button starts a blank row directly in the list; Return saves the task. Completed tasks move below active tasks and appear gray. Unfinished tasks carry forward automatically. Apple Watch supports adding, editing, deleting, and toggling completion of tasks against the same synchronized list.
 
 ## User Stories
 
@@ -44,10 +44,10 @@ Make Tasks a simple daily list of text entries and checkboxes within the existin
 - Derive task completion summaries from the current day's task data on each device.
 - Introduce a shared task model and a task-list interface for the two platform views. The interface owns observable task operations and day behavior; storage and device communication remain behind it.
 - Persist saved task changes and synchronize the paired phone/Watch task list. Stable task identity is required so that delivery retries and rollover do not duplicate entries. Choose the concrete storage and synchronization mechanisms during implementation; none exists in the starter today.
-- Watch supports adding, completing, and reopening tasks using suitable native text input. Editing and deleting on Watch are outside this scope.
+- Watch supports adding, completing, and reopening tasks using suitable native text input. Watch editing and deleting (#21) use a swipe that reveals Edit and Delete; see #21 for the confirmed behavior.
 - Preserve accessible task names and completion state when converting the decorative checkbox rows into interactive controls.
 - Keep lasting target/build configuration changes in the project's XcodeGen definition and regenerate the checked-in project when necessary.
-- Phone/Watch synchronization uses phone-authoritative full-list snapshots delivered over WatchConnectivity `applicationContext`, reconciled by a hybrid-clock revision; see `docs/adr/0001-phone-authoritative-task-snapshots.md`.
+- Phone/Watch synchronization uses phone-authoritative full-list snapshots delivered over WatchConnectivity `applicationContext`, reconciled by a hybrid-clock revision; see `docs/adr/0001-phone-authoritative-task-snapshots.md`. Watch-originated changes travel as commands the phone applies; see `docs/adr/0002-watch-commands-and-phone-reconciliation.md`.
 
 ## Testing Decisions
 
@@ -66,7 +66,6 @@ Test approach proposed during specification review:
 
 - Implementing the feature as part of this specification request.
 - Due dates, task times, reminders, priorities, tags, subtasks, recurring tasks, and manual reordering.
-- Editing or deleting tasks on Apple Watch.
 - New historical-day navigation or editing workflows.
 - General cloud account synchronization across multiple phones or tablets beyond the requested paired phone/Watch behavior.
 - Implementing Habits, Memos, or Meals, or redesigning the overall app layout.

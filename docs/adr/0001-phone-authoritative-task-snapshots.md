@@ -81,11 +81,14 @@ publishes, because the snapshot always carries the full list, not a delta.
   Watch last saw, the reinstalled phone's snapshots could be ignored as stale until its clock (or
   its revision, via new writes) catches back up. This is judged an acceptable edge case for a
   personal two-device sync feature.
-- Until #14, any local mutation attempted on the Watch (there is none in this slice's UI, but the
-  mutation methods still work if called) would be silently overwritten by the next phone
-  snapshot, since the Watch never publishes.
-- **Extension for #14:** the Watch will send commands (add, toggle) through `transferUserInfo`,
-  which queues reliably even while the phone is unreachable. The phone will keep tombstones for
-  deletions and a Watch-side outbox so that Watch-originated commands survive being sent before
-  the phone is reachable, and so that a late-arriving Watch command cannot resurrect a task the
-  phone has since deleted.
+- **Superseded by ADR 0002.** Until #14, any local mutation attempted on the Watch (there was
+  none in this slice's UI, but the mutation methods still worked if called) would have been
+  silently overwritten by the next phone snapshot, since the Watch never published. This is no
+  longer the current behavior: `addTask`/`toggleTask` on a `.mirror` store now send commands
+  instead of mutating a list that would just be overwritten. See ADR 0002.
+- **Extension for #14:** implemented. The Watch now sends commands (add, toggle) through
+  `transferUserInfo`, which queues reliably even while the phone is unreachable, and the phone
+  keeps tombstones for deletions and acknowledges processed commands so a Watch-side outbox can
+  retry safely without duplicating or resurrecting tasks. See
+  `docs/adr/0002-watch-commands-and-phone-reconciliation.md` for the full design and
+  reconciliation rule.

@@ -15,6 +15,7 @@
 		42F952AE457F94F11C5B98B6 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B79A89A003374D1BFAA84DB5 /* TodayView.swift */; };
 		502086876F9F3AF7AD6F0DB6 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
 		5783EA853003EC6577DE8AEF /* TaskCheckboxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */; };
+		7D2525C84F09AD04EEF350A9 /* WatchOriginatedSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBC1C2704DAFB2DA09426B7 /* WatchOriginatedSyncTests.swift */; };
 		894F91689A93EE40EEA2B296 /* WatchSyncSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 177C1D58AEAAB0C698A30F98 /* WatchSyncSmokeUITests.swift */; };
 		9F68F119C61BD6AB6A62570E /* HoyWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE1A421D83B764237949C68 /* HoyWatchApp.swift */; };
 		A07DE67D7D4A48BF0CB1470F /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
@@ -65,6 +66,7 @@
 		177C1D58AEAAB0C698A30F98 /* WatchSyncSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncSmokeUITests.swift; sourceTree = "<group>"; };
 		17C0F9A0B4EF7F1111507DB7 /* HoyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyApp.swift; sourceTree = "<group>"; };
 		47CA0B336D18AEB50ABFD1F8 /* HoyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HoyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4BBC1C2704DAFB2DA09426B7 /* WatchOriginatedSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchOriginatedSyncTests.swift; sourceTree = "<group>"; };
 		69BF6BDE8EDE271FF615E0B8 /* ControllableTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableTaskTransport.swift; sourceTree = "<group>"; };
 		6AE1A421D83B764237949C68 /* HoyWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyWatchApp.swift; sourceTree = "<group>"; };
 		6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HoyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -87,6 +89,7 @@
 				69BF6BDE8EDE271FF615E0B8 /* ControllableTaskTransport.swift */,
 				A761A1D0920198935EF2C490 /* TaskListBehaviorTests.swift */,
 				BF469554CCDF15FB1DFB1236 /* TaskListSyncTests.swift */,
+				4BBC1C2704DAFB2DA09426B7 /* WatchOriginatedSyncTests.swift */,
 			);
 			path = HoyTests;
 			sourceTree = "<group>";
@@ -317,6 +320,7 @@
 				2C6EF99A7DF276256D42FE46 /* TaskListBehaviorTests.swift in Sources */,
 				C2F694AB098B067FFD5CA5DE /* TaskListSyncTests.swift in Sources */,
 				B53D894E4D47CCEE9B9E66F8 /* TaskSync.swift in Sources */,
+				7D2525C84F09AD04EEF350A9 /* WatchOriginatedSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -30,8 +30,12 @@ App icons are not configured yet.
 
 Tasks are saved to UserDefaults on each device (`Shared/DailyTask.swift`) and kept in sync
 between the paired iPhone and Watch over WatchConnectivity: the phone publishes a full snapshot
-of the current day's tasks after every change, and the Watch mirrors it. See
-`docs/adr/0001-phone-authoritative-task-snapshots.md` for the reconciliation rule.
+of the current day's tasks after every change, and the Watch mirrors it. The Watch can also add
+tasks and toggle completion from its own UI; those become commands sent back to the phone,
+which stays the single writer of the synchronized list. See
+`docs/adr/0001-phone-authoritative-task-snapshots.md` for the snapshot reconciliation rule and
+`docs/adr/0002-watch-commands-and-phone-reconciliation.md` for how Watch-originated commands are
+applied and acknowledged. Editing and deleting tasks remain phone-only.
 
 To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a
 paired device), install both apps, launch the Watch app, then run the `HoyUITests` target with

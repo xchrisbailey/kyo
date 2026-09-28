@@ -2,11 +2,17 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
-    @StateObject private var taskList = TaskListStore()
+    @StateObject private var taskList: TaskListStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
     @FocusState private var isTaskDraftFocused: Bool
+
+    init() {
+        let storageKey = ProcessInfo.processInfo.environment["HOY_TASK_STORAGE_KEY"] ?? TaskListStore.storageKey
+        _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey))
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -96,6 +102,17 @@ struct TodayView: View {
                 }
             }
         }
+        .task {
+            await refreshAtNextDayBoundary()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                taskList.refreshForCurrentDay()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            taskList.refreshForCurrentDay()
+        }
     }
 
     private var header: some View {
@@ -112,11 +129,11 @@ struct TodayView: View {
                 .tracking(-1.2)
                 .foregroundStyle(.primary)
 
-            Text("Thursday, September 24")
+            Text(taskList.currentDate, format: .dateTime.weekday(.wide).month(.wide).day())
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .padding(.top, 5)
-                .accessibilityLabel("Thursday, September 24, 2026")
+                .accessibilityLabel(taskList.currentDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 18)
@@ -158,6 +175,22 @@ struct TodayView: View {
 
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
+    }
+
+    @MainActor
+    private func refreshAtNextDayBoundary() async {
+        while !Task.isCancelled {
+            taskList.refreshForCurrentDay()
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return }
+            let delay = max(1, tomorrow.timeIntervalSinceNow)
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+        }
     }
 
     private func beginTaskDraft() {
@@ -370,6 +403,8 @@ private struct SummaryStat: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(label == "Tasks done" ? "task-count-summary" : "summary-\(label)")
+        .accessibilityValue("\(value) \(label.lowercased())")
     }
 }
 

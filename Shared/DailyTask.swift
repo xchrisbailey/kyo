@@ -54,8 +54,10 @@ protocol TaskListBehavior: AnyObject {
 final class TaskListStore: ObservableObject, TaskListBehavior {
     static let storageKey = "hoy.dailyTasks.v1"
 
-    @Published private(set) var tasks: [DailyTask]
+    @Published private(set) var tasks: [DailyTask] = []
+    @Published private(set) var currentDate: Date
 
+    private var savedTasks: [DailyTask]
     private let userDefaults: UserDefaults
     private let storageKey: String
     private let now: () -> Date
@@ -75,13 +77,15 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         self.storageKey = storageKey
         self.now = now
         self.calendar = calendar
+        self.currentDate = calendar.startOfDay(for: now())
 
         if let data = userDefaults.data(forKey: storageKey),
            let savedTasks = try? JSONDecoder().decode([DailyTask].self, from: data) {
-            self.tasks = Self.ordered(savedTasks)
+            self.savedTasks = Self.ordered(savedTasks)
         } else {
-            self.tasks = []
+            self.savedTasks = []
         }
+        refreshForCurrentDay()
     }
 
     @discardableResult
@@ -89,10 +93,10 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return nil }
 
-        let creationOrder = (tasks.map(\.creationOrder).max() ?? -1) + 1
+        let creationOrder = (savedTasks.map(\.creationOrder).max() ?? -1) + 1
         let task = DailyTask(text: trimmedText, creationOrder: creationOrder)
-        tasks.append(task)
-        tasks = Self.ordered(tasks)
+        savedTasks.append(task)
+        refreshForCurrentDay()
         persist()
         return task
     }
@@ -101,9 +105,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     func editTask(id: UUID, text: String) -> DailyTask? {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty,
-              let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+              let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
 
-        let task = tasks[index]
+        let task = savedTasks[index]
         let updatedTask = DailyTask(
             id: task.id,
             text: trimmedText,
@@ -111,25 +115,26 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             isComplete: task.isComplete,
             completedOn: task.completedOn
         )
-        tasks[index] = updatedTask
-        tasks = Self.ordered(tasks)
+        savedTasks[index] = updatedTask
+        refreshForCurrentDay()
         persist()
         return updatedTask
     }
 
     @discardableResult
     func deleteTask(id: UUID) -> DailyTask? {
-        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
-        let removedTask = tasks.remove(at: index)
+        guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
+        let removedTask = savedTasks.remove(at: index)
+        refreshForCurrentDay()
         persist()
         return removedTask
     }
 
     @discardableResult
     func toggleTask(id: UUID) -> DailyTask? {
-        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+        guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
 
-        let task = tasks[index]
+        let task = savedTasks[index]
         let updatedTask = DailyTask(
             id: task.id,
             text: task.text,
@@ -137,14 +142,26 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             isComplete: !task.isComplete,
             completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar)
         )
-        tasks[index] = updatedTask
-        tasks = Self.ordered(tasks)
+        savedTasks[index] = updatedTask
+        refreshForCurrentDay()
         persist()
         return updatedTask
     }
 
+    /// Re-evaluates which saved tasks belong to the local current day.
+    /// Incomplete tasks remain visible; completed tasks stay visible only on
+    /// their completion day and remain saved for future history/sync work.
+    func refreshForCurrentDay() {
+        let now = now()
+        currentDate = calendar.startOfDay(for: now)
+        let day = TaskCompletionDay(date: now, calendar: calendar)
+        tasks = Self.ordered(savedTasks.filter { task in
+            !task.isComplete || task.completedOn == day
+        })
+    }
+
     private func persist() {
-        guard let data = try? JSONEncoder().encode(tasks) else { return }
+        guard let data = try? JSONEncoder().encode(savedTasks) else { return }
         userDefaults.set(data, forKey: storageKey)
     }
 

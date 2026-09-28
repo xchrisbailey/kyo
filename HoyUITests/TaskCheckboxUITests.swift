@@ -2,9 +2,34 @@ import XCTest
 
 @MainActor
 final class TaskCheckboxUITests: XCTestCase {
+    func testTodayShowsTheCurrentLocalDateAndCurrentDayTaskCounts() throws {
+        let app = XCUIApplication()
+        launchIsolatedApp(app)
+
+        let expectedDate = Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        XCTAssertTrue(app.staticTexts[expectedDate].waitForExistence(timeout: 3))
+
+        let taskSummary = app.descendants(matching: .any)["task-count-summary"]
+        XCTAssertTrue(taskSummary.waitForExistence(timeout: 3))
+        let initialCounts = try XCTUnwrap(taskSummary.value as? String)
+            .components(separatedBy: " / ")
+        XCTAssertEqual(initialCounts.count, 2)
+        let initialCompleted = try XCTUnwrap(Int(initialCounts[0]))
+        let initialTotal = try XCTUnwrap(Int(initialCounts[1].components(separatedBy: " ")[0]))
+
+        let title = "Current day task \(String(UUID().uuidString.prefix(8)))"
+        addTask(title, to: app)
+        XCTAssertEqual(taskSummary.value as? String, "\(initialCompleted) / \(initialTotal + 1) tasks done")
+        let taskCheckbox = app.buttons[title]
+        assertCheckboxValue(taskCheckbox, equals: "Not completed")
+        taskCheckbox.tap()
+        assertCheckboxValue(app.buttons[title], equals: "Completed")
+        XCTAssertEqual(taskSummary.value as? String, "\(initialCompleted + 1) / \(initialTotal + 1) tasks done")
+    }
+
     func testCompletingMultipleTasksAndReopeningOne() throws {
         let app = XCUIApplication()
-        app.launch()
+        launchIsolatedApp(app)
 
         let runID = String(UUID().uuidString.prefix(8))
         let firstTitle = "First checkbox task \(runID)"
@@ -18,18 +43,18 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertTrue(secondCheckbox.exists)
 
         firstCheckbox.tap()
-        XCTAssertEqual(app.buttons[firstTitle].value as? String, "Completed")
+        assertCheckboxValue(app.buttons[firstTitle], equals: "Completed")
 
         app.buttons[secondTitle].tap()
-        XCTAssertEqual(app.buttons[secondTitle].value as? String, "Completed")
+        assertCheckboxValue(app.buttons[secondTitle], equals: "Completed")
 
         app.buttons[firstTitle].tap()
-        XCTAssertEqual(app.buttons[firstTitle].value as? String, "Not completed")
+        assertCheckboxValue(app.buttons[firstTitle], equals: "Not completed")
     }
 
     func testEditingTaskKeepsCheckboxSeparateAndSwipeDeletesTask() throws {
         let app = XCUIApplication()
-        app.launch()
+        launchIsolatedApp(app)
 
         let runID = String(UUID().uuidString.prefix(8))
         let originalTitle = "Editable task \(runID)"
@@ -44,9 +69,9 @@ final class TaskCheckboxUITests: XCTestCase {
 
         let checkbox = app.buttons[editedTitle]
         XCTAssertTrue(checkbox.waitForExistence(timeout: 3))
-        XCTAssertEqual(checkbox.value as? String, "Not completed")
+        assertCheckboxValue(checkbox, equals: "Not completed")
         checkbox.tap()
-        XCTAssertEqual(app.buttons[editedTitle].value as? String, "Completed")
+        assertCheckboxValue(app.buttons[editedTitle], equals: "Completed")
 
         app.buttons["Edit task: \(editedTitle)"].swipeLeft()
         let deleteButton = app.buttons["Delete task: \(editedTitle)"]
@@ -67,5 +92,18 @@ final class TaskCheckboxUITests: XCTestCase {
         field.tap()
         field.typeText(title + "\n")
         XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 3))
+    }
+
+    private func launchIsolatedApp(_ app: XCUIApplication) {
+        app.launchEnvironment["HOY_TASK_STORAGE_KEY"] = "HoyUITests.\(UUID().uuidString)"
+        app.launch()
+    }
+
+    private func assertCheckboxValue(_ checkbox: XCUIElement, equals expectedValue: String) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", expectedValue),
+            object: checkbox
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 3), .completed)
     }
 }

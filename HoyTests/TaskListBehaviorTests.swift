@@ -50,7 +50,13 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.completedCount, 1)
         XCTAssertEqual(list.incompleteCount, 1)
 
-        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", calendar: calendar)
+        // Reopen on the same local day so today's completed task remains visible.
+        let reopened = TaskListStore(
+            userDefaults: defaults,
+            storageKey: "tasks",
+            now: { completedAt },
+            calendar: calendar
+        )
         XCTAssertEqual(reopened.tasks, list.tasks)
     }
 
@@ -142,7 +148,12 @@ final class TaskListBehaviorTests: XCTestCase {
         let task = try XCTUnwrap(firstList.addTask(text: "Persist completion"))
         _ = firstList.toggleTask(id: task.id)
 
-        let reopenedList = TaskListStore(userDefaults: defaults, storageKey: "tasks", calendar: calendar)
+        let reopenedList = TaskListStore(
+            userDefaults: defaults,
+            storageKey: "tasks",
+            now: { completionDate },
+            calendar: calendar
+        )
 
         XCTAssertEqual(reopenedList.tasks.first?.id, task.id)
         XCTAssertEqual(reopenedList.tasks.first?.completedOn, TaskCompletionDay(date: completionDate, calendar: calendar))
@@ -169,6 +180,82 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(tasks.first?.text, "Saved before completion support")
         XCTAssertEqual(tasks.first?.completedOn, nil)
         XCTAssertEqual(tasks.first?.isComplete, false)
+    }
+
+    func testMidnightRolloverCarriesIncompleteTasksAndKeepsCompletionsOnTheirDay() throws {
+        let defaults = try makeDefaults()
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 23, minute: 59)))
+        let list = TaskListStore(
+            userDefaults: defaults,
+            storageKey: "tasks",
+            now: { now },
+            calendar: calendar
+        )
+        let first = try XCTUnwrap(list.addTask(text: "Carry first"))
+        let second = try XCTUnwrap(list.addTask(text: "Complete today"))
+        let third = try XCTUnwrap(list.addTask(text: "Carry third"))
+        _ = list.toggleTask(id: second.id)
+
+        XCTAssertEqual(list.taskCount, 3)
+        XCTAssertEqual(list.completedCount, 1)
+        XCTAssertEqual(list.incompleteCount, 2)
+
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 26, hour: 0, minute: 1)))
+        list.refreshForCurrentDay()
+
+        XCTAssertEqual(list.currentDate, calendar.startOfDay(for: now))
+        XCTAssertEqual(list.tasks.map(\.id), [first.id, third.id])
+        XCTAssertEqual(list.tasks.map(\.creationOrder), [first.creationOrder, third.creationOrder])
+        XCTAssertEqual(list.taskCount, 2)
+        XCTAssertEqual(list.completedCount, 0)
+        XCTAssertEqual(list.incompleteCount, 2)
+
+        let persisted = try XCTUnwrap(defaults.data(forKey: "tasks"))
+        let allSavedTasks = try JSONDecoder().decode([DailyTask].self, from: persisted)
+        let savedCompletion = try XCTUnwrap(allSavedTasks.first { $0.id == second.id })
+        let completionDate = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25)))
+        XCTAssertEqual(savedCompletion.completedOn, TaskCompletionDay(date: completionDate, calendar: calendar))
+        XCTAssertTrue(savedCompletion.isComplete)
+
+        list.refreshForCurrentDay()
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        XCTAssertEqual(reopened.tasks.map(\.id), [first.id, third.id])
+        XCTAssertEqual(reopened.taskCount, 2)
+    }
+
+    func testMultipleMissedDaysAreIdempotentAndNewTasksFollowCarriedTasks() throws {
+        let defaults = try makeDefaults()
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 10)))
+        let list = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        let second = try XCTUnwrap(list.addTask(text: "Second"))
+        _ = list.toggleTask(id: first.id)
+
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 29, hour: 10)))
+        let reopenedAfterMissedDays = TaskListStore(
+            userDefaults: defaults,
+            storageKey: "tasks",
+            now: { now },
+            calendar: calendar
+        )
+        XCTAssertEqual(reopenedAfterMissedDays.tasks.map(\.id), [second.id])
+        XCTAssertEqual(reopenedAfterMissedDays.completedCount, 0)
+
+        list.refreshForCurrentDay()
+        list.refreshForCurrentDay()
+        let third = try XCTUnwrap(list.addTask(text: "Added after returning"))
+
+        XCTAssertEqual(list.tasks.map(\.id), [second.id, third.id])
+        XCTAssertEqual(list.tasks.map(\.creationOrder), [second.creationOrder, third.creationOrder])
+        XCTAssertEqual(list.taskCount, 2)
+        XCTAssertEqual(list.completedCount, 0)
+        XCTAssertEqual(list.incompleteCount, 2)
+
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        XCTAssertEqual(reopened.tasks, list.tasks)
+        XCTAssertEqual(reopened.tasks.filter { !$0.isComplete }.map(\.id), [second.id, third.id])
     }
 
     private func makeDefaults() throws -> UserDefaults {

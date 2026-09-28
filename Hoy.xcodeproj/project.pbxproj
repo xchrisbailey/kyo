@@ -7,17 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1B4F914021D47E21FBA9BDFB /* ControllableTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BF6BDE8EDE271FF615E0B8 /* ControllableTaskTransport.swift */; };
+		26CDBAE7EA414F693D2BBC2C /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895FAA197F35646DABB49F8 /* WatchConnectivityTaskTransport.swift */; };
 		29B1EB600F91411D290F568C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C839DD53AB05B6AB7BBAA313 /* ContentView.swift */; };
 		2C6EF99A7DF276256D42FE46 /* TaskListBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A761A1D0920198935EF2C490 /* TaskListBehaviorTests.swift */; };
 		2F5B3BD62EF41BAB43099B36 /* HoyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C0F9A0B4EF7F1111507DB7 /* HoyApp.swift */; };
 		42F952AE457F94F11C5B98B6 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B79A89A003374D1BFAA84DB5 /* TodayView.swift */; };
 		502086876F9F3AF7AD6F0DB6 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
 		5783EA853003EC6577DE8AEF /* TaskCheckboxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */; };
+		894F91689A93EE40EEA2B296 /* WatchSyncSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 177C1D58AEAAB0C698A30F98 /* WatchSyncSmokeUITests.swift */; };
 		9F68F119C61BD6AB6A62570E /* HoyWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE1A421D83B764237949C68 /* HoyWatchApp.swift */; };
 		A07DE67D7D4A48BF0CB1470F /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
 		A0F80D637E02CA08564D7E21 /* HoyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B417A213DC86DCFFD164861F /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7895FAA197F35646DABB49F8 /* WatchConnectivityTaskTransport.swift */; };
+		B53D894E4D47CCEE9B9E66F8 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B32482EB0DC5E4415E9527B /* TaskSync.swift */; };
 		B84BB78ADFD3BAFCA8DF66F6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C839DD53AB05B6AB7BBAA313 /* ContentView.swift */; };
+		C2F694AB098B067FFD5CA5DE /* TaskListSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF469554CCDF15FB1DFB1236 /* TaskListSyncTests.swift */; };
+		CAAF79694C01B476AC041E53 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B32482EB0DC5E4415E9527B /* TaskSync.swift */; };
 		DB05071E63F971F115FEEC02 /* WatchTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45F38F375FCBFCCDAAEC6C3 /* WatchTodayView.swift */; };
+		DEF72E5D1B5BB0A97052BFF7 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B32482EB0DC5E4415E9527B /* TaskSync.swift */; };
 		FC431CF751C03E58A41F1423 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */; };
 /* End PBXBuildFile section */
 
@@ -54,14 +62,19 @@
 
 /* Begin PBXFileReference section */
 		048AD8023E3A7BE8B9399947 /* HoyTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HoyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		177C1D58AEAAB0C698A30F98 /* WatchSyncSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncSmokeUITests.swift; sourceTree = "<group>"; };
 		17C0F9A0B4EF7F1111507DB7 /* HoyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyApp.swift; sourceTree = "<group>"; };
 		47CA0B336D18AEB50ABFD1F8 /* HoyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HoyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		69BF6BDE8EDE271FF615E0B8 /* ControllableTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableTaskTransport.swift; sourceTree = "<group>"; };
 		6AE1A421D83B764237949C68 /* HoyWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoyWatchApp.swift; sourceTree = "<group>"; };
 		6E6BCD715C5C58EE2EF2BCA4 /* HoyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HoyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckboxUITests.swift; sourceTree = "<group>"; };
+		7895FAA197F35646DABB49F8 /* WatchConnectivityTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTaskTransport.swift; sourceTree = "<group>"; };
 		9516BEC9168D8D67EE12987D /* Hoy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Hoy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B32482EB0DC5E4415E9527B /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
 		A761A1D0920198935EF2C490 /* TaskListBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListBehaviorTests.swift; sourceTree = "<group>"; };
 		B79A89A003374D1BFAA84DB5 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		BF469554CCDF15FB1DFB1236 /* TaskListSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSyncTests.swift; sourceTree = "<group>"; };
 		C839DD53AB05B6AB7BBAA313 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D45F38F375FCBFCCDAAEC6C3 /* WatchTodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTodayView.swift; sourceTree = "<group>"; };
 		DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTask.swift; sourceTree = "<group>"; };
@@ -71,7 +84,9 @@
 		0128491C548A6D535C0810D5 /* HoyTests */ = {
 			isa = PBXGroup;
 			children = (
+				69BF6BDE8EDE271FF615E0B8 /* ControllableTaskTransport.swift */,
 				A761A1D0920198935EF2C490 /* TaskListBehaviorTests.swift */,
+				BF469554CCDF15FB1DFB1236 /* TaskListSyncTests.swift */,
 			);
 			path = HoyTests;
 			sourceTree = "<group>";
@@ -92,6 +107,8 @@
 			children = (
 				C839DD53AB05B6AB7BBAA313 /* ContentView.swift */,
 				DD79DE535E81A5F65A8A2B2F /* DailyTask.swift */,
+				9B32482EB0DC5E4415E9527B /* TaskSync.swift */,
+				7895FAA197F35646DABB49F8 /* WatchConnectivityTaskTransport.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -121,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				76473A5EB5C3B4C668127E05 /* TaskCheckboxUITests.swift */,
+				177C1D58AEAAB0C698A30F98 /* WatchSyncSmokeUITests.swift */,
 			);
 			path = HoyUITests;
 			sourceTree = "<group>";
@@ -262,6 +280,8 @@
 				B84BB78ADFD3BAFCA8DF66F6 /* ContentView.swift in Sources */,
 				A07DE67D7D4A48BF0CB1470F /* DailyTask.swift in Sources */,
 				9F68F119C61BD6AB6A62570E /* HoyWatchApp.swift in Sources */,
+				DEF72E5D1B5BB0A97052BFF7 /* TaskSync.swift in Sources */,
+				B417A213DC86DCFFD164861F /* WatchConnectivityTaskTransport.swift in Sources */,
 				DB05071E63F971F115FEEC02 /* WatchTodayView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -273,7 +293,9 @@
 				29B1EB600F91411D290F568C /* ContentView.swift in Sources */,
 				FC431CF751C03E58A41F1423 /* DailyTask.swift in Sources */,
 				2F5B3BD62EF41BAB43099B36 /* HoyApp.swift in Sources */,
+				CAAF79694C01B476AC041E53 /* TaskSync.swift in Sources */,
 				42F952AE457F94F11C5B98B6 /* TodayView.swift in Sources */,
+				26CDBAE7EA414F693D2BBC2C /* WatchConnectivityTaskTransport.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -282,6 +304,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5783EA853003EC6577DE8AEF /* TaskCheckboxUITests.swift in Sources */,
+				894F91689A93EE40EEA2B296 /* WatchSyncSmokeUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -289,8 +312,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1B4F914021D47E21FBA9BDFB /* ControllableTaskTransport.swift in Sources */,
 				502086876F9F3AF7AD6F0DB6 /* DailyTask.swift in Sources */,
 				2C6EF99A7DF276256D42FE46 /* TaskListBehaviorTests.swift in Sources */,
+				C2F694AB098B067FFD5CA5DE /* TaskListSyncTests.swift in Sources */,
+				B53D894E4D47CCEE9B9E66F8 /* TaskSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

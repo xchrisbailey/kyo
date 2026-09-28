@@ -7,11 +7,16 @@ struct TodayView: View {
     @State private var activeSheet: TodayPreviewSheet?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
+    @State private var dayBoundaryRefreshToken = 0
     @FocusState private var isTaskDraftFocused: Bool
 
     init() {
-        let storageKey = ProcessInfo.processInfo.environment["HOY_TASK_STORAGE_KEY"] ?? TaskListStore.storageKey
-        _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey))
+        let env = ProcessInfo.processInfo.environment
+        let key = env["HOY_TASK_STORAGE_KEY"]
+        let storageKey = key ?? TaskListStore.storageKey
+        // Isolated UI-test stores never publish, so tests don't race real WatchConnectivity delivery.
+        let sync: TaskListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
+        _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey, sync: sync))
     }
 
     var body: some View {
@@ -102,8 +107,8 @@ struct TodayView: View {
                 }
             }
         }
-        .task {
-            await refreshAtNextDayBoundary()
+        .task(id: dayBoundaryRefreshToken) {
+            await taskList.refreshAtEachDayBoundary()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -112,6 +117,15 @@ struct TodayView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             taskList.refreshForCurrentDay()
+            dayBoundaryRefreshToken += 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            taskList.refreshForCurrentDay()
+            dayBoundaryRefreshToken += 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+            taskList.refreshForCurrentDay()
+            dayBoundaryRefreshToken += 1
         }
     }
 
@@ -175,22 +189,6 @@ struct TodayView: View {
 
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
-    }
-
-    @MainActor
-    private func refreshAtNextDayBoundary() async {
-        while !Task.isCancelled {
-            taskList.refreshForCurrentDay()
-            let calendar = Calendar.current
-            let today = calendar.startOfDay(for: Date())
-            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return }
-            let delay = max(1, tomorrow.timeIntervalSinceNow)
-            do {
-                try await Task.sleep(for: .seconds(delay))
-            } catch {
-                return
-            }
-        }
     }
 
     private func beginTaskDraft() {

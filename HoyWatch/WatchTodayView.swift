@@ -30,7 +30,12 @@ struct WatchTodayView: View {
                                 } else {
                                     ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
                                         if index > 0 { rowDivider }
-                                        WatchCheckRow(title: task.text, completed: task.isComplete, task: true)
+                                        WatchCheckRow(
+                                            title: task.text,
+                                            completed: task.isComplete,
+                                            task: true,
+                                            onToggle: { taskList.toggleTask(id: task.id) }
+                                        )
                                     }
                                 }
                             }
@@ -82,7 +87,7 @@ struct WatchTodayView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .add:
-                WatchAddPreviewSheet()
+                WatchAddTaskSheet(addTask: { text in taskList.addTask(text: text) })
             case .calendar:
                 WatchCalendarPreviewSheet()
             }
@@ -243,8 +248,29 @@ private struct WatchCheckRow: View {
     var detail: String? = nil
     let completed: Bool
     var task = false
+    var onToggle: (() -> Void)? = nil
 
     var body: some View {
+        if let onToggle {
+            Button(action: onToggle) {
+                rowContent
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(title)
+            .accessibilityValue(completed ? "Completed" : "Not completed")
+            .accessibilityHint(completed ? "Reopens this task" : "Marks this task complete")
+        } else {
+            rowContent
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title)
+                .accessibilityValue(completed ? "Completed" : "Not completed")
+                .accessibilityHint(detail ?? "")
+        }
+    }
+
+    private var rowContent: some View {
         HStack(alignment: .top, spacing: 7) {
             Image(systemName: completed ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 17, weight: .regular))
@@ -267,10 +293,6 @@ private struct WatchCheckRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 7)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(title)
-        .accessibilityValue(completed ? "Completed" : "Not completed")
-        .accessibilityHint(detail ?? "")
     }
 
     private var accentColor: Color { .green }
@@ -389,32 +411,31 @@ private struct WatchMealRow: View {
     }
 }
 
-private struct WatchAddPreviewSheet: View {
+/// Adds a task to today's list using native text input (the watchOS `TextField` offers
+/// dictation, Scribble, and the on-screen keyboard). Submitting or tapping Add with blank text
+/// creates nothing; dismissing without submitting also creates nothing, matching the phone's
+/// abandoned-draft behavior.
+private struct WatchAddTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var itemType = "Task"
     @State private var draft = ""
+    let addTask: (String) -> DailyTask?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                sheetHeader("Add to today")
-                Picker("Type", selection: $itemType) {
-                    Text("Task").tag("Task")
-                    Text("Habit").tag("Habit")
-                    Text("Written memo").tag("Written memo")
-                }
-                .pickerStyle(.navigationLink)
-                .accessibilityLabel("Item type")
+                Text("Add a task").font(.headline)
 
-                TextField("A little thing for today", text: $draft)
+                TextField("New task", text: $draft)
                     .font(.footnote)
-                    .accessibilityLabel("What’s on your mind?")
+                    .submitLabel(.done)
+                    .onSubmit(save)
+                    .accessibilityLabel("New task")
 
-                Button("Add") { dismiss() }
+                Button("Add") { save() }
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 42)
                     .tint(.green)
-                    .accessibilityHint("Closes this preview without creating an item")
+                    .accessibilityHint("Saves this task to today's list")
             }
             .padding(.horizontal, 12)
             .padding(.top, 8)
@@ -422,11 +443,12 @@ private struct WatchAddPreviewSheet: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Add preview")
+        .accessibilityLabel("Add task")
     }
 
-    private func sheetHeader(_ title: String) -> some View {
-        Text(title).font(.headline)
+    private func save() {
+        _ = addTask(draft)
+        dismiss()
     }
 }
 

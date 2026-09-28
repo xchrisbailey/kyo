@@ -1,0 +1,582 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01EDA9CA6C12B96509D8DB0C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */; };
+		05BFD19FB680D5912BD5E5A6 /* WatchTodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0337E78B4D196D57039372C8 /* WatchTodayView.swift */; };
+		082E14F13F86306A188D7A92 /* TaskListBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */; };
+		192C2E6631CDB7922F099227 /* KyoWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */; };
+		1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */; };
+		2E0059C35BD9EE604D40A030 /* WatchSyncSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */; };
+		34C0009E41C9DB8518716D4D /* TaskListSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */; };
+		362851DA8544D070BEF34B56 /* WatchOriginatedSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */; };
+		48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
+		5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
+		6994C8E44C27EFBCAB72710B /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		6E36F1F95ED24DE8E6873274 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
+		75900AE12B0C22C1365F43F5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		865DD2DF3AEB26468325D14C /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DC028D7DB3945826659DA3 /* TodayView.swift */; };
+		8FF8BAF3E00AE0115D6BE6B2 /* KyoWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B4B522A2DB959943189C2E4F /* KyoWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		937292FE94990A28B95D119A /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
+		AE1B3611A1BA6D196C2AB2A0 /* KyoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DB59904B88906DE30C20F7 /* KyoApp.swift */; };
+		BA09FF5EDD4F9BD5FA862F5C /* TaskCheckboxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */; };
+		CFABA21249F5D34BD870E591 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5B3969547B09464204F0BFDB /* Assets.xcassets */; };
+		E1690A8C5DB3C4A34E6585E2 /* ControllableTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */; };
+		EC41327604FF061FE6EF4C08 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
+		F5CDB91F31B41A6C6104FF76 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */; };
+		FA054A5E7F8E03B8BB5D289D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		707FE859666B3224E78C5D89 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3C2B95BB8CCDC2612C0F44 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32CA15D0E135FE98536E42DA;
+			remoteInfo = Kyo;
+		};
+		8BFE3D27AF4EAB044F39EE3B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3C2B95BB8CCDC2612C0F44 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 09BDB7A870010BC479ADF9D8;
+			remoteInfo = KyoWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		658FAB68599CCFA0BB95925A /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				8FF8BAF3E00AE0115D6BE6B2 /* KyoWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0337E78B4D196D57039372C8 /* WatchTodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTodayView.swift; sourceTree = "<group>"; };
+		0464ABE6A075B9B56A37ADE1 /* Kyo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Kyo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoWatchApp.swift; sourceTree = "<group>"; };
+		32DB59904B88906DE30C20F7 /* KyoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoApp.swift; sourceTree = "<group>"; };
+		547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckboxUITests.swift; sourceTree = "<group>"; };
+		5B3969547B09464204F0BFDB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchEditDeleteSyncTests.swift; sourceTree = "<group>"; };
+		B31A4E18D0934A2E38524F0A /* DailyTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTask.swift; sourceTree = "<group>"; };
+		B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTaskTransport.swift; sourceTree = "<group>"; };
+		B4B522A2DB959943189C2E4F /* KyoWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KyoWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
+		C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchOriginatedSyncTests.swift; sourceTree = "<group>"; };
+		D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncSmokeUITests.swift; sourceTree = "<group>"; };
+		E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E7DC028D7DB3945826659DA3 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableTaskTransport.swift; sourceTree = "<group>"; };
+		EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListBehaviorTests.swift; sourceTree = "<group>"; };
+		F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSyncTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		14A28FA97D5F379D00DF4632 = {
+			isa = PBXGroup;
+			children = (
+				225CB21154193418A19599AD /* Kyo */,
+				307D077672C7D03F18CE474A /* KyoTests */,
+				41725C5CBBC846EFDDCB3E00 /* KyoUITests */,
+				CCCFD8C4A4381833944F1A8B /* KyoWatch */,
+				55D5902740BBF2AE7708FB73 /* Shared */,
+				8001C7CCF103AAC639493A00 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		225CB21154193418A19599AD /* Kyo */ = {
+			isa = PBXGroup;
+			children = (
+				B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */,
+				32DB59904B88906DE30C20F7 /* KyoApp.swift */,
+				E7DC028D7DB3945826659DA3 /* TodayView.swift */,
+			);
+			path = Kyo;
+			sourceTree = "<group>";
+		};
+		307D077672C7D03F18CE474A /* KyoTests */ = {
+			isa = PBXGroup;
+			children = (
+				EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */,
+				EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */,
+				F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */,
+				A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */,
+				C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */,
+			);
+			path = KyoTests;
+			sourceTree = "<group>";
+		};
+		41725C5CBBC846EFDDCB3E00 /* KyoUITests */ = {
+			isa = PBXGroup;
+			children = (
+				547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */,
+				D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */,
+			);
+			path = KyoUITests;
+			sourceTree = "<group>";
+		};
+		55D5902740BBF2AE7708FB73 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */,
+				B31A4E18D0934A2E38524F0A /* DailyTask.swift */,
+				B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */,
+				B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		8001C7CCF103AAC639493A00 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0464ABE6A075B9B56A37ADE1 /* Kyo.app */,
+				E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */,
+				A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */,
+				B4B522A2DB959943189C2E4F /* KyoWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CCCFD8C4A4381833944F1A8B /* KyoWatch */ = {
+			isa = PBXGroup;
+			children = (
+				5B3969547B09464204F0BFDB /* Assets.xcassets */,
+				06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */,
+				0337E78B4D196D57039372C8 /* WatchTodayView.swift */,
+			);
+			path = KyoWatch;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		09BDB7A870010BC479ADF9D8 /* KyoWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14E3658BF4218DD3AFA521E6 /* Build configuration list for PBXNativeTarget "KyoWatch" */;
+			buildPhases = (
+				9311104316602DA912BD3E58 /* Sources */,
+				8486E7283B7065102CDF2EBF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KyoWatch;
+			packageProductDependencies = (
+			);
+			productName = KyoWatch;
+			productReference = B4B522A2DB959943189C2E4F /* KyoWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		32CA15D0E135FE98536E42DA /* Kyo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACCF3FA9F23B220409EF211D /* Build configuration list for PBXNativeTarget "Kyo" */;
+			buildPhases = (
+				823A3A237C1CDDFC6EBAFA28 /* Sources */,
+				0D7D721959EA7145B831B056 /* Resources */,
+				658FAB68599CCFA0BB95925A /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				88E97F02D17B4506F20CE05E /* PBXTargetDependency */,
+			);
+			name = Kyo;
+			packageProductDependencies = (
+			);
+			productName = Kyo;
+			productReference = 0464ABE6A075B9B56A37ADE1 /* Kyo.app */;
+			productType = "com.apple.product-type.application";
+		};
+		82CBFC1F4555981498E5FA3E /* KyoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 31359474B68963D1A5533114 /* Build configuration list for PBXNativeTarget "KyoUITests" */;
+			buildPhases = (
+				666222C52387850E947BB0D3 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4A6D7C994BC7C557E05C5F78 /* PBXTargetDependency */,
+			);
+			name = KyoUITests;
+			packageProductDependencies = (
+			);
+			productName = KyoUITests;
+			productReference = A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E4CC3A9BEB45EB99CEE8A33E /* KyoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 20F961A474DB2843C9B3EB51 /* Build configuration list for PBXNativeTarget "KyoTests" */;
+			buildPhases = (
+				8DF87C27E622619A44F22B37 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KyoTests;
+			packageProductDependencies = (
+			);
+			productName = KyoTests;
+			productReference = E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4C3C2B95BB8CCDC2612C0F44 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					09BDB7A870010BC479ADF9D8 = {
+						ProvisioningStyle = Automatic;
+					};
+					32CA15D0E135FE98536E42DA = {
+						ProvisioningStyle = Automatic;
+					};
+					82CBFC1F4555981498E5FA3E = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 32CA15D0E135FE98536E42DA;
+					};
+					E4CC3A9BEB45EB99CEE8A33E = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BC060832C9605417DB3D0E9C /* Build configuration list for PBXProject "Kyo" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 14A28FA97D5F379D00DF4632;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				32CA15D0E135FE98536E42DA /* Kyo */,
+				E4CC3A9BEB45EB99CEE8A33E /* KyoTests */,
+				82CBFC1F4555981498E5FA3E /* KyoUITests */,
+				09BDB7A870010BC479ADF9D8 /* KyoWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0D7D721959EA7145B831B056 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA054A5E7F8E03B8BB5D289D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8486E7283B7065102CDF2EBF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CFABA21249F5D34BD870E591 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		666222C52387850E947BB0D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA09FF5EDD4F9BD5FA862F5C /* TaskCheckboxUITests.swift in Sources */,
+				2E0059C35BD9EE604D40A030 /* WatchSyncSmokeUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		823A3A237C1CDDFC6EBAFA28 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01EDA9CA6C12B96509D8DB0C /* ContentView.swift in Sources */,
+				48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */,
+				AE1B3611A1BA6D196C2AB2A0 /* KyoApp.swift in Sources */,
+				937292FE94990A28B95D119A /* TaskSync.swift in Sources */,
+				865DD2DF3AEB26468325D14C /* TodayView.swift in Sources */,
+				5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8DF87C27E622619A44F22B37 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1690A8C5DB3C4A34E6585E2 /* ControllableTaskTransport.swift in Sources */,
+				75900AE12B0C22C1365F43F5 /* DailyTask.swift in Sources */,
+				082E14F13F86306A188D7A92 /* TaskListBehaviorTests.swift in Sources */,
+				34C0009E41C9DB8518716D4D /* TaskListSyncTests.swift in Sources */,
+				EC41327604FF061FE6EF4C08 /* TaskSync.swift in Sources */,
+				1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */,
+				362851DA8544D070BEF34B56 /* WatchOriginatedSyncTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9311104316602DA912BD3E58 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5CDB91F31B41A6C6104FF76 /* ContentView.swift in Sources */,
+				6994C8E44C27EFBCAB72710B /* DailyTask.swift in Sources */,
+				192C2E6631CDB7922F099227 /* KyoWatchApp.swift in Sources */,
+				6E36F1F95ED24DE8E6873274 /* TaskSync.swift in Sources */,
+				564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */,
+				05BFD19FB680D5912BD5E5A6 /* WatchTodayView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4A6D7C994BC7C557E05C5F78 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32CA15D0E135FE98536E42DA /* Kyo */;
+			targetProxy = 707FE859666B3224E78C5D89 /* PBXContainerItemProxy */;
+		};
+		88E97F02D17B4506F20CE05E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 09BDB7A870010BC479ADF9D8 /* KyoWatch */;
+			targetProxy = 8BFE3D27AF4EAB044F39EE3B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		354A8000A5A4A11E7B130F5E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kyo;
+			};
+			name = Release;
+		};
+		36CE746E7720091720FA9566 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.uitests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kyo;
+			};
+			name = Debug;
+		};
+		3A5A2537DC012355BE0AE8A1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
+		3FB46EFAF0D3401B38E22000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.example.kyo;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		48B1A9CF763D49FF5EF575EC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.tests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		57FC81BA3820AED640ACBB4F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_WKApplication = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.example.kyo;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		5B2EE9A7EE869D041127E7CC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		67AC996B7F79C2B426154239 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E129A0532BA558973CB31B7B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.tests;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E7597630CB0ACEF4D7974546 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14E3658BF4218DD3AFA521E6 /* Build configuration list for PBXNativeTarget "KyoWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FB46EFAF0D3401B38E22000 /* Debug */,
+				57FC81BA3820AED640ACBB4F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		20F961A474DB2843C9B3EB51 /* Build configuration list for PBXNativeTarget "KyoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				48B1A9CF763D49FF5EF575EC /* Debug */,
+				E129A0532BA558973CB31B7B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		31359474B68963D1A5533114 /* Build configuration list for PBXNativeTarget "KyoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				36CE746E7720091720FA9566 /* Debug */,
+				354A8000A5A4A11E7B130F5E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		ACCF3FA9F23B220409EF211D /* Build configuration list for PBXNativeTarget "Kyo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				67AC996B7F79C2B426154239 /* Debug */,
+				E7597630CB0ACEF4D7974546 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BC060832C9605417DB3D0E9C /* Build configuration list for PBXProject "Kyo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B2EE9A7EE869D041127E7CC /* Debug */,
+				3A5A2537DC012355BE0AE8A1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4C3C2B95BB8CCDC2612C0F44 /* Project object */;
+}

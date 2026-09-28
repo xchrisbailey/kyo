@@ -15,24 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "77086442791E1D126FC0651E"
-               BuildableName = "Hoy.app"
-               BlueprintName = "Hoy"
-               ReferencedContainer = "container:Hoy.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "9AB7DBB35CAEE8CABA269C57"
-               BuildableName = "HoyUITests.xctest"
-               BlueprintName = "HoyUITests"
-               ReferencedContainer = "container:Hoy.xcodeproj">
+               BlueprintIdentifier = "09BDB7A870010BC479ADF9D8"
+               BuildableName = "KyoWatch.app"
+               BlueprintName = "KyoWatch"
+               ReferencedContainer = "container:Kyo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,27 +32,14 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "77086442791E1D126FC0651E"
-            BuildableName = "Hoy.app"
-            BlueprintName = "Hoy"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "09BDB7A870010BC479ADF9D8"
+            BuildableName = "KyoWatch.app"
+            BlueprintName = "KyoWatch"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "9AB7DBB35CAEE8CABA269C57"
-               BuildableName = "HoyUITests.xctest"
-               BlueprintName = "HoyUITests"
-               ReferencedContainer = "container:Hoy.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -82,12 +55,14 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "77086442791E1D126FC0651E"
-            BuildableName = "Hoy.app"
-            BlueprintName = "Hoy"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "09BDB7A870010BC479ADF9D8"
+            BuildableName = "KyoWatch.app"
+            BlueprintName = "KyoWatch"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -99,10 +74,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "77086442791E1D126FC0651E"
-            BuildableName = "Hoy.app"
-            BlueprintName = "Hoy"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "09BDB7A870010BC479ADF9D8"
+            BuildableName = "KyoWatch.app"
+            BlueprintName = "KyoWatch"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

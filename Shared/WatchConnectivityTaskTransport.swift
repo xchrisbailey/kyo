@@ -12,11 +12,11 @@ import os
 final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
-    nonisolated static let snapshotKey = "hoy.taskSnapshot"
-    nonisolated static let commandKey = "hoy.taskCommand"
+    nonisolated static let snapshotKey = "kyo.taskSnapshot"
+    nonisolated static let commandKey = "kyo.taskCommand"
 
     private let session: WCSession?
-    private let logger = Logger(subsystem: "com.example.hoy", category: "watch-sync")
+    private let logger = Logger(subsystem: "com.example.kyo", category: "watch-sync")
     private var latestOutgoing: TaskListSnapshot?
     private var latestIncoming: TaskListSnapshot?
     private var handler: (@MainActor (TaskListSnapshot) -> Void)?

@@ -4,7 +4,7 @@ Status: Product behavior confirmed. Specification only; implementation requires 
 
 ## Problem Statement
 
-Hoy presents one day at a time, but its Tasks section currently contains fixed sample rows. Users cannot save a task, complete it, correct its text, or carry unfinished work into tomorrow. The Apple Watch task list is also a static preview.
+Kyo presents one day at a time, but its Tasks section currently contains fixed sample rows. Users cannot save a task, complete it, correct its text, or carry unfinished work into tomorrow. The Apple Watch task list is also a static preview.
 
 ## Solution
 
@@ -12,25 +12,25 @@ Make Tasks a simple daily list of text entries and checkboxes within the existin
 
 ## User Stories
 
-1. As a Hoy user, I want to see tasks for the current day, so that the list fits the app's daily focus.
+1. As a Kyo user, I want to see tasks for the current day, so that the list fits the app's daily focus.
 2. As an iPhone or iPad user, I want the bottom Add button to open a blank task row, so that I can enter a task directly in the list.
 3. As an iPhone or iPad user, I want Return to save the task text, so that adding a task takes few steps.
-4. As a Hoy user, I want a task to need only text, so that I can capture it without scheduling or categorizing it.
-5. As a Hoy user, I want active tasks in creation order with new tasks at the bottom of that group, so that their position is predictable.
-6. As a Hoy user, I want to check a task off, so that I can record that it is finished.
-7. As a Hoy user, I want completed tasks below active tasks and grayed out, so that I can distinguish remaining work from finished work.
-8. As a Hoy user, I want creation order preserved within the completed group, so that completion does not introduce a second sorting rule.
-9. As a Hoy user, I want to uncheck a completed task, so that I can correct an accidental completion.
-10. As a Hoy user, I want an unchecked task restored to its original creation-order position among active tasks, so that the list stays predictable.
+4. As a Kyo user, I want a task to need only text, so that I can capture it without scheduling or categorizing it.
+5. As a Kyo user, I want active tasks in creation order with new tasks at the bottom of that group, so that their position is predictable.
+6. As a Kyo user, I want to check a task off, so that I can record that it is finished.
+7. As a Kyo user, I want completed tasks below active tasks and grayed out, so that I can distinguish remaining work from finished work.
+8. As a Kyo user, I want creation order preserved within the completed group, so that completion does not introduce a second sorting rule.
+9. As a Kyo user, I want to uncheck a completed task, so that I can correct an accidental completion.
+10. As a Kyo user, I want an unchecked task restored to its original creation-order position among active tasks, so that the list stays predictable.
 11. As an iPhone or iPad user, I want to tap task text to edit it inline, so that I can correct or refine an entry.
 12. As an iPhone or iPad user, I want to swipe a task to delete it, so that I can remove an unwanted entry.
-13. As a Hoy user, I want unfinished tasks to carry into the next day, so that they are not lost when the date changes.
-14. As a Hoy user, I want completed tasks associated with the day they were finished, so that tomorrow starts without yesterday's completed items.
+13. As a Kyo user, I want unfinished tasks to carry into the next day, so that they are not lost when the date changes.
+14. As a Kyo user, I want completed tasks associated with the day they were finished, so that tomorrow starts without yesterday's completed items.
 15. As an Apple Watch user, I want to add a task from my wrist, so that I can capture something without opening my phone.
 16. As an Apple Watch user, I want to check and uncheck tasks, so that I can update the list from my wrist.
 17. As a phone and Watch user, I want both devices to show the same task data, so that changes made on either device are reflected on the other.
-18. As a Hoy user, I want my saved tasks to survive closing and reopening the app, so that the list remains useful between sessions.
-19. As a Hoy user, I want the task summary to reflect the real list, so that the displayed completion count is accurate.
+18. As a Kyo user, I want my saved tasks to survive closing and reopening the app, so that the list remains useful between sessions.
+19. As a Kyo user, I want the task summary to reflect the real list, so that the displayed completion count is accurate.
 
 ## Implementation Decisions
 

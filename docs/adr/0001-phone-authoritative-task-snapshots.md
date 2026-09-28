@@ -2,7 +2,7 @@
 
 ## Context
 
-Hoy's daily task list (`TaskListStore` in `Shared/DailyTask.swift`) is saved to UserDefaults on
+Kyo's daily task list (`TaskListStore` in `Shared/DailyTask.swift`) is saved to UserDefaults on
 each device. Issue #13 asks the Watch to show the same list the phone maintains: additions,
 edits, deletions, completion changes, and day rollover should all appear on Watch, without
 duplicating or resurrecting tasks under repeated or out-of-order delivery. Issue #14 (not
@@ -16,7 +16,7 @@ This is the first ADR in the repo; `docs/agents/domain.md` says architecture dec
 The phone is the only writer. The Watch is a read-only mirror in this slice.
 
 Delivery uses WatchConnectivity's `applicationContext`: after every saved change, the phone calls
-`WCSession.updateApplicationContext(["hoy.taskSnapshot": <JSON Data>])` with a
+`WCSession.updateApplicationContext(["kyo.taskSnapshot": <JSON Data>])` with a
 `TaskListSnapshot(revision:tasks:)`, where `tasks` is the phone's current-day list. The system
 keeps only the latest context, dropping anything superseded before delivery, which matches
 "latest full list wins" exactly. On launch, the Watch also reads

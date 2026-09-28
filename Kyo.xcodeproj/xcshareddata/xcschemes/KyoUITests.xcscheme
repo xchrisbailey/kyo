@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2700"
-   version = "1.3">
+   LastUpgradeVersion = "1430"
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES">
+      buildImplicitDependencies = "YES"
+      runPostActionsOnFailure = "NO">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -14,10 +15,24 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "5DEAE53AE9B4A5EEA0321CF6"
-               BuildableName = "HoyWatch.app"
-               BlueprintName = "HoyWatch"
-               ReferencedContainer = "container:Hoy.xcodeproj">
+               BlueprintIdentifier = "32CA15D0E135FE98536E42DA"
+               BuildableName = "Kyo.app"
+               BlueprintName = "Kyo"
+               ReferencedContainer = "container:Kyo.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "82CBFC1F4555981498E5FA3E"
+               BuildableName = "KyoUITests.xctest"
+               BlueprintName = "KyoUITests"
+               ReferencedContainer = "container:Kyo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -26,18 +41,32 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      onlyGenerateCoverageForSpecifiedTargets = "NO">
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5DEAE53AE9B4A5EEA0321CF6"
-            BuildableName = "HoyWatch.app"
-            BlueprintName = "HoyWatch"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "32CA15D0E135FE98536E42DA"
+            BuildableName = "Kyo.app"
+            BlueprintName = "Kyo"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "82CBFC1F4555981498E5FA3E"
+               BuildableName = "KyoUITests.xctest"
+               BlueprintName = "KyoUITests"
+               ReferencedContainer = "container:Kyo.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -53,9 +82,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5DEAE53AE9B4A5EEA0321CF6"
-            BuildableName = "HoyWatch.app"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "32CA15D0E135FE98536E42DA"
+            BuildableName = "Kyo.app"
+            BlueprintName = "Kyo"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -69,9 +99,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5DEAE53AE9B4A5EEA0321CF6"
-            BuildableName = "HoyWatch.app"
-            ReferencedContainer = "container:Hoy.xcodeproj">
+            BlueprintIdentifier = "32CA15D0E135FE98536E42DA"
+            BuildableName = "Kyo.app"
+            BlueprintName = "Kyo"
+            ReferencedContainer = "container:Kyo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

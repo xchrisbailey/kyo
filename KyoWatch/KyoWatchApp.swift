@@ -1,10 +1,10 @@
 import SwiftUI
 
 @main
-struct HoyApp: App {
+struct KyoWatchApp: App {
     var body: some Scene {
         WindowGroup {
-            TodayView()
+            WatchTodayView()
         }
     }
 }

@@ -95,7 +95,7 @@ final class TaskCheckboxUITests: XCTestCase {
     }
 
     private func launchIsolatedApp(_ app: XCUIApplication) {
-        app.launchEnvironment["HOY_TASK_STORAGE_KEY"] = "HoyUITests.\(UUID().uuidString)"
+        app.launchEnvironment["KYO_TASK_STORAGE_KEY"] = "KyoUITests.\(UUID().uuidString)"
         app.launch()
     }
 

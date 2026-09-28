@@ -12,7 +12,7 @@ struct TodayView: View {
 
     init() {
         let env = ProcessInfo.processInfo.environment
-        let key = env["HOY_TASK_STORAGE_KEY"]
+        let key = env["KYO_TASK_STORAGE_KEY"]
         let storageKey = key ?? TaskListStore.storageKey
         // Isolated UI-test stores never publish, so tests don't race real WatchConnectivity delivery.
         let sync: TaskListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
@@ -131,12 +131,12 @@ struct TodayView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("hoy")
+            Text("kyo")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .tracking(-0.4)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 17)
-                .accessibilityLabel("Hoy")
+                .accessibilityLabel("Kyo")
 
             Text("Today")
                 .font(.largeTitle.weight(.bold))
@@ -303,7 +303,7 @@ private struct TodayBottomBar: View {
     }
 
     private var accentColor: Color {
-        HoyPalette.accent
+        KyoPalette.accent
     }
 }
 
@@ -340,7 +340,7 @@ private struct CalendarPreviewSheet: View {
             DatePicker("Choose a day", selection: $selectedDate, in: ...latestDate, displayedComponents: .date)
                 .datePickerStyle(.compact)
                 .font(.body)
-                .tint(HoyPalette.accent)
+                .tint(KyoPalette.accent)
                 .padding(14)
                 .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
                 .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
@@ -371,7 +371,7 @@ private struct CalendarPreviewSheet: View {
     }
 }
 
-private enum HoyPalette {
+private enum KyoPalette {
     static var accent: Color {
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark

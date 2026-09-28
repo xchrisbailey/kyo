@@ -9,7 +9,7 @@ struct ContentView: View {
                     .foregroundStyle(.orange)
                     .accessibilityHidden(true)
 
-                Text("Hello, Hoy")
+                Text("Hello, Kyo")
                     .font(.title2.bold())
 
                 Text("Make today yours.")
@@ -18,7 +18,7 @@ struct ContentView: View {
             .multilineTextAlignment(.center)
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Hoy")
+            .navigationTitle("Kyo")
         }
     }
 }

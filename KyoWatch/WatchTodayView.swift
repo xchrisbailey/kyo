@@ -161,10 +161,10 @@ struct WatchTodayView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text("hoy")
+            Text("kyo")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("Hoy")
+                .accessibilityLabel("Kyo")
             Text("Today")
                 .font(.headline.weight(.bold))
                 .tracking(-0.5)

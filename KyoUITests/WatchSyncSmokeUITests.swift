@@ -8,10 +8,10 @@ final class WatchSyncSmokeUITests: XCTestCase {
     /// delivery that never arrives. See section 4 of the plan for the paired-simulator setup
     /// and docs/adr/0001-phone-authoritative-task-snapshots.md for the sync model.
     func testAddCompleteEditAndDeletePropagateToPhoneSideList() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HOY_WATCH_SYNC_SMOKE"] == "1")
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["KYO_WATCH_SYNC_SMOKE"] == "1")
 
         let app = XCUIApplication()
-        app.launch() // No HOY_TASK_STORAGE_KEY: uses the real, synchronized store.
+        app.launch() // No KYO_TASK_STORAGE_KEY: uses the real, synchronized store.
 
         let runID = String(UUID().uuidString.prefix(8))
         let titleA = "Sync A \(runID)"

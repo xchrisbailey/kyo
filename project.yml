@@ -1,4 +1,4 @@
-name: Hoy
+name: Kyo
 options:
   settingPresets: none
   bundleIdPrefix: com.example
@@ -27,106 +27,108 @@ settings:
       SWIFT_COMPILATION_MODE: wholemodule
       DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
 targets:
-  Hoy:
+  Kyo:
     type: application
     platform: iOS
     sources:
-      - Hoy
+      - Kyo
       - Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Hoy
+        INFOPLIST_KEY_CFBundleDisplayName: Kyo
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
     dependencies:
-      - target: HoyWatch
+      - target: KyoWatch
         embed: true
-  HoyWatch:
+  KyoWatch:
     type: application
     platform: watchOS
     sources:
-      - HoyWatch
+      - KyoWatch
       - Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.watchkitapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SDKROOT: watchos
         SUPPORTED_PLATFORMS: watchos watchsimulator
         TARGETED_DEVICE_FAMILY: "4"
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Hoy
+        INFOPLIST_KEY_CFBundleDisplayName: Kyo
         INFOPLIST_KEY_WKApplication: YES
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.example.hoy
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.example.kyo
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         SKIP_INSTALL: YES
-  HoyTests:
+  KyoTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - HoyTests
+      - KyoTests
       - Shared/DailyTask.swift
       - Shared/TaskSync.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
-  HoyUITests:
+  KyoUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - HoyUITests
+      - KyoUITests
     dependencies:
-      - target: Hoy
+      - target: Kyo
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.hoy.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.uitests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
 schemes:
-  Hoy:
+  Kyo:
     build:
       targets:
-        Hoy: all
+        Kyo: all
     run:
       config: Debug
     archive:
       config: Release
-  HoyWatch:
+  KyoWatch:
     build:
       targets:
-        HoyWatch: all
+        KyoWatch: all
     run:
       config: Debug
     archive:
       config: Release
-  HoyTests:
+  KyoTests:
     build:
       targets:
-        HoyTests: all
+        KyoTests: all
     test:
       config: Debug
       targets:
-        - HoyTests
-  HoyUITests:
+        - KyoTests
+  KyoUITests:
     build:
       targets:
-        Hoy: all
-        HoyUITests: [test]
+        Kyo: all
+        KyoUITests: [test]
     test:
       config: Debug
       targets:
-        - HoyUITests
+        - KyoUITests

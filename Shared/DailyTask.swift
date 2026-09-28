@@ -52,7 +52,7 @@ protocol TaskListBehavior: AnyObject {
 
 @MainActor
 final class TaskListStore: ObservableObject, TaskListBehavior {
-    static let storageKey = "hoy.dailyTasks.v1"
+    static let storageKey = "kyo.dailyTasks.v1"
 
     @Published private(set) var tasks: [DailyTask] = []
     @Published private(set) var currentDate: Date

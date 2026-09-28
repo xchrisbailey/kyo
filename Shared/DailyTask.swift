@@ -221,11 +221,19 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     @discardableResult
     func editTask(id: UUID, text: String) -> DailyTask? {
-        // Out of scope on Watch: editing there would silently diverge from the phone without
-        // a command to reconcile it. See docs/adr/0002-watch-commands-and-phone-reconciliation.md.
-        if case .mirror = sync { return nil }
-
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if case .mirror(let transport) = sync {
+            guard !trimmedText.isEmpty,
+                  effectiveMirrorTasks.contains(where: { $0.id == id }) else { return nil }
+            let command = TaskCommand(id: UUID(), action: .rename(taskID: id, text: trimmedText))
+            outbox.append(command)
+            persistOutbox()
+            refreshForCurrentDay()
+            transport.send(command)
+            return effectiveMirrorTasks.first { $0.id == id }
+        }
+
         guard !trimmedText.isEmpty,
               let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
 
@@ -246,8 +254,15 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     @discardableResult
     func deleteTask(id: UUID) -> DailyTask? {
-        // Out of scope on Watch; see editTask.
-        if case .mirror = sync { return nil }
+        if case .mirror(let transport) = sync {
+            guard let removed = effectiveMirrorTasks.first(where: { $0.id == id }) else { return nil }
+            let command = TaskCommand(id: UUID(), action: .delete(taskID: id))
+            outbox.append(command)
+            persistOutbox()
+            refreshForCurrentDay()
+            transport.send(command)
+            return removed
+        }
 
         guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
         let removedTask = savedTasks.remove(at: index)
@@ -330,17 +345,23 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     /// A Watch mirror's `baseTasks` with every outbox command replayed on top, using the same
     /// rules the phone applies: `add` appends with the current max creation order + 1 if the
-    /// task id is absent; `setCompletion` sets the given state if the task is present.
+    /// task id is absent; `setCompletion` sets the given state and `rename` sets the text if
+    /// the task is present; `delete` removes it if present.
     private var effectiveMirrorTasks: [DailyTask] {
         Self.replaying(outbox, over: baseTasks)
     }
 
     private static func replaying(_ commands: [TaskCommand], over base: [DailyTask]) -> [DailyTask] {
         var result = base
+        // Ids deleted earlier in this replay, mirroring the phone's tombstones: a later replayed
+        // `add` for one is a no-op, so an add-then-delete pair stays deleted even when a
+        // snapshot that still contains the task acknowledges only the add.
+        var deletedTaskIDs: Set<UUID> = []
         for command in commands {
             switch command.action {
             case .add(let taskID, let text):
-                guard !result.contains(where: { $0.id == taskID }) else { continue }
+                guard !deletedTaskIDs.contains(taskID),
+                      !result.contains(where: { $0.id == taskID }) else { continue }
                 let creationOrder = (result.map(\.creationOrder).max() ?? -1) + 1
                 result.append(DailyTask(id: taskID, text: text, creationOrder: creationOrder))
             case .setCompletion(let taskID, let isComplete, let completedOn):
@@ -353,6 +374,19 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     isComplete: isComplete,
                     completedOn: completedOn
                 )
+            case .rename(let taskID, let text):
+                guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
+                let task = result[index]
+                result[index] = DailyTask(
+                    id: task.id,
+                    text: text,
+                    creationOrder: task.creationOrder,
+                    isComplete: task.isComplete,
+                    completedOn: task.completedOn
+                )
+            case .delete(let taskID):
+                deletedTaskIDs.insert(taskID)
+                result.removeAll { $0.id == taskID }
             }
         }
         return result
@@ -398,6 +432,21 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     completedOn: completedOn
                 )
             }
+        case .rename(let taskID, let text):
+            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedText.isEmpty, let index = savedTasks.firstIndex(where: { $0.id == taskID }) {
+                let task = savedTasks[index]
+                savedTasks[index] = DailyTask(
+                    id: task.id,
+                    text: trimmedText,
+                    creationOrder: task.creationOrder,
+                    isComplete: task.isComplete,
+                    completedOn: task.completedOn
+                )
+            }
+        case .delete(let taskID):
+            savedTasks.removeAll { $0.id == taskID }
+            recordTombstone(taskID)
         }
 
         recordProcessedCommand(command.id)

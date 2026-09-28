@@ -82,10 +82,8 @@ The Watch's visible and saved tasks are always `outbox` replayed over `baseTasks
 same rules the phone uses to apply a command (add appends with current max order + 1 if absent;
 setCompletion sets the given state if present). `addTask`/`toggleTask` build a command, append
 it to the outbox, recompute, persist, and send it; they return the resulting task the same way
-the phone's methods do. `editTask`/`deleteTask` on a `.mirror` store do nothing and return
-`nil` — implementing them would mean inventing an edit/delete command with no reconciliation
-story yet, which risks silent divergence for no product benefit, since #14 keeps them out of
-scope.
+the phone's methods do. `editTask`/`deleteTask` on a `.mirror` store did nothing and returned
+`nil` in #14, which kept them out of scope; #21 (below) adds their commands.
 
 On receiving a snapshot, the Watch always drops any outbox entries whose ids appear in the
 snapshot's `acknowledgedCommandIDs`, regardless of whether the snapshot's revision is new
@@ -113,9 +111,8 @@ duplicate delivery is harmless because the phone dedupes by command id.
 
 ## Consequences
 
-- Editing and deleting stay phone-only. A future issue that adds them to the Watch will need
-  its own command actions and reconciliation rules (e.g., what an edit or delete command should
-  do if the phone has already deleted or edited the same task).
+- Editing and deleting were phone-only when this ADR was first written; #21 adds them to the
+  Watch (see "#21: rename and delete commands" below).
 - The phone's tombstone and processed-command-id sets are bounded, so an extremely long
   disconnection (thousands of intervening commands, or a task deleted and outliving 500 later
   deletions) could theoretically let a very stale duplicate slip through. This is judged
@@ -125,3 +122,37 @@ duplicate delivery is harmless because the phone dedupes by command id.
   even if the Watch add happened first in wall-clock time. This is a deliberate, deterministic
   tie-break (see ADR 0001's and this ADR's ordering rule) rather than an attempt to preserve
   true chronological order across devices with independent clocks.
+
+## #21: rename and delete commands
+
+The Watch can now edit and delete tasks through the same outbox, retry, and acknowledgment
+mechanism.
+
+**New actions.** `TaskCommand.Action` gains `rename(taskID, text)`, which carries the full
+trimmed, nonblank new text, and `delete(taskID)`. Adding enum cases keeps the synthesized
+`Codable` compatible with outboxes persisted before this change. The phone and Watch apps ship
+together (the Watch app is embedded), so an older phone never has to decode the new cases, and
+no compatibility machinery is built for that.
+
+**Phone application** (receipt order, dedupe by command id, every command acknowledged, exactly
+as before):
+
+- `rename` replaces the text of an existing task when the trimmed text is nonblank, keeping id,
+  creation order, completion state, and completion day. Otherwise it is ignored. Renames follow
+  the existing rule: the last applied wins, so a Watch rename that arrives after a phone rename
+  overwrites it, and a phone rename made after the Watch rename was delivered overwrites that.
+- `delete` removes the task if present and always records the tombstone, even when the task is
+  already absent, so a later or duplicated `add` cannot recreate it.
+- Delete wins in both arrival orders. A phone rename or toggle made after the delete arrives
+  finds no task and does nothing; a phone change made before it is overwritten by the removal.
+  A phone delete makes a later Watch `rename` or `delete` a no-op that is still acknowledged.
+
+**Watch replay.** `editTask` returns `nil` and sends nothing for blank text or for an id absent
+from the effective (replayed) list; `deleteTask` returns `nil` for an absent id. Otherwise each
+appends its command to the outbox, recomputes, persists, and sends. Replay applies `rename` to a
+present task and `delete` by removing it. Replay also keeps a local set of ids deleted so far
+in that replay, mirroring the phone's tombstones: a later replayed `add` for a deleted id is a
+no-op. This covers a task added and deleted on the Watch before the phone acknowledges the add.
+The phone applies the add and then the delete in FIFO order and ends up tombstoned, and neither
+device may show the task at any point after the delete, including when a snapshot that contains
+the task acknowledges only the add (the outbox then holds just the `delete`, which removes it).

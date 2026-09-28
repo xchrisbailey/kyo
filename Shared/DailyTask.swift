@@ -45,6 +45,8 @@ protocol TaskListBehavior: AnyObject {
     var completedCount: Int { get }
     var incompleteCount: Int { get }
     @discardableResult func addTask(text: String) -> DailyTask?
+    @discardableResult func editTask(id: UUID, text: String) -> DailyTask?
+    @discardableResult func deleteTask(id: UUID) -> DailyTask?
     @discardableResult func toggleTask(id: UUID) -> DailyTask?
 }
 
@@ -93,6 +95,34 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         tasks = Self.ordered(tasks)
         persist()
         return task
+    }
+
+    @discardableResult
+    func editTask(id: UUID, text: String) -> DailyTask? {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty,
+              let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+
+        let task = tasks[index]
+        let updatedTask = DailyTask(
+            id: task.id,
+            text: trimmedText,
+            creationOrder: task.creationOrder,
+            isComplete: task.isComplete,
+            completedOn: task.completedOn
+        )
+        tasks[index] = updatedTask
+        tasks = Self.ordered(tasks)
+        persist()
+        return updatedTask
+    }
+
+    @discardableResult
+    func deleteTask(id: UUID) -> DailyTask? {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return nil }
+        let removedTask = tasks.remove(at: index)
+        persist()
+        return removedTask
     }
 
     @discardableResult

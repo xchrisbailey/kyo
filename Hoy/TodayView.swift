@@ -26,11 +26,11 @@ struct TodayView: View {
                                 }
                                 ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
                                     if index > 0 { rowDivider }
-                                    CheckRow(
-                                        title: task.text,
-                                        isComplete: task.isComplete,
-                                        isTask: true,
-                                        onToggle: { taskList.toggleTask(id: task.id) }
+                                    TaskRow(
+                                        task: task,
+                                        onToggle: { taskList.toggleTask(id: task.id) },
+                                        onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
+                                        onDelete: { _ = taskList.deleteTask(id: task.id) }
                                     )
                                 }
                                 if isShowingTaskDraft {
@@ -497,6 +497,138 @@ private struct CheckRow: View {
         colorScheme == .dark
             ? Color(red: 0.57, green: 0.79, blue: 0.68)
             : Color(red: 0.22, green: 0.43, blue: 0.34)
+    }
+}
+
+private struct TaskRow: View {
+    let task: DailyTask
+    let onToggle: () -> Void
+    let onEdit: (String) -> Bool
+    let onDelete: () -> Void
+
+    @State private var isEditing = false
+    @State private var draft = ""
+    @State private var isDeleteRevealed = false
+    @FocusState private var isEditorFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let deleteWidth: CGFloat = 84
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            rowContents
+                .offset(x: isDeleteRevealed ? -deleteWidth : 0)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 12)
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            if value.translation.width < -40 {
+                                withAnimation(.easeOut(duration: 0.2)) { isDeleteRevealed = true }
+                            } else if value.translation.width > 40 {
+                                withAnimation(.easeOut(duration: 0.2)) { isDeleteRevealed = false }
+                            }
+                        }
+                )
+
+            if isDeleteRevealed {
+                Button(action: onDelete) {
+                    Label("Delete", systemImage: "trash")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: deleteWidth)
+                        .frame(maxHeight: .infinity)
+                        .background(Color.red)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Delete task: \(task.text)")
+                .accessibilityHint("Deletes this task")
+                .transition(.identity)
+            }
+        }
+        .clipped()
+        .onChange(of: isEditing) { _, editing in
+            if editing {
+                draft = task.text
+                isEditorFocused = true
+            } else {
+                isEditorFocused = false
+            }
+        }
+        .onChange(of: task.text) { _, newText in
+            if !isEditing { draft = newText }
+        }
+    }
+
+    private var rowContents: some View {
+        HStack(spacing: 10) {
+            Button(action: onToggle) {
+                checkboxGlyph
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(task.text)
+            .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
+            .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
+
+            if isEditing {
+                TextField("Edit task", text: $draft)
+                    .font(.body)
+                    .textFieldStyle(.plain)
+                    .focused($isEditorFocused)
+                    .submitLabel(.done)
+                    .onSubmit(saveEdit)
+                    .accessibilityLabel("Edit task")
+                    .accessibilityIdentifier("task-editor:\(task.text)")
+            } else {
+                Button {
+                    isEditing = true
+                } label: {
+                    Text(task.text)
+                        .font(.body)
+                        .foregroundStyle(task.isComplete ? Color.secondary : Color.primary)
+                        .strikethrough(task.isComplete, color: .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit task: \(task.text)")
+                .accessibilityHint("Edits this task")
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 55)
+        .background(Color(uiColor: .systemBackground))
+    }
+
+    private var checkboxGlyph: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(task.isComplete ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .background(Circle().fill(task.isComplete ? accentColor : .clear))
+                .frame(width: 23, height: 23)
+            if task.isComplete {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var accentColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.57, green: 0.79, blue: 0.68)
+            : Color(red: 0.22, green: 0.43, blue: 0.34)
+    }
+
+    private func saveEdit() {
+        guard onEdit(draft) else { return }
+        isEditing = false
     }
 }
 

@@ -14,65 +14,53 @@ struct WatchTodayView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        header
-                        summary
+                // A `List` rather than a `ScrollView` because `.swipeActions` only works on list
+                // rows. Everything except the task rows is a single plain row, styled to look
+                // the same as the old `VStack`. watchOS has no `listRowSpacing` or separator
+                // control, so the minimum row height is dropped and `WatchTaskRowBackground`
+                // bleeds into the small gap between rows to keep the section one joined card.
+                List {
+                    header
+                        .listRow(top: 8, bottom: 8)
+                    summary
+                        .listRow()
 
-                        WatchSection(title: "Tasks") {
-                            VStack(spacing: 0) {
-                                if taskList.tasks.isEmpty {
-                                    Text("No tasks yet")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                        .padding(.vertical, 7)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                } else {
-                                    ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                                        if index > 0 { rowDivider }
-                                        WatchCheckRow(
-                                            title: task.text,
-                                            completed: task.isComplete,
-                                            task: true,
-                                            onToggle: { taskList.toggleTask(id: task.id) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        WatchSection(title: "Habits") {
-                            VStack(spacing: 0) {
-                                WatchCheckRow(title: "Morning walk", detail: "20 min", completed: true)
-                                rowDivider
-                                WatchCheckRow(title: "Read a little", detail: "10 pages", completed: false)
-                            }
-                        }
-                        WatchSection(title: "Memos") {
-                            VStack(spacing: 0) {
-                                WatchMemoRow(
-                                    icon: "text.alignleft",
-                                    title: "An idea for the weekend",
-                                    detail: "Try the trail by the lake. Bring coffee."
-                                )
-                                rowDivider
-                                WatchMemoRow(icon: "waveform", title: "Thoughts on my walk", detail: "Voice memo · 0:42")
-                            }
-                        }
-                        WatchSection(title: "Meals") {
-                            VStack(alignment: .leading, spacing: 0) {
-                                WatchMealSummary()
-                                rowDivider
-                                WatchMealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
-                                rowDivider
-                                WatchMealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
-                            }
+                    taskRows
+
+                    WatchSection(title: "Habits") {
+                        VStack(spacing: 0) {
+                            WatchCheckRow(title: "Morning walk", detail: "20 min", completed: true)
+                            rowDivider
+                            WatchCheckRow(title: "Read a little", detail: "10 pages", completed: false)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(top: 8)
+                    WatchSection(title: "Memos") {
+                        VStack(spacing: 0) {
+                            WatchMemoRow(
+                                icon: "text.alignleft",
+                                title: "An idea for the weekend",
+                                detail: "Try the trail by the lake. Bring coffee."
+                            )
+                            rowDivider
+                            WatchMemoRow(icon: "waveform", title: "Thoughts on my walk", detail: "Voice memo · 0:42")
+                        }
+                    }
+                    .listRow(top: 8)
+                    WatchSection(title: "Meals") {
+                        VStack(alignment: .leading, spacing: 0) {
+                            WatchMealSummary()
+                            rowDivider
+                            WatchMealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
+                            rowDivider
+                            WatchMealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
+                        }
+                    }
+                    .listRow(top: 8, bottom: 12)
                 }
+                .listStyle(.plain)
+                .environment(\.defaultMinListRowHeight, 1)
+                .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
                 .frame(height: max(0, geometry.size.height - 54), alignment: .top)
 
@@ -87,7 +75,23 @@ struct WatchTodayView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .add:
-                WatchAddTaskSheet(addTask: { text in taskList.addTask(text: text) })
+                WatchTaskTextSheet(
+                    title: "Add a task",
+                    placeholder: "New task",
+                    initialText: "",
+                    buttonLabel: "Add",
+                    buttonHint: "Saves this task to today's list",
+                    save: { text in _ = taskList.addTask(text: text) }
+                )
+            case .edit(let task):
+                WatchTaskTextSheet(
+                    title: "Edit task",
+                    placeholder: "Task",
+                    initialText: task.text,
+                    buttonLabel: "Save",
+                    buttonHint: "Saves your changes to this task",
+                    save: { text in _ = taskList.editTask(id: task.id, text: text) }
+                )
             case .calendar:
                 WatchCalendarPreviewSheet()
             }
@@ -107,6 +111,51 @@ struct WatchTodayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
             taskList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
+        }
+    }
+
+    @ViewBuilder
+    private var taskRows: some View {
+        WatchSectionHeader(title: "Tasks")
+            .listRow(top: 8, bottom: 5)
+
+        if taskList.tasks.isEmpty {
+            Text("No tasks yet")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRow(background: WatchTaskRowBackground(position: .only))
+        } else {
+            ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                WatchCheckRow(
+                    title: task.text,
+                    completed: task.isComplete,
+                    task: true,
+                    onToggle: { taskList.toggleTask(id: task.id) },
+                    onEdit: { activeSheet = .edit(task) },
+                    onDelete: { taskList.deleteTask(id: task.id) }
+                )
+                .padding(.horizontal, 9)
+                .overlay(alignment: .top) {
+                    if index > 0 { rowDivider.padding(.horizontal, 9) }
+                }
+                .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        taskList.deleteTask(id: task.id)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    Button {
+                        activeSheet = .edit(task)
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.blue)
+                }
+            }
         }
     }
 
@@ -154,11 +203,69 @@ struct WatchTodayView: View {
     }
 }
 
-private enum WatchPreviewSheet: String, Identifiable {
+private enum WatchPreviewSheet: Identifiable {
     case add
+    case edit(DailyTask)
     case calendar
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .add: "add"
+        case .edit(let task): "edit-\(task.id.uuidString)"
+        case .calendar: "calendar"
+        }
+    }
+}
+
+private extension View {
+    /// Makes a view a bare `List` row: no background, or default insets, with only
+    /// the 10 pt screen margin and the given vertical spacing the old `VStack` layout used.
+    func listRow(top: CGFloat = 0, bottom: CGFloat = 0) -> some View {
+        listRowInsets(EdgeInsets(top: top, leading: 10, bottom: bottom, trailing: 10))
+            .listRowBackground(Color.clear)
+    }
+
+    /// Like `listRow`, with a per-row slice of the rounded section background.
+    func listRow(background: some View) -> some View {
+        listRowInsets(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+            .listRowBackground(background)
+    }
+}
+
+/// One task row's slice of the rounded section background, so consecutive rows join into the
+/// same shape `WatchSection` draws around its content.
+private struct WatchTaskRowBackground: View {
+    enum Position {
+        case only, first, middle, last
+
+        static func position(index: Int, count: Int) -> Position {
+            switch (index == 0, index == count - 1) {
+            case (true, true): .only
+            case (true, false): .first
+            case (false, true): .last
+            case (false, false): .middle
+            }
+        }
+    }
+
+    let position: Position
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let radius: CGFloat = 13
+        let top = (position == .only || position == .first) ? radius : 0
+        let bottom = (position == .only || position == .last) ? radius : 0
+        UnevenRoundedRectangle(
+            topLeadingRadius: top,
+            bottomLeadingRadius: bottom,
+            bottomTrailingRadius: bottom,
+            topTrailingRadius: top,
+            style: .continuous
+        )
+        .fill(Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.06))
+        .padding(.horizontal, 10)
+        .padding(.vertical, -2.5)  // covers the ~5 pt gap watchOS leaves between list rows
+    }
 }
 
 private struct WatchActionBar: View {
@@ -198,6 +305,23 @@ private struct WatchActionBar: View {
     }
 }
 
+private struct WatchSectionHeader: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 private struct WatchSection<Content: View>: View {
     let title: String
     @Environment(\.colorScheme) private var colorScheme
@@ -205,15 +329,7 @@ private struct WatchSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                Text(title)
-                    .font(.headline.weight(.semibold))
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-            }
-            .accessibilityElement(children: .combine)
+            WatchSectionHeader(title: title)
 
             content
                 .padding(.horizontal, 9)
@@ -249,6 +365,8 @@ private struct WatchCheckRow: View {
     let completed: Bool
     var task = false
     var onToggle: (() -> Void)? = nil
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         if let onToggle {
@@ -261,6 +379,8 @@ private struct WatchCheckRow: View {
             .accessibilityLabel(title)
             .accessibilityValue(completed ? "Completed" : "Not completed")
             .accessibilityHint(completed ? "Reopens this task" : "Marks this task complete")
+            .accessibilityAction(named: "Edit") { onEdit?() }
+            .accessibilityAction(named: "Delete") { onDelete?() }
         } else {
             rowContent
                 .accessibilityElement(children: .ignore)
@@ -411,31 +531,51 @@ private struct WatchMealRow: View {
     }
 }
 
-/// Adds a task to today's list using native text input (the watchOS `TextField` offers
-/// dictation, Scribble, and the on-screen keyboard). Submitting or tapping Add with blank text
-/// creates nothing; dismissing without submitting also creates nothing, matching the phone's
-/// abandoned-draft behavior.
-private struct WatchAddTaskSheet: View {
+/// Collects a task's text using native text input (the watchOS `TextField` offers dictation,
+/// Scribble, and the on-screen keyboard), for both adding a task and editing one. Submitting or
+/// tapping the button with blank text changes nothing (the store ignores it); dismissing without
+/// submitting also changes nothing, matching the phone's abandoned-draft behavior.
+private struct WatchTaskTextSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var draft = ""
-    let addTask: (String) -> DailyTask?
+    @State private var draft: String
+    let title: String
+    let placeholder: String
+    let buttonLabel: String
+    let buttonHint: String
+    let save: (String) -> Void
+
+    init(
+        title: String,
+        placeholder: String,
+        initialText: String,
+        buttonLabel: String,
+        buttonHint: String,
+        save: @escaping (String) -> Void
+    ) {
+        self.title = title
+        self.placeholder = placeholder
+        self.buttonLabel = buttonLabel
+        self.buttonHint = buttonHint
+        self.save = save
+        _draft = State(initialValue: initialText)
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Add a task").font(.headline)
+                Text(title).font(.headline)
 
-                TextField("New task", text: $draft)
+                TextField(placeholder, text: $draft)
                     .font(.footnote)
                     .submitLabel(.done)
-                    .onSubmit(save)
-                    .accessibilityLabel("New task")
+                    .onSubmit(commit)
+                    .accessibilityLabel(placeholder)
 
-                Button("Add") { save() }
+                Button(buttonLabel) { commit() }
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 42)
                     .tint(.green)
-                    .accessibilityHint("Saves this task to today's list")
+                    .accessibilityHint(buttonHint)
             }
             .padding(.horizontal, 12)
             .padding(.top, 8)
@@ -443,11 +583,11 @@ private struct WatchAddTaskSheet: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Add task")
+        .accessibilityLabel(title)
     }
 
-    private func save() {
-        _ = addTask(draft)
+    private func commit() {
+        save(draft)
         dismiss()
     }
 }

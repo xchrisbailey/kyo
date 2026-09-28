@@ -45,6 +45,11 @@ struct TaskCommand: Codable, Equatable, Sendable {
         /// The task's absolute completion state, computed from the Watch's own clock/calendar
         /// at the time of the toggle, so completion-day retention follows the Watch's day.
         case setCompletion(taskID: UUID, isComplete: Bool, completedOn: TaskCompletionDay?)
+        /// The task's full new text, already trimmed and nonblank. Applied last-wins, like
+        /// completion; ignored if the task no longer exists.
+        case rename(taskID: UUID, text: String)
+        /// Deletion is final: the phone tombstones the id even if the task is already gone.
+        case delete(taskID: UUID)
     }
 
     let id: UUID

@@ -23,3 +23,11 @@ _Avoid_: Frequency, recurrence
 **Weekly target**:
 The number of days (1–6) in a calendar week on which a habit should be checked off, for habits scheduled a number of times per week; the week starts on the device locale's first weekday.
 _Avoid_: Times per week, quota, goal
+
+**Check-off**:
+The record that a habit was done on a particular calendar day; unchecking removes it.
+_Avoid_: Check-in, completion, entry
+
+**Log**:
+All of a habit's check-offs; a missed day is the absence of a check-off, not a record of its own.
+_Avoid_: History, record

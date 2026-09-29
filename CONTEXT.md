@@ -31,3 +31,11 @@ _Avoid_: Check-in, completion, entry
 **Log**:
 All of a habit's check-offs; a missed day is the absence of a check-off, not a record of its own.
 _Avoid_: History, record
+
+**Streak**:
+The run of consecutive due days with a check-off, or for a weekly target, consecutive weeks with the target met, counting back from Today; days that aren't due and an unfinished Today or current week never break it.
+_Avoid_: Chain, run
+
+**Week progress**:
+A weekly-target habit's check-offs so far in the current calendar week against its target, such as 2/3; it can exceed the target.
+_Avoid_: Weekly count, tally

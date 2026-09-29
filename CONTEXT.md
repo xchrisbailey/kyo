@@ -19,3 +19,7 @@ _Avoid_: Routine, recurring task
 **Habit schedule**:
 The rule that decides which days a habit is due: every day, specific weekdays, or a number of times per week.
 _Avoid_: Frequency, recurrence
+
+**Weekly target**:
+The number of days (1–6) in a calendar week on which a habit should be checked off, for habits scheduled a number of times per week; the week starts on the device locale's first weekday.
+_Avoid_: Times per week, quota, goal

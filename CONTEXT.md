@@ -17,7 +17,7 @@ A recurring practice the user defines once and checks off on each day its schedu
 _Avoid_: Routine, recurring task
 
 **Habit schedule**:
-The rule that decides which days a habit is due: every day, specific weekdays, or a number of times per week.
+The rule that decides which days a habit is due: every day, specific weekdays, or a number of times per week. Changing it takes effect from Today; past days keep the schedule they had.
 _Avoid_: Frequency, recurrence
 
 **Weekly target**:

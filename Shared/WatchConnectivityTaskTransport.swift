@@ -9,10 +9,11 @@ import os
 /// reliably and survives unreachability instead of dropping anything (see
 /// docs/adr/0002-watch-commands-and-phone-reconciliation.md).
 @MainActor
-final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCSessionDelegate {
+final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
+    nonisolated static let habitSnapshotKey = "kyo.habitSnapshot"
     nonisolated static let commandKey = "kyo.taskCommand"
 
     private let session: WCSession?
@@ -22,6 +23,8 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
     private var outgoingContext = ApplicationContextEntries()
     private var latestIncoming: TaskListSnapshot?
     private var handler: (@MainActor (TaskListSnapshot) -> Void)?
+    private var latestIncomingHabits: HabitListSnapshot?
+    private var habitHandler: (@MainActor (HabitListSnapshot) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
     private var pendingOutgoingCommands: [TaskCommand] = []
     private var pendingIncomingCommands: [TaskCommand] = []
@@ -39,6 +42,24 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
             logger.log("published revision \(snapshot.revision) (\(snapshot.tasks.count) tasks)")
         } catch {
             logger.error("failed to encode snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    /// Publishes the habit snapshot under its own key, merged with the task snapshot in one
+    /// context write (see `docs/adr/0003-habit-sync.md`).
+    func publish(_ snapshot: HabitListSnapshot) {
+        do {
+            publishContextEntry(try JSONEncoder().encode(snapshot), forKey: Self.habitSnapshotKey)
+            logger.log("published habit revision \(snapshot.revision) (\(snapshot.habits.count) habits)")
+        } catch {
+            logger.error("failed to encode habit snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    func setHabitSnapshotHandler(_ handler: @escaping @MainActor (HabitListSnapshot) -> Void) {
+        habitHandler = handler
+        if let latestIncomingHabits {
+            handler(latestIncomingHabits)
         }
     }
 
@@ -122,6 +143,13 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
         logger.log("received snapshot revision \(snapshot.revision) (\(snapshot.tasks.count) tasks)")
     }
 
+    private func receiveHabits(data: Data) {
+        guard let snapshot = try? JSONDecoder().decode(HabitListSnapshot.self, from: data) else { return }
+        latestIncomingHabits = snapshot
+        habitHandler?(snapshot)
+        logger.log("received habit snapshot revision \(snapshot.revision) (\(snapshot.habits.count) habits)")
+    }
+
     private func receiveCommand(data: Data) {
         guard let command = try? JSONDecoder().decode(TaskCommand.self, from: data) else { return }
         if let commandHandler {
@@ -140,19 +168,25 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
         error: Error?
     ) {
         let contextData = session.receivedApplicationContext[Self.snapshotKey] as? Data
+        let habitData = session.receivedApplicationContext[Self.habitSnapshotKey] as? Data
         Task { @MainActor in
             self.sendLatest()
             self.flushPendingOutgoingCommands()
             if let contextData {
                 self.receive(data: contextData)
             }
+            if let habitData {
+                self.receiveHabits(data: habitData)
+            }
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        guard let data = applicationContext[Self.snapshotKey] as? Data else { return }
+        let taskData = applicationContext[Self.snapshotKey] as? Data
+        let habitData = applicationContext[Self.habitSnapshotKey] as? Data
         Task { @MainActor in
-            self.receive(data: data)
+            if let taskData { self.receive(data: taskData) }
+            if let habitData { self.receiveHabits(data: habitData) }
         }
     }
 

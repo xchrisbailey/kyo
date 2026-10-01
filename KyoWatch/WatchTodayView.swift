@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WatchTodayView: View {
     @StateObject private var taskList: TaskListStore
+    @StateObject private var habitList: HabitListStore
     @State private var activeSheet: WatchPreviewSheet?
     @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
@@ -9,6 +10,7 @@ struct WatchTodayView: View {
 
     init() {
         _taskList = StateObject(wrappedValue: TaskListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
+        _habitList = StateObject(wrappedValue: HabitListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
     }
 
     var body: some View {
@@ -27,14 +29,7 @@ struct WatchTodayView: View {
 
                     taskRows
 
-                    WatchSection(title: "Habits") {
-                        VStack(spacing: 0) {
-                            WatchCheckRow(title: "Morning walk", detail: "20 min", completed: true)
-                            rowDivider
-                            WatchCheckRow(title: "Read a little", detail: "10 pages", completed: false)
-                        }
-                    }
-                    .listRow(top: 8)
+                    habitRows
                     WatchSection(title: "Memos") {
                         VStack(spacing: 0) {
                             WatchMemoRow(
@@ -99,17 +94,23 @@ struct WatchTodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await habitList.refreshAtEachDayBoundary()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()
+                habitList.refreshForCurrentDay()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
             taskList.refreshForCurrentDay()
+            habitList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
             taskList.refreshForCurrentDay()
+            habitList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
     }
@@ -159,6 +160,38 @@ struct WatchTodayView: View {
         }
     }
 
+    /// Today's habits, read-only: to-do first, then the done group (gray, no strikethrough).
+    @ViewBuilder
+    private var habitRows: some View {
+        WatchSectionHeader(title: "Habits")
+            .listRow(top: 8, bottom: 5)
+
+        if habitList.todayHabits.isEmpty {
+            Text(habitEmptyMessage)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRow(background: WatchTaskRowBackground(position: .only))
+        } else {
+            ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
+                WatchHabitRow(entry: entry)
+                    .padding(.horizontal, 9)
+                    .overlay(alignment: .top) {
+                        if index > 0 { rowDivider.padding(.horizontal, 9) }
+                    }
+                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
+            }
+        }
+    }
+
+    private var habitEmptyMessage: String {
+        if !habitList.hasSynced { return "Open Kyo on iPhone to sync habits" }
+        if habitList.habits.isEmpty { return "No habits yet. Add them on iPhone." }
+        return "Nothing due today"
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("kyo")
@@ -181,7 +214,7 @@ struct WatchTodayView: View {
     private var summary: some View {
         HStack(spacing: 5) {
             WatchSummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks")
-            WatchSummaryStat(value: "1 / 2", label: "Habits")
+            WatchSummaryStat(value: "\(habitList.doneCount) / \(habitList.todayCount)", label: "Habits")
             WatchSummaryStat(value: "1,240", label: "kcal")
         }
         .padding(.vertical, 4)
@@ -416,6 +449,66 @@ private struct WatchCheckRow: View {
     }
 
     private var accentColor: Color { .green }
+}
+
+/// A read-only habit row. Day-based habits show the flame streak (hidden at 0); weekly targets
+/// show only week progress, with no week streak on the Watch.
+private struct WatchHabitRow: View {
+    let entry: TodayHabit
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 7) {
+            Image(systemName: entry.isCheckedOffToday ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(entry.isCheckedOffToday ? Color.green : Color.secondary)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+            Text(entry.habit.name)
+                .font(.system(.footnote, weight: .regular))
+                .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            trailingStatus
+        }
+        .padding(.vertical, 7)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.habit.name)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    @ViewBuilder
+    private var trailingStatus: some View {
+        let style = entry.isDone ? Color.secondary : Color.primary
+        if let progress = entry.weekProgress {
+            Text("\(progress.count)/\(progress.target)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(style)
+                .padding(.top, 2)
+                .accessibilityHidden(true)
+        } else if entry.streak >= 1 {
+            Label {
+                Text("\(entry.streak)")
+                    .font(.caption2.monospacedDigit())
+            } icon: {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 9))
+            }
+            .labelStyle(.titleAndIcon)
+            .foregroundStyle(style)
+            .padding(.top, 2)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private var accessibilityValue: String {
+        var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
+        if let progress = entry.weekProgress {
+            value += ", \(progress.count) of \(progress.target) this week"
+        } else if entry.streak >= 1 {
+            value += ", \(entry.streak) day streak"
+        }
+        return value
+    }
 }
 
 private struct WatchMemoRow: View {

@@ -3,6 +3,7 @@ import UIKit
 
 struct TodayView: View {
     @StateObject private var taskList: TaskListStore
+    @StateObject private var habitList: HabitListStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
     @State private var isShowingTaskDraft = false
@@ -17,6 +18,8 @@ struct TodayView: View {
         // Isolated UI-test stores never publish, so tests don't race real WatchConnectivity delivery.
         let sync: TaskListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
         _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey, sync: sync))
+        let habitStorageKey = key.map { $0 + ".habits" } ?? HabitListStore.storageKey
+        _habitList = StateObject(wrappedValue: HabitListStore(storageKey: habitStorageKey))
     }
 
     var body: some View {
@@ -53,9 +56,23 @@ struct TodayView: View {
                         }
                         TodaySection(title: "Habits", note: "Small steps, daily") {
                             VStack(spacing: 0) {
-                                CheckRow(title: "Morning walk", trailing: "20 min", isComplete: true)
-                                rowDivider
-                                CheckRow(title: "Read a little", trailing: "10 pages", isComplete: false)
+                                if habitList.todayHabits.isEmpty {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("No habits yet")
+                                            .font(.body)
+                                            .foregroundStyle(.secondary)
+                                        Text("Tap + to add one")
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                                    .padding(.horizontal, 14)
+                                    .accessibilityElement(children: .combine)
+                                }
+                                ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
+                                    if index > 0 { rowDivider }
+                                    HabitRow(entry: entry, onToggle: { habitList.toggleCheckOff(id: entry.id) })
+                                }
                             }
                         }
                         TodaySection(title: "Memos", note: "Notes & voice") {
@@ -87,7 +104,8 @@ struct TodayView: View {
                 .scrollIndicators(.hidden)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     TodayBottomBar(
-                        openAdd: beginTaskDraft,
+                        addTask: beginTaskDraft,
+                        addHabit: { activeSheet = .habitForm },
                         openCalendar: { activeSheet = .calendar }
                     )
                 }
@@ -95,6 +113,8 @@ struct TodayView: View {
                     switch sheet {
                     case .calendar:
                         CalendarPreviewSheet()
+                    case .habitForm:
+                        HabitFormSheet(onSave: { name in habitList.addHabit(name: name) != nil })
                     }
                 }
                 .onDisappear(perform: abandonTaskDraft)
@@ -110,21 +130,28 @@ struct TodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await habitList.refreshAtEachDayBoundary()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()
+                habitList.refreshForCurrentDay()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             taskList.refreshForCurrentDay()
+            habitList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
             taskList.refreshForCurrentDay()
+            habitList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
             taskList.refreshForCurrentDay()
+            habitList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
     }
@@ -157,7 +184,7 @@ struct TodayView: View {
         HStack(alignment: .top, spacing: 0) {
             SummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
-            SummaryStat(value: "1 / 2", label: "Habits done")
+            SummaryStat(value: "\(habitList.doneCount) / \(habitList.todayCount)", label: "Habits done")
             statDivider
             SummaryStat(value: "1,240", label: "kcal logged")
         }
@@ -213,6 +240,7 @@ struct TodayView: View {
 
 private enum TodayPreviewSheet: String, Identifiable {
     case calendar
+    case habitForm
 
     var id: String { rawValue }
 }
@@ -244,7 +272,8 @@ private struct TaskDraftRow: View {
 }
 
 private struct TodayBottomBar: View {
-    let openAdd: () -> Void
+    let addTask: () -> Void
+    let addHabit: () -> Void
     let openCalendar: () -> Void
 
     var body: some View {
@@ -265,7 +294,10 @@ private struct TodayBottomBar: View {
             .accessibilityLabel("Today")
             .accessibilityAddTraits(.isSelected)
 
-            Button(action: openAdd) {
+            Menu {
+                Button("Task", systemImage: "checkmark.circle", action: addTask)
+                Button("Habit", systemImage: "repeat", action: addHabit)
+            } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 26, weight: .medium))
                     .foregroundStyle(.white)
@@ -275,7 +307,7 @@ private struct TodayBottomBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
-            .accessibilityHint("Adds a task to today's list")
+            .accessibilityHint("Adds a task or a habit")
 
             Button(action: openCalendar) {
                 VStack(spacing: 3) {
@@ -530,6 +562,99 @@ private struct CheckRow: View {
         colorScheme == .dark
             ? Color(red: 0.57, green: 0.79, blue: 0.68)
             : Color(red: 0.22, green: 0.43, blue: 0.34)
+    }
+}
+
+private struct HabitRow: View {
+    let entry: TodayHabit
+    let onToggle: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: onToggle) {
+                checkboxGlyph
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(entry.habit.name)
+            .accessibilityValue(entry.isDone ? "Completed" : "Not completed")
+            .accessibilityHint(entry.isDone ? "Removes today's check-off" : "Checks this habit off for today")
+
+            Text(entry.habit.name)
+                .font(.body)
+                .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 55)
+    }
+
+    private var checkboxGlyph: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(entry.isDone ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .background(Circle().fill(entry.isDone ? accentColor : .clear))
+                .frame(width: 23, height: 23)
+            if entry.isDone {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var accentColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.57, green: 0.79, blue: 0.68)
+            : Color(red: 0.22, green: 0.43, blue: 0.34)
+    }
+}
+
+private struct HabitFormSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @FocusState private var isNameFocused: Bool
+    /// Returns whether the habit was saved.
+    let onSave: (String) -> Bool
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name", text: $name)
+                    .focused($isNameFocused)
+                    .submitLabel(.done)
+                    .onSubmit(save)
+                    .accessibilityLabel("Habit name")
+            }
+            .navigationTitle("New Habit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save", action: save)
+                        .disabled(!canSave)
+                }
+            }
+            .onAppear { isNameFocused = true }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func save() {
+        guard canSave, onSave(name) else { return }
+        dismiss()
     }
 }
 

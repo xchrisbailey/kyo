@@ -85,8 +85,36 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [deletionExpectation], timeout: 3), .completed)
     }
 
+    func testAddingAndCheckingOffAHabit() throws {
+        let app = XCUIApplication()
+        launchIsolatedApp(app)
+
+        XCTAssertTrue(app.staticTexts["No habits yet"].waitForExistence(timeout: 3))
+        let summary = app.descendants(matching: .any)["summary-Habits done"]
+        XCTAssertEqual(summary.value as? String, "0 / 0 habits done")
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Habit"].tap()
+        let field = app.textFields["Habit name"]
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Save"].isEnabled)
+        field.typeText("Stretch")
+        app.buttons["Save"].tap()
+
+        let circle = app.buttons["Stretch"]
+        XCTAssertTrue(circle.waitForExistence(timeout: 3))
+        assertCheckboxValue(circle, equals: "Not completed")
+        XCTAssertEqual(summary.value as? String, "0 / 1 habits done")
+        circle.tap()
+        assertCheckboxValue(app.buttons["Stretch"], equals: "Completed")
+        XCTAssertEqual(summary.value as? String, "1 / 1 habits done")
+        app.buttons["Stretch"].tap()
+        assertCheckboxValue(app.buttons["Stretch"], equals: "Not completed")
+    }
+
     private func addTask(_ title: String, to app: XCUIApplication) {
         app.buttons["Add an item"].tap()
+        app.buttons["Task"].tap()
         let field = app.textFields["New task"]
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         field.tap()

@@ -19,4 +19,43 @@ Commit and push completed changes to the GitHub remote. Before pushing, check th
 
 ### Orchestration
 
-The model running orchestration owns review as well as coordination. Do not assign a fixed reviewer model. Keep coder assignments explicit when a ticket specifies one.
+**Roles.**
+
+- **Opus 5.5** (`claude-opus-5-5`) is the main session. It plans, breaks work into tickets, delegates, reviews, and decides. Orchestration and review are never delegated.
+- **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`) does all delegated coding and test writing, through the `coder` agent in `.claude/agents/coder.md`.
+- Opus fixes trivial review nits itself. Anything larger goes back to a coder.
+- When a spec or ticket records execution assignments, it uses these roles unless the user names others for that work.
+
+**Delegation.**
+
+- Each delegated task is confined to one ticket, or one clearly bounded piece of one.
+- Run it in a subagent or a new thread with its own git worktree and branch.
+- The brief must stand alone. Include:
+  - the ticket link and its acceptance criteria;
+  - the relevant ADRs and `CONTEXT.md` terms;
+  - what is out of bounds;
+  - the build and test commands;
+  - what to report back: the branch, the PR, a summary, and anything left open.
+- Coders don't widen scope or make product or architecture decisions. They stop and report any open question to Opus.
+
+**Parallel work and PRs.**
+
+- Use one branch and one PR per ticket. Name the branch `<type>/<issue>-<slug>`, such as `feat/35-daily-habits`.
+- Tickets whose blockers are all merged run in parallel, each in its own worktree, and each PR targets `main`. Parallel work is preferred.
+- When a ticket depends on work that isn't merged yet, **stack** it:
+  - branch from the blocking ticket's branch;
+  - open its PR against that branch;
+  - after the base merges, rebase the stacked branch onto `main` and retarget its PR.
+- Keep stacks short. Don't stack work that could run in parallel.
+- PR descriptions link the ticket with `Closes #<issue>` and name the PR this one is stacked on, if any.
+
+**Review.**
+
+- Opus reviews every PR before it's marked ready, checking it against:
+  - the ticket's acceptance criteria;
+  - the spec and ADRs;
+  - the glossary;
+  - this file.
+- Opus also confirms that both app schemes build and the tests pass.
+- Review findings go back to the same coder, which keeps its context, until the review passes.
+- Opus reports the result to the user. Merge only when the user asks, or has already said to merge PRs that pass review.

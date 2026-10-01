@@ -112,6 +112,43 @@ final class TaskCheckboxUITests: XCTestCase {
         assertCheckboxValue(app.buttons["Stretch"], equals: "Not completed")
     }
 
+    func testTappingAHabitNameEditsItAndDeleteAsksForConfirmation() throws {
+        let app = XCUIApplication()
+        launchIsolatedApp(app)
+
+        openHabitForm(in: app)
+        app.textFields["Habit name"].typeText("Stretch")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["Stretch"].waitForExistence(timeout: 3))
+
+        // The name opens the form prefilled; the circle still checks off.
+        app.buttons["Edit habit: Stretch"].tap()
+        let field = app.textFields["Habit name"]
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertEqual(field.value as? String, "Stretch")
+        XCTAssertTrue(app.navigationBars["Edit Habit"].exists)
+        field.tap()
+        field.typeText(" more")
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["Stretch more"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Stretch"].exists)
+        app.buttons["Stretch more"].tap()
+        assertCheckboxValue(app.buttons["Stretch more"], equals: "Completed, 1 day streak")
+
+        // Cancelling the confirmation keeps the habit; confirming deletes it and its log.
+        app.buttons["Edit habit: Stretch more"].tap()
+        let deleteButton = app.buttons["Delete habit"]
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 3))
+        deleteButton.tap()
+        XCTAssertTrue(app.staticTexts["Delete this habit?"].waitForExistence(timeout: 3))
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["Delete habit"].waitForExistence(timeout: 3))
+        app.buttons["Delete habit"].tap()
+        app.buttons["Delete habit and log"].tap()
+        XCTAssertTrue(app.staticTexts["No habits yet"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Stretch more"].exists)
+    }
+
     func testCreatingAWeekdayHabitThroughTheForm() throws {
         let app = XCUIApplication()
         launchIsolatedApp(app)

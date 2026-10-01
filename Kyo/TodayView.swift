@@ -77,7 +77,11 @@ struct TodayView: View {
                                 }
                                 ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
                                     if index > 0 { rowDivider }
-                                    HabitRow(entry: entry, onToggle: { habitList.toggleCheckOff(id: entry.id) })
+                                    HabitRow(
+                                        entry: entry,
+                                        onToggle: { habitList.toggleCheckOff(id: entry.id) },
+                                        onEdit: { activeSheet = .editHabit(entry.id) }
+                                    )
                                 }
                             }
                         }
@@ -121,6 +125,14 @@ struct TodayView: View {
                         CalendarPreviewSheet()
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
+                    case .editHabit(let id):
+                        if let habit = habitList.habits.first(where: { $0.id == id }) {
+                            HabitFormSheet(
+                                habit: habit,
+                                onSave: { name, schedule in habitList.editHabit(id: id, name: name, schedule: schedule) != nil },
+                                onDelete: { habitList.deleteHabit(id: id) }
+                            )
+                        }
                     }
                 }
                 .onDisappear(perform: abandonTaskDraft)
@@ -244,11 +256,18 @@ struct TodayView: View {
     }
 }
 
-private enum TodayPreviewSheet: String, Identifiable {
+private enum TodayPreviewSheet: Identifiable {
     case calendar
     case habitForm
+    case editHabit(UUID)
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .calendar: "calendar"
+        case .habitForm: "habitForm"
+        case .editHabit(let id): "editHabit:\(id.uuidString)"
+        }
+    }
 }
 
 private struct TaskDraftRow: View {
@@ -574,6 +593,7 @@ private struct CheckRow: View {
 private struct HabitRow: View {
     let entry: TodayHabit
     let onToggle: () -> Void
+    let onEdit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -588,12 +608,17 @@ private struct HabitRow: View {
             .accessibilityValue(accessibilityValue)
             .accessibilityHint(entry.isCheckedOffToday ? "Removes today's check-off" : "Checks this habit off for today")
 
-            Text(entry.habit.name)
-                .font(.body)
-                .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityHidden(true)
+            Button(action: onEdit) {
+                Text(entry.habit.name)
+                    .font(.body)
+                    .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit habit: \(entry.habit.name)")
+            .accessibilityHint("Edits this habit")
 
             trailingStatus
         }
@@ -672,13 +697,38 @@ private struct HabitFormSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var kind = ScheduleKind.everyDay
-    @State private var weekdays: Set<Int> = []
-    @State private var weeklyTarget = 3
+    @State private var name: String
+    @State private var kind: ScheduleKind
+    @State private var weekdays: Set<Int>
+    @State private var weeklyTarget: Int
+    @State private var isConfirmingDelete = false
     @FocusState private var isNameFocused: Bool
+    /// The habit being edited; `nil` when adding.
+    private let habit: Habit?
     /// Returns whether the habit was saved.
-    let onSave: (String, HabitSchedule) -> Bool
+    private let onSave: (String, HabitSchedule) -> Bool
+    private let onDelete: () -> Void
+
+    init(habit: Habit? = nil, onSave: @escaping (String, HabitSchedule) -> Bool, onDelete: @escaping () -> Void = {}) {
+        self.habit = habit
+        self.onSave = onSave
+        self.onDelete = onDelete
+        _name = State(initialValue: habit?.name ?? "")
+        switch habit?.schedule ?? .everyDay {
+        case .everyDay:
+            _kind = State(initialValue: .everyDay)
+            _weekdays = State(initialValue: [])
+            _weeklyTarget = State(initialValue: 3)
+        case .weekdays(let days):
+            _kind = State(initialValue: .weekdays)
+            _weekdays = State(initialValue: days)
+            _weeklyTarget = State(initialValue: 3)
+        case .weeklyTarget(let target):
+            _kind = State(initialValue: .weeklyTarget)
+            _weekdays = State(initialValue: [])
+            _weeklyTarget = State(initialValue: target)
+        }
+    }
 
     private var schedule: HabitSchedule {
         switch kind {
@@ -719,8 +769,14 @@ private struct HabitFormSheet: View {
                         )
                     }
                 }
+                if habit != nil {
+                    Section {
+                        Button("Delete habit", role: .destructive) { isConfirmingDelete = true }
+                            .accessibilityHint("Deletes this habit and its log")
+                    }
+                }
             }
-            .navigationTitle("New Habit")
+            .navigationTitle(habit == nil ? "New Habit" : "Edit Habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -731,7 +787,16 @@ private struct HabitFormSheet: View {
                         .disabled(!canSave)
                 }
             }
-            .onAppear { isNameFocused = true }
+            .onAppear { isNameFocused = habit == nil }
+            .confirmationDialog("Delete this habit?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+                Button("Delete habit and log", role: .destructive) {
+                    onDelete()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently deletes \"\(habit?.name ?? "")\" and its log. It can't be undone.")
+            }
         }
         .presentationDetents([.medium, .large])
     }

@@ -125,5 +125,5 @@ Make Habits a real feature within the existing layout. A user adds a habit from 
 ## Further Notes
 
 - Decisions trace to the Wayfinder map "Wayfinder: Habits" (#23) and its tickets #24–#31. The habit-management prototype is preserved on branch `prototype/habit-management`.
-- Execution policy for future implementation: the active orchestration model owns orchestration and review; the coder assignment is **Luna, high reasoning** (`gpt-6-luna`, `high`). The review role follows whichever model is running orchestration rather than naming a fixed reviewer model.
+- Execution policy for future implementation: **Opus 5.5** (`claude-opus-5-5`) runs orchestration and owns review; the coder assignment is **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`).
 - No implementation agents should be launched by this spec-writing request. The `ready-for-agent` label describes specification readiness; it doesn't authorize implementation.

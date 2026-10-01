@@ -1,6 +1,6 @@
 # 3. Habit sync: separate snapshot, trimmed log, shared context write
 
-Status: accepted (design for the Habits spec; not yet implemented)
+Status: accepted (implemented in #40 and #41)
 
 ## Context
 

@@ -16,6 +16,7 @@
 		34C0009E41C9DB8518716D4D /* TaskListSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */; };
 		362851DA8544D070BEF34B56 /* WatchOriginatedSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */; };
 		48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		5425EDE14012EAAE06A22435 /* HabitEditDeleteBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */; };
 		564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
 		5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
 		6994C8E44C27EFBCAB72710B /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
@@ -100,6 +101,7 @@
 		EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableTaskTransport.swift; sourceTree = "<group>"; };
 		EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListBehaviorTests.swift; sourceTree = "<group>"; };
 		F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSyncTests.swift; sourceTree = "<group>"; };
+		FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitEditDeleteBehaviorTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -130,6 +132,7 @@
 			children = (
 				1214E3D080AE96B4E6434CE0 /* ApplicationContextEntriesTests.swift */,
 				EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */,
+				FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */,
 				642DDF527CFA6C09D084A117 /* HabitListBehaviorTests.swift */,
 				39FCF9C14C37844038380111 /* HabitStreakBehaviorTests.swift */,
 				EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */,
@@ -358,6 +361,7 @@
 				E1690A8C5DB3C4A34E6585E2 /* ControllableTaskTransport.swift in Sources */,
 				75900AE12B0C22C1365F43F5 /* DailyTask.swift in Sources */,
 				6ED9FE45E655887222BE5E7E /* Habit.swift in Sources */,
+				5425EDE14012EAAE06A22435 /* HabitEditDeleteBehaviorTests.swift in Sources */,
 				81D40155F9E0F759D082E477 /* HabitListBehaviorTests.swift in Sources */,
 				F166EB5B26B363A2DDDA64F6 /* HabitStreakBehaviorTests.swift in Sources */,
 				082E14F13F86306A188D7A92 /* TaskListBehaviorTests.swift in Sources */,

@@ -7,6 +7,13 @@ struct TaskCompletionDay: Codable, Equatable, Sendable {
     let month: Int
     let day: Int
 
+    init(era: Int?, year: Int, month: Int, day: Int) {
+        self.era = era
+        self.year = year
+        self.month = month
+        self.day = day
+    }
+
     init(date: Date, calendar: Calendar) {
         let components = calendar.dateComponents([.era, .year, .month, .day], from: date)
         self.era = components.era

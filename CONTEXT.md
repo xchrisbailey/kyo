@@ -39,3 +39,23 @@ _Avoid_: Chain, run
 **Week progress**:
 A weekly-target habit's check-offs so far in the current calendar week against its target, such as 2/3; it can exceed the target.
 _Avoid_: Weekly count, tally
+
+**Memo**:
+A captured thought, written or spoken, that belongs to the day it was created; Today shows only today's memos.
+_Avoid_: Note, entry, journal
+
+**Written memo**:
+A memo the user types.
+_Avoid_: Text memo, text note
+
+**Voice memo**:
+A memo the user records; it keeps its audio and has a transcript.
+_Avoid_: Recording, dictation, audio note
+
+**Transcript**:
+The editable text of a voice memo, produced on device; editing it never changes the audio.
+_Avoid_: Caption, dictation text
+
+**Memo history**:
+All memos from days before Today, browsable and searchable.
+_Avoid_: Archive, past memos

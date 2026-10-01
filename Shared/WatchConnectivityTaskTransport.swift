@@ -15,6 +15,7 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
     nonisolated static let habitSnapshotKey = "kyo.habitSnapshot"
     nonisolated static let commandKey = "kyo.taskCommand"
+    nonisolated static let habitCommandKey = "kyo.habitCommand"
 
     private let session: WCSession?
     private let logger = Logger(subsystem: "com.example.kyo", category: "watch-sync")
@@ -26,8 +27,23 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     private var latestIncomingHabits: HabitListSnapshot?
     private var habitHandler: (@MainActor (HabitListSnapshot) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
-    private var pendingOutgoingCommands: [TaskCommand] = []
+    private var habitCommandHandler: (@MainActor (HabitCommand) -> Void)?
+    /// Encoded commands of either kind, held until the session has activated.
+    private var pendingOutgoingCommands: [OutgoingCommand] = []
     private var pendingIncomingCommands: [TaskCommand] = []
+    private var pendingIncomingHabitCommands: [HabitCommand] = []
+
+    /// A command already encoded for `transferUserInfo`, under the key for its kind.
+    private struct OutgoingCommand {
+        let key: String
+        let id: UUID
+        let data: Data
+    }
+
+    /// Reads just the `id` of an encoded command of either kind.
+    private struct CommandIdentity: Decodable {
+        let id: UUID
+    }
 
     private override init() {
         session = WCSession.isSupported() ? WCSession.default : nil
@@ -82,11 +98,12 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     /// `applicationContext` — survives the counterpart being unreachable and never drops a
     /// command. Buffers locally until the session has activated.
     func send(_ command: TaskCommand) {
-        guard let session, session.activationState == .activated else {
-            pendingOutgoingCommands.append(command)
-            return
-        }
-        transfer(command, over: session)
+        enqueue(command, id: command.id, key: Self.commandKey)
+    }
+
+    /// Queues a habit command exactly like a task command, under its own userInfo key.
+    func send(_ command: HabitCommand) {
+        enqueue(command, id: command.id, key: Self.habitCommandKey)
     }
 
     func setCommandHandler(_ handler: @escaping @MainActor (TaskCommand) -> Void) {
@@ -96,22 +113,40 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         queued.forEach(handler)
     }
 
-    private func transfer(_ command: TaskCommand, over session: WCSession) {
+    func setHabitCommandHandler(_ handler: @escaping @MainActor (HabitCommand) -> Void) {
+        habitCommandHandler = handler
+        let queued = pendingIncomingHabitCommands
+        pendingIncomingHabitCommands.removeAll()
+        queued.forEach(handler)
+    }
+
+    private func enqueue<Command: Encodable>(_ command: Command, id: UUID, key: String) {
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(command)
+        } catch {
+            logger.error("failed to encode command: \(error.localizedDescription)")
+            return
+        }
+        let outgoing = OutgoingCommand(key: key, id: id, data: data)
+        guard let session, session.activationState == .activated else {
+            pendingOutgoingCommands.append(outgoing)
+            return
+        }
+        transfer(outgoing, over: session)
+    }
+
+    private func transfer(_ command: OutgoingCommand, over session: WCSession) {
         // Cancel any outstanding transfer already carrying this command id so a retry (e.g.
         // resending the outbox on Watch restart) doesn't pile up duplicate transfers.
         for outstanding in session.outstandingUserInfoTransfers {
-            guard let data = outstanding.userInfo[Self.commandKey] as? Data,
-                  let queued = try? JSONDecoder().decode(TaskCommand.self, from: data),
+            guard let data = outstanding.userInfo[command.key] as? Data,
+                  let queued = try? JSONDecoder().decode(CommandIdentity.self, from: data),
                   queued.id == command.id else { continue }
             outstanding.cancel()
         }
-        do {
-            let data = try JSONEncoder().encode(command)
-            session.transferUserInfo([Self.commandKey: data])
-            logger.log("sent command \(command.id)")
-        } catch {
-            logger.error("failed to encode command: \(error.localizedDescription)")
-        }
+        session.transferUserInfo([command.key: command.data])
+        logger.log("sent command \(command.id)")
     }
 
     private func flushPendingOutgoingCommands() {
@@ -160,6 +195,16 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         logger.log("received command \(command.id)")
     }
 
+    private func receiveHabitCommand(data: Data) {
+        guard let command = try? JSONDecoder().decode(HabitCommand.self, from: data) else { return }
+        if let habitCommandHandler {
+            habitCommandHandler(command)
+        } else {
+            pendingIncomingHabitCommands.append(command)
+        }
+        logger.log("received habit command \(command.id)")
+    }
+
     // MARK: - WCSessionDelegate
 
     nonisolated func session(
@@ -191,9 +236,11 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
-        guard let data = userInfo[Self.commandKey] as? Data else { return }
+        let taskData = userInfo[Self.commandKey] as? Data
+        let habitData = userInfo[Self.habitCommandKey] as? Data
         Task { @MainActor in
-            self.receiveCommand(data: data)
+            if let taskData { self.receiveCommand(data: taskData) }
+            if let habitData { self.receiveHabitCommand(data: habitData) }
         }
     }
 

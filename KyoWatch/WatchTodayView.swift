@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 struct WatchTodayView: View {
     @StateObject private var taskList: TaskListStore
@@ -160,7 +161,8 @@ struct WatchTodayView: View {
         }
     }
 
-    /// Today's habits, read-only: to-do first, then the done group (gray, no strikethrough).
+    /// Today's habits: to-do first, then the done group (gray, no strikethrough). Tapping a row
+    /// checks the habit off or unchecks it; there are no swipe actions or editing.
     @ViewBuilder
     private var habitRows: some View {
         WatchSectionHeader(title: "Habits")
@@ -176,7 +178,7 @@ struct WatchTodayView: View {
                 .listRow(background: WatchTaskRowBackground(position: .only))
         } else {
             ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
-                WatchHabitRow(entry: entry)
+                WatchHabitRow(entry: entry, onToggle: { toggleHabit(entry) })
                     .padding(.horizontal, 9)
                     .overlay(alignment: .top) {
                         if index > 0 { rowDivider.padding(.horizontal, 9) }
@@ -184,6 +186,13 @@ struct WatchTodayView: View {
                     .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
             }
         }
+    }
+
+    /// Checks the habit off or unchecks it, with a success haptic only on checking off.
+    private func toggleHabit(_ entry: TodayHabit) {
+        let wasCheckedOff = entry.isCheckedOffToday
+        guard habitList.toggleCheckOff(id: entry.habit.id) != nil, !wasCheckedOff else { return }
+        WKInterfaceDevice.current().play(.success)
     }
 
     private var habitEmptyMessage: String {
@@ -451,12 +460,25 @@ private struct WatchCheckRow: View {
     private var accentColor: Color { .green }
 }
 
-/// A read-only habit row. Day-based habits show the flame streak (hidden at 0); weekly targets
-/// show only week progress, with no week streak on the Watch.
+/// A habit row; tapping anywhere on it toggles the check-off. Day-based habits show the flame
+/// streak (hidden at 0); weekly targets show only week progress, with no week streak on the Watch.
 private struct WatchHabitRow: View {
     let entry: TodayHabit
+    let onToggle: () -> Void
 
     var body: some View {
+        Button(action: onToggle) {
+            rowContent
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.habit.name)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint(entry.isCheckedOffToday ? "Removes today's check-off" : "Checks this habit off for today")
+    }
+
+    private var rowContent: some View {
         HStack(alignment: .top, spacing: 7) {
             Image(systemName: entry.isCheckedOffToday ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 17, weight: .regular))
@@ -471,9 +493,6 @@ private struct WatchHabitRow: View {
             trailingStatus
         }
         .padding(.vertical, 7)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.habit.name)
-        .accessibilityValue(accessibilityValue)
     }
 
     @ViewBuilder

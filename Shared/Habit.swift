@@ -158,6 +158,12 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
         Habit(id: id, name: name, order: order, checkOffs: checkOffs, createdOn: createdOn, scheduleHistory: scheduleHistory)
     }
 
+    /// The habit with `day` in its log (if `isCheckedOff`) or removed from it, never twice.
+    func settingCheckOff(on day: TaskCompletionDay, to isCheckedOff: Bool) -> Habit {
+        let others = checkOffs.filter { $0 != day }
+        return withCheckOffs(isCheckedOff ? others + [day] : others)
+    }
+
     func withName(_ name: String) -> Habit {
         Habit(id: id, name: name, order: order, checkOffs: checkOffs, createdOn: createdOn, scheduleHistory: scheduleHistory)
     }
@@ -371,7 +377,8 @@ protocol HabitListBehavior: AnyObject {
     /// Permanently removes the habit and its log. Returns the removed habit, or `nil` if unknown.
     @discardableResult func deleteHabit(id: UUID) -> Habit?
     /// Checks the habit off for Today, or removes Today's check-off. Only habits on Today's
-    /// list can be toggled.
+    /// list can be toggled. On the Watch the change shows immediately and reaches the phone as
+    /// a set check-off command.
     @discardableResult func toggleCheckOff(id: UUID) -> Habit?
     /// Reorders the manager's list with the same offset semantics as SwiftUI's `onMove`: the
     /// habits at `source` end up before the habit that was at `destination`. Rewrites every
@@ -389,8 +396,24 @@ extension HabitListBehavior {
 final class HabitListStore: ObservableObject, HabitListBehavior {
     static let storageKey = "kyo.habits.v1"
 
+    /// Every habit, in manager order. For a Watch mirror, `baseHabits` with the outbox replayed.
     @Published private(set) var habits: [Habit] = []
     @Published private(set) var todayHabits: [TodayHabit] = []
+
+    /// A `.mirror` (Watch) store's habits as of the last applied snapshot, before replaying its
+    /// own unacknowledged commands. Stored under `storageKey`. Unused by other stores.
+    private var baseHabits: [Habit] = []
+    /// A `.mirror` store's ordered, unacknowledged commands (ADR 0002).
+    private var outbox: [HabitCommand] = []
+    /// A `.publish` (phone) store's ids of deleted habits, so a late command can't touch or
+    /// recreate one. Bounded to the most recent `maxBoundedSetSize`.
+    private var tombstonedHabitIDs: [UUID] = []
+    /// A `.publish` store's ids of commands already processed, for idempotency under retry and
+    /// duplicate delivery. Bounded to the most recent `maxBoundedSetSize`.
+    private var processedCommandIDs: [UUID] = []
+
+    /// Persisted sets keep this many most-recent entries (insertion order), as in ADR 0002.
+    private static let maxBoundedSetSize = 500
 
     private let userDefaults: UserDefaults
     private let storageKey: String
@@ -398,6 +421,9 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     private let calendar: Calendar
     private let sync: HabitListSync?
     private let revisionKey: String
+    private let outboxKey: String
+    private let tombstonesKey: String
+    private let processedCommandIDsKey: String
     private var revision: Int64?
 
     var todayCount: Int { todayHabits.count }
@@ -428,17 +454,35 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         self.calendar = calendar
         self.sync = sync
         self.revisionKey = storageKey + ".revision"
+        self.outboxKey = storageKey + ".outbox"
+        self.tombstonesKey = storageKey + ".tombstones"
+        self.processedCommandIDsKey = storageKey + ".processedCommands"
         self.revision = sync == nil ? nil : (userDefaults.object(forKey: revisionKey) as? NSNumber)?.int64Value
 
+        var stored: [Habit] = []
         if let data = userDefaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([Habit].self, from: data) {
-            habits = Self.ordered(decoded)
-            backfillCreationDays()
+            stored = Self.ordered(decoded)
         }
+        if isMirror {
+            baseHabits = stored
+            outbox = Self.decode([HabitCommand].self, forKey: outboxKey, in: userDefaults) ?? []
+        } else {
+            habits = stored
+            tombstonedHabitIDs = Self.decode([UUID].self, forKey: tombstonesKey, in: userDefaults) ?? []
+            processedCommandIDs = Self.decode([UUID].self, forKey: processedCommandIDsKey, in: userDefaults) ?? []
+        }
+        backfillCreationDays()
+        recomputeHabits()
         refreshForCurrentDay()
 
         switch sync {
         case .publish(let transport):
+            // Registered before the first publish, so a command the transport queued before
+            // this store existed is applied and acknowledged in that first snapshot.
+            transport.setHabitCommandHandler { [weak self] command in
+                self?.applyCommand(command)
+            }
             // Seed a revision from the wall clock on a fresh install, as the task store does
             // (ADR 0001), rather than publishing at revision 0 forever.
             if revision == nil {
@@ -452,26 +496,69 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
             transport.setHabitSnapshotHandler { [weak self] snapshot in
                 self?.apply(snapshot)
             }
+            // Retry: resend every unacknowledged command. The phone dedupes by command id.
+            for command in outbox {
+                transport.send(command)
+            }
         case nil:
             break
         }
     }
 
-    /// Applies an incoming snapshot per ADR 0001's rule: only a revision strictly greater than
-    /// the last one applied (or any, if none was) replaces the habits. The habits are saved
-    /// before the revision, so a crash between the two re-applies the same snapshot.
+    /// Applies an incoming snapshot. Commands it acknowledges leave the outbox whatever its
+    /// revision (ADR 0002). Per ADR 0001's rule, only a revision strictly greater than the last
+    /// one applied (or any, if none was) replaces `baseHabits`. The habits are saved before the
+    /// revision, so a crash between the two re-applies the same snapshot.
     private func apply(_ snapshot: HabitListSnapshot) {
-        guard isMirror, revision.map({ snapshot.revision > $0 }) ?? true else { return }
-        habits = Self.ordered(snapshot.habits)
-        persist()
-        revision = snapshot.revision
-        userDefaults.set(NSNumber(value: snapshot.revision), forKey: revisionKey)
-        refreshForCurrentDay()
-        objectWillChange.send()
+        guard isMirror else { return }
+        let acknowledged = Set(snapshot.acknowledgedCommandIDs)
+        let outboxChanged = outbox.contains { acknowledged.contains($0.id) }
+        if outboxChanged {
+            outbox.removeAll { acknowledged.contains($0.id) }
+            persistOutbox()
+        }
+
+        let isNewer = revision.map { snapshot.revision > $0 } ?? true
+        if isNewer {
+            baseHabits = Self.ordered(snapshot.habits)
+            persist()
+            revision = snapshot.revision
+            userDefaults.set(NSNumber(value: snapshot.revision), forKey: revisionKey)
+        }
+
+        if isNewer || outboxChanged {
+            recomputeHabits()
+            refreshForCurrentDay()
+            objectWillChange.send()
+        }
+    }
+
+    /// The Watch's visible habits: `baseHabits` with every outbox command replayed on top using
+    /// the phone's rules. A phone or standalone store's `habits` are authoritative as they are.
+    private func recomputeHabits() {
+        guard isMirror else { return }
+        habits = Self.replaying(outbox, over: baseHabits)
+    }
+
+    /// Replays commands in order: a set check-off sets the habit's state for that day if the
+    /// habit exists, and does nothing otherwise (the phone's rule for a deleted habit).
+    private static func replaying(_ commands: [HabitCommand], over base: [Habit]) -> [Habit] {
+        var result = base
+        for command in commands {
+            switch command.action {
+            case .setCheckOff(let habitID, let day, let isCheckedOff):
+                guard let index = result.firstIndex(where: { $0.id == habitID }) else { continue }
+                result[index] = result[index].settingCheckOff(on: day, to: isCheckedOff)
+            }
+        }
+        return result
     }
 
     private func snapshot(revision: Int64) -> HabitListSnapshot {
-        HabitListSnapshot(revision: revision, habits: habits, trimmedOn: now(), calendar: calendar)
+        HabitListSnapshot(
+            revision: revision, habits: habits, acknowledgedCommandIDs: processedCommandIDs,
+            trimmedOn: now(), calendar: calendar
+        )
     }
 
     /// Bumps the revision with ADR 0001's hybrid clock and publishes. Phone side only.
@@ -520,6 +607,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     func deleteHabit(id: UUID) -> Habit? {
         guard !isMirror, let index = habits.firstIndex(where: { $0.id == id }) else { return nil }
         let removed = habits.remove(at: index)
+        if case .publish = sync { recordTombstone(id) }
         refreshForCurrentDay()
         persist()
         publishChange()
@@ -530,17 +618,26 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     func toggleCheckOff(id: UUID) -> Habit? {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
         // A habit made not due by an edit stays on Today while it has a check-off, so it can be unchecked.
-        guard !isMirror, let index = habits.firstIndex(where: { $0.id == id }),
+        guard let index = habits.firstIndex(where: { $0.id == id }),
               habits[index].isDue(on: now(), calendar: calendar) || habits[index].checkOffs.contains(today)
         else { return nil }
 
         let habit = habits[index]
-        let updated: Habit
-        if habit.checkOffs.contains(today) {
-            updated = habit.withCheckOffs(habit.checkOffs.filter { $0 != today })
-        } else {
-            updated = habit.withCheckOffs(habit.checkOffs + [today])
+        let isCheckedOff = !habit.checkOffs.contains(today)
+
+        if case .mirror(let transport) = sync {
+            // An absolute state for the Watch's own day, replayed over the snapshot until the
+            // phone acknowledges it (ADR 0003).
+            let command = HabitCommand(id: UUID(), action: .setCheckOff(habitID: id, day: today, isCheckedOff: isCheckedOff))
+            outbox.append(command)
+            persistOutbox()
+            recomputeHabits()
+            refreshForCurrentDay()
+            transport.send(command)
+            return habits.first { $0.id == id }
         }
+
+        let updated = habit.settingCheckOff(on: today, to: isCheckedOff)
         habits[index] = updated
         refreshForCurrentDay()
         persist()
@@ -561,11 +658,47 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         publishChange()
     }
 
+    /// Applies a Watch command on the phone (`.publish` side) in arrival order, last applied
+    /// wins (ADR 0003). The stated day is recorded even if it is late or a schedule edit has
+    /// happened since; schedule history decides whether it counts. A command for a deleted
+    /// habit changes nothing. Every command is acknowledged: recorded as processed and carried
+    /// in the next snapshot, so the Watch can retire it.
+    private func applyCommand(_ command: HabitCommand) {
+        guard !processedCommandIDs.contains(command.id) else { return }
+
+        switch command.action {
+        case .setCheckOff(let habitID, let day, let isCheckedOff):
+            if !tombstonedHabitIDs.contains(habitID),
+               let index = habits.firstIndex(where: { $0.id == habitID }) {
+                habits[index] = habits[index].settingCheckOff(on: day, to: isCheckedOff)
+            }
+        }
+
+        processedCommandIDs.append(command.id)
+        if processedCommandIDs.count > Self.maxBoundedSetSize {
+            processedCommandIDs.removeFirst(processedCommandIDs.count - Self.maxBoundedSetSize)
+        }
+        persistProcessedCommandIDs()
+        refreshForCurrentDay()
+        persist()
+        publishChange()
+    }
+
+    private func recordTombstone(_ id: UUID) {
+        tombstonedHabitIDs.append(id)
+        if tombstonedHabitIDs.count > Self.maxBoundedSetSize {
+            tombstonedHabitIDs.removeFirst(tombstonedHabitIDs.count - Self.maxBoundedSetSize)
+        }
+        persistTombstones()
+    }
+
     /// Gives habits saved before creation days were recorded their fallback day, and saves it.
     private func backfillCreationDays() {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
-        guard habits.contains(where: { $0.createdOn == nil }) else { return }
-        habits = habits.map { $0.createdOn == nil ? $0.withCreatedOn($0.resolvedCreatedOn(fallback: today)) : $0 }
+        let loaded = isMirror ? baseHabits : habits
+        guard loaded.contains(where: { $0.createdOn == nil }) else { return }
+        let filled = loaded.map { $0.createdOn == nil ? $0.withCreatedOn($0.resolvedCreatedOn(fallback: today)) : $0 }
+        if isMirror { baseHabits = filled } else { habits = filled }
         persist()
     }
 
@@ -604,9 +737,29 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         }
     }
 
+    /// Saves the habits: the phone's own, or the Watch's last snapshot (the outbox is saved apart).
     private func persist() {
-        guard let data = try? JSONEncoder().encode(habits) else { return }
+        guard let data = try? JSONEncoder().encode(isMirror ? baseHabits : habits) else { return }
         userDefaults.set(data, forKey: storageKey)
+    }
+
+    private func persistOutbox() {
+        guard let data = try? JSONEncoder().encode(outbox) else { return }
+        userDefaults.set(data, forKey: outboxKey)
+    }
+
+    private func persistTombstones() {
+        guard let data = try? JSONEncoder().encode(tombstonedHabitIDs) else { return }
+        userDefaults.set(data, forKey: tombstonesKey)
+    }
+
+    private func persistProcessedCommandIDs() {
+        guard let data = try? JSONEncoder().encode(processedCommandIDs) else { return }
+        userDefaults.set(data, forKey: processedCommandIDsKey)
+    }
+
+    private static func decode<Value: Decodable>(_ type: Value.Type, forKey key: String, in userDefaults: UserDefaults) -> Value? {
+        userDefaults.data(forKey: key).flatMap { try? JSONDecoder().decode(type, from: $0) }
     }
 
     private static func ordered(_ habits: [Habit]) -> [Habit] {

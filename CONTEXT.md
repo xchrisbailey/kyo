@@ -59,3 +59,7 @@ _Avoid_: Caption, dictation text
 **Memo history**:
 All memos from days before Today, browsable and searchable.
 _Avoid_: Archive, past memos
+
+**Suggested task**:
+A task the on-device AI proposes from a memo; it isn't a task until the user adds it to Today.
+_Avoid_: Action item, AI task

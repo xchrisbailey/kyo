@@ -11,7 +11,7 @@ final class HabitListBehaviorTests: XCTestCase {
         let second = try XCTUnwrap(list.addHabit(name: "Walk"))
 
         XCTAssertEqual(list.habits.map(\.name), ["Read", "Walk"])
-        XCTAssertEqual(list.habits.map(\.creationOrder), [0, 1])
+        XCTAssertEqual(list.habits.map(\.order), [0, 1])
         XCTAssertNotEqual(first.id, second.id)
         XCTAssertEqual(list.todayHabits.map(\.habit.name), ["Read", "Walk"])
         XCTAssertEqual(list.todayCount, 2)
@@ -82,7 +82,7 @@ final class HabitListBehaviorTests: XCTestCase {
         XCTAssertEqual(reopened.todayHabits, list.todayHabits)
         XCTAssertEqual(reopened.doneCount, 1)
         let third = try XCTUnwrap(reopened.addHabit(name: "Third"))
-        XCTAssertEqual(third.creationOrder, 2)
+        XCTAssertEqual(third.order, 2)
     }
 
     func testCheckOffsAreKeyedToTheCurrentDay() throws {

@@ -11,7 +11,7 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     /// Position in the manager's order; Today follows it. New habits go to the end.
-    let creationOrder: Int64
+    let order: Int64
     let schedule: HabitSchedule
     /// The habit's log: one entry per calendar day it was checked off. A missed day is the
     /// absence of an entry.
@@ -20,33 +20,33 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
     init(
         id: UUID = UUID(),
         name: String,
-        creationOrder: Int64,
+        order: Int64,
         schedule: HabitSchedule = .everyDay,
         checkOffs: [TaskCompletionDay] = []
     ) {
         self.id = id
         self.name = name
-        self.creationOrder = creationOrder
+        self.order = order
         self.schedule = schedule
         self.checkOffs = checkOffs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, creationOrder, schedule, checkOffs
+        case id, name, order, schedule, checkOffs
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
-        creationOrder = try container.decode(Int64.self, forKey: .creationOrder)
+        order = try container.decode(Int64.self, forKey: .order)
         // Missing fields decode to defaults so later schema additions need no migration.
         schedule = try container.decodeIfPresent(HabitSchedule.self, forKey: .schedule) ?? .everyDay
         checkOffs = try container.decodeIfPresent([TaskCompletionDay].self, forKey: .checkOffs) ?? []
     }
 
     func withCheckOffs(_ checkOffs: [TaskCompletionDay]) -> Habit {
-        Habit(id: id, name: name, creationOrder: creationOrder, schedule: schedule, checkOffs: checkOffs)
+        Habit(id: id, name: name, order: order, schedule: schedule, checkOffs: checkOffs)
     }
 }
 
@@ -111,8 +111,8 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return nil }
 
-        let creationOrder = (habits.map(\.creationOrder).max() ?? -1) + 1
-        let habit = Habit(name: trimmedName, creationOrder: creationOrder)
+        let order = (habits.map(\.order).max() ?? -1) + 1
+        let habit = Habit(name: trimmedName, order: order)
         habits = Self.ordered(habits + [habit])
         refreshForCurrentDay()
         persist()
@@ -167,10 +167,10 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
 
     private static func ordered(_ habits: [Habit]) -> [Habit] {
         habits.sorted {
-            if $0.creationOrder == $1.creationOrder {
+            if $0.order == $1.order {
                 return $0.id.uuidString < $1.id.uuidString
             }
-            return $0.creationOrder < $1.creationOrder
+            return $0.order < $1.order
         }
     }
 }

@@ -17,7 +17,9 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
 
     private let session: WCSession?
     private let logger = Logger(subsystem: "com.example.kyo", category: "watch-sync")
-    private var latestOutgoing: TaskListSnapshot?
+    /// Latest encoded payload per context key. `updateApplicationContext` replaces the whole
+    /// dictionary, so all keys are always written together.
+    private var outgoingContext = ApplicationContextEntries()
     private var latestIncoming: TaskListSnapshot?
     private var handler: (@MainActor (TaskListSnapshot) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
@@ -32,7 +34,19 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
     }
 
     func publish(_ snapshot: TaskListSnapshot) {
-        latestOutgoing = snapshot
+        do {
+            publishContextEntry(try JSONEncoder().encode(snapshot), forKey: Self.snapshotKey)
+            logger.log("published revision \(snapshot.revision) (\(snapshot.tasks.count) tasks)")
+        } catch {
+            logger.error("failed to encode snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    /// Records `data` as the latest payload for `key` and writes every key's latest payload in
+    /// one application-context update, so publishing one snapshot kind never erases another.
+    /// Other snapshot kinds (e.g. habits) publish through here.
+    func publishContextEntry(_ data: Data, forKey key: String) {
+        outgoingContext.set(data, forKey: key)
         sendLatest()
     }
 
@@ -93,13 +107,11 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, WCS
         #if os(iOS)
         guard session.isPaired, session.isWatchAppInstalled else { return }
         #endif
-        guard let snapshot = latestOutgoing else { return }
+        guard !outgoingContext.isEmpty else { return }
         do {
-            let data = try JSONEncoder().encode(snapshot)
-            try session.updateApplicationContext([Self.snapshotKey: data])
-            logger.log("published revision \(snapshot.revision) (\(snapshot.tasks.count) tasks)")
+            try session.updateApplicationContext(outgoingContext.context)
         } catch {
-            logger.error("failed to publish snapshot: \(error.localizedDescription)")
+            logger.error("failed to update application context: \(error.localizedDescription)")
         }
     }
 

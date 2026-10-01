@@ -123,6 +123,8 @@ struct TodayView: View {
                     switch sheet {
                     case .calendar:
                         CalendarPreviewSheet()
+                    case .settings:
+                        SettingsSheet(habitList: habitList)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .editHabit(let id):
@@ -176,12 +178,30 @@ struct TodayView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("kyo")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                .tracking(-0.4)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 17)
-                .accessibilityLabel("Kyo")
+            HStack {
+                Text("kyo")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .tracking(-0.4)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Kyo")
+                Spacer()
+                Button {
+                    activeSheet = .settings
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                // The 44pt tap target overhangs the wordmark's line and the edge, not the layout.
+                .padding(.vertical, -13)
+                .padding(.trailing, -12)
+                .accessibilityLabel("Settings")
+                .accessibilityHint("Opens Settings")
+            }
+            .padding(.bottom, 17)
 
             Text("Today")
                 .font(.largeTitle.weight(.bold))
@@ -258,12 +278,14 @@ struct TodayView: View {
 
 private enum TodayPreviewSheet: Identifiable {
     case calendar
+    case settings
     case habitForm
     case editHabit(UUID)
 
     var id: String {
         switch self {
         case .calendar: "calendar"
+        case .settings: "settings"
         case .habitForm: "habitForm"
         case .editHabit(let id): "editHabit:\(id.uuidString)"
         }
@@ -678,160 +700,6 @@ private struct HabitRow: View {
             }
         }
         .accessibilityHidden(true)
-    }
-
-    private var accentColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.57, green: 0.79, blue: 0.68)
-            : Color(red: 0.22, green: 0.43, blue: 0.34)
-    }
-}
-
-private struct HabitFormSheet: View {
-    private enum ScheduleKind: String, CaseIterable, Identifiable {
-        case everyDay = "Every day"
-        case weekdays = "Weekdays"
-        case weeklyTarget = "Weekly target"
-
-        var id: Self { self }
-    }
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var kind: ScheduleKind
-    @State private var weekdays: Set<Int>
-    @State private var weeklyTarget: Int
-    @State private var isConfirmingDelete = false
-    @FocusState private var isNameFocused: Bool
-    /// The habit being edited; `nil` when adding.
-    private let habit: Habit?
-    /// Returns whether the habit was saved.
-    private let onSave: (String, HabitSchedule) -> Bool
-    private let onDelete: () -> Void
-
-    init(habit: Habit? = nil, onSave: @escaping (String, HabitSchedule) -> Bool, onDelete: @escaping () -> Void = {}) {
-        self.habit = habit
-        self.onSave = onSave
-        self.onDelete = onDelete
-        _name = State(initialValue: habit?.name ?? "")
-        switch habit?.schedule ?? .everyDay {
-        case .everyDay:
-            _kind = State(initialValue: .everyDay)
-            _weekdays = State(initialValue: [])
-            _weeklyTarget = State(initialValue: 3)
-        case .weekdays(let days):
-            _kind = State(initialValue: .weekdays)
-            _weekdays = State(initialValue: days)
-            _weeklyTarget = State(initialValue: 3)
-        case .weeklyTarget(let target):
-            _kind = State(initialValue: .weeklyTarget)
-            _weekdays = State(initialValue: [])
-            _weeklyTarget = State(initialValue: target)
-        }
-    }
-
-    private var schedule: HabitSchedule {
-        switch kind {
-        case .everyDay: .everyDay
-        case .weekdays: .weekdays(weekdays)
-        case .weeklyTarget: .weeklyTarget(weeklyTarget)
-        }
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && schedule.isValid
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Name", text: $name)
-                    .focused($isNameFocused)
-                    .submitLabel(.done)
-                    .onSubmit(save)
-                    .accessibilityLabel("Habit name")
-                Section("Schedule") {
-                    Picker("Schedule", selection: $kind) {
-                        ForEach(ScheduleKind.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    switch kind {
-                    case .everyDay:
-                        EmptyView()
-                    case .weekdays:
-                        WeekdayChips(selection: $weekdays)
-                    case .weeklyTarget:
-                        Stepper(
-                            weeklyTarget == 1 ? "1 day a week" : "\(weeklyTarget) days a week",
-                            value: $weeklyTarget,
-                            in: HabitSchedule.weeklyTargetRange
-                        )
-                    }
-                }
-                if habit != nil {
-                    Section {
-                        Button("Delete habit", role: .destructive) { isConfirmingDelete = true }
-                            .accessibilityHint("Deletes this habit and its log")
-                    }
-                }
-            }
-            .navigationTitle(habit == nil ? "New Habit" : "Edit Habit")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
-                        .disabled(!canSave)
-                }
-            }
-            .onAppear { isNameFocused = habit == nil }
-            .confirmationDialog("Delete this habit?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-                Button("Delete habit and log", role: .destructive) {
-                    onDelete()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This permanently deletes \"\(habit?.name ?? "")\" and its log. It can't be undone.")
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func save() {
-        guard canSave, onSave(name, schedule) else { return }
-        dismiss()
-    }
-}
-
-/// One toggle chip per weekday, in the device locale's week order.
-private struct WeekdayChips: View {
-    @Binding var selection: Set<Int>
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        let calendar = Calendar.current
-        HStack(spacing: 6) {
-            ForEach(HabitSchedule.weekdaysInWeekOrder(calendar: calendar), id: \.self) { day in
-                let isSelected = selection.contains(day)
-                Button {
-                    if isSelected { selection.remove(day) } else { selection.insert(day) }
-                } label: {
-                    Text(calendar.veryShortWeekdaySymbols[day - 1])
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .foregroundStyle(isSelected ? Color(uiColor: .secondarySystemBackground) : Color.primary)
-                        .background(Circle().fill(isSelected ? accentColor : Color(uiColor: .tertiarySystemFill)))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(calendar.weekdaySymbols[day - 1])
-                .accessibilityValue(isSelected ? "Selected" : "Not selected")
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-            }
-        }
     }
 
     private var accentColor: Color {

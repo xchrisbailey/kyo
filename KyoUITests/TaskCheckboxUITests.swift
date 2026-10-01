@@ -112,6 +112,49 @@ final class TaskCheckboxUITests: XCTestCase {
         assertCheckboxValue(app.buttons["Stretch"], equals: "Not completed")
     }
 
+    func testCreatingAWeekdayHabitThroughTheForm() throws {
+        let app = XCUIApplication()
+        launchIsolatedApp(app)
+
+        let calendar = Calendar.current
+        let todayIndex = calendar.component(.weekday, from: .now) - 1
+        let today = calendar.weekdaySymbols[todayIndex]
+        let otherDay = calendar.weekdaySymbols[(todayIndex + 1) % 7]
+        let summary = app.descendants(matching: .any)["summary-Habits done"]
+
+        // A weekday habit on another day exists but isn't due.
+        openHabitForm(in: app)
+        app.textFields["Habit name"].typeText("Elsewhere")
+        app.buttons["Weekdays"].tap()
+        XCTAssertFalse(app.buttons["Save"].isEnabled, "Save needs at least one weekday")
+        app.buttons[otherDay].tap()
+        XCTAssertTrue(app.buttons["Save"].isEnabled)
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["Nothing due today"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Elsewhere"].exists)
+        XCTAssertEqual(summary.value as? String, "0 / 0 habits done")
+
+        // A weekday habit on today's weekday is listed and can be checked off.
+        openHabitForm(in: app)
+        app.textFields["Habit name"].typeText("Today only")
+        app.buttons["Weekdays"].tap()
+        app.buttons[today].tap()
+        app.buttons["Save"].tap()
+        let circle = app.buttons["Today only"]
+        XCTAssertTrue(circle.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["Nothing due today"].exists)
+        XCTAssertEqual(summary.value as? String, "0 / 1 habits done")
+        circle.tap()
+        assertCheckboxValue(app.buttons["Today only"], equals: "Completed")
+        XCTAssertEqual(summary.value as? String, "1 / 1 habits done")
+    }
+
+    private func openHabitForm(in app: XCUIApplication) {
+        app.buttons["Add an item"].tap()
+        app.buttons["Habit"].tap()
+        XCTAssertTrue(app.textFields["Habit name"].waitForExistence(timeout: 3))
+    }
+
     private func addTask(_ title: String, to app: XCUIApplication) {
         app.buttons["Add an item"].tap()
         app.buttons["Task"].tap()

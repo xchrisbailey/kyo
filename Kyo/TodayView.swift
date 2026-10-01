@@ -56,7 +56,7 @@ struct TodayView: View {
                         }
                         TodaySection(title: "Habits", note: "Small steps, daily") {
                             VStack(spacing: 0) {
-                                if habitList.todayHabits.isEmpty {
+                                if habitList.habits.isEmpty {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("No habits yet")
                                             .font(.body)
@@ -68,6 +68,12 @@ struct TodayView: View {
                                     .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                                     .padding(.horizontal, 14)
                                     .accessibilityElement(children: .combine)
+                                } else if habitList.todayHabits.isEmpty {
+                                    Text("Nothing due today")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                                        .padding(.horizontal, 14)
                                 }
                                 ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
                                     if index > 0 { rowDivider }
@@ -114,7 +120,7 @@ struct TodayView: View {
                     case .calendar:
                         CalendarPreviewSheet()
                     case .habitForm:
-                        HabitFormSheet(onSave: { name in habitList.addHabit(name: name) != nil })
+                        HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     }
                 }
                 .onDisappear(perform: abandonTaskDraft)
@@ -579,8 +585,8 @@ private struct HabitRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(entry.habit.name)
-            .accessibilityValue(entry.isDone ? "Completed" : "Not completed")
-            .accessibilityHint(entry.isDone ? "Removes today's check-off" : "Checks this habit off for today")
+            .accessibilityValue(accessibilityValue)
+            .accessibilityHint(entry.isCheckedOffToday ? "Removes today's check-off" : "Checks this habit off for today")
 
             Text(entry.habit.name)
                 .font(.body)
@@ -588,19 +594,36 @@ private struct HabitRow: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityHidden(true)
+
+            if let progress = entry.weekProgress {
+                Text("\(progress.count)/\(progress.target)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
     }
 
+    /// "Completed" only when Today has a check-off; week progress follows for weekly targets.
+    private var accessibilityValue: String {
+        var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
+        if let progress = entry.weekProgress {
+            value += ", \(progress.count) of \(progress.target) this week"
+            if progress.isTargetMet && !entry.isCheckedOffToday { value += ", target met" }
+        }
+        return value
+    }
+
     private var checkboxGlyph: some View {
         ZStack {
             Circle()
-                .strokeBorder(entry.isDone ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
-                .background(Circle().fill(entry.isDone ? accentColor : .clear))
+                .strokeBorder(entry.isCheckedOffToday ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .background(Circle().fill(entry.isCheckedOffToday ? accentColor : .clear))
                 .frame(width: 23, height: 23)
-            if entry.isDone {
+            if entry.isCheckedOffToday {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color(uiColor: .secondarySystemBackground))
@@ -617,14 +640,33 @@ private struct HabitRow: View {
 }
 
 private struct HabitFormSheet: View {
+    private enum ScheduleKind: String, CaseIterable, Identifiable {
+        case everyDay = "Every day"
+        case weekdays = "Weekdays"
+        case weeklyTarget = "Weekly target"
+
+        var id: Self { self }
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
+    @State private var kind = ScheduleKind.everyDay
+    @State private var weekdays: Set<Int> = []
+    @State private var weeklyTarget = 3
     @FocusState private var isNameFocused: Bool
     /// Returns whether the habit was saved.
-    let onSave: (String) -> Bool
+    let onSave: (String, HabitSchedule) -> Bool
+
+    private var schedule: HabitSchedule {
+        switch kind {
+        case .everyDay: .everyDay
+        case .weekdays: .weekdays(weekdays)
+        case .weeklyTarget: .weeklyTarget(weeklyTarget)
+        }
+    }
 
     private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && schedule.isValid
     }
 
     var body: some View {
@@ -635,6 +677,25 @@ private struct HabitFormSheet: View {
                     .submitLabel(.done)
                     .onSubmit(save)
                     .accessibilityLabel("Habit name")
+                Section("Schedule") {
+                    Picker("Schedule", selection: $kind) {
+                        ForEach(ScheduleKind.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    switch kind {
+                    case .everyDay:
+                        EmptyView()
+                    case .weekdays:
+                        WeekdayChips(selection: $weekdays)
+                    case .weeklyTarget:
+                        Stepper(
+                            weeklyTarget == 1 ? "1 day a week" : "\(weeklyTarget) days a week",
+                            value: $weeklyTarget,
+                            in: HabitSchedule.weeklyTargetRange
+                        )
+                    }
+                }
             }
             .navigationTitle("New Habit")
             .navigationBarTitleDisplayMode(.inline)
@@ -649,12 +710,46 @@ private struct HabitFormSheet: View {
             }
             .onAppear { isNameFocused = true }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 
     private func save() {
-        guard canSave, onSave(name) else { return }
+        guard canSave, onSave(name, schedule) else { return }
         dismiss()
+    }
+}
+
+/// One toggle chip per weekday, in the device locale's week order.
+private struct WeekdayChips: View {
+    @Binding var selection: Set<Int>
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let calendar = Calendar.current
+        HStack(spacing: 6) {
+            ForEach(HabitSchedule.weekdaysInWeekOrder(calendar: calendar), id: \.self) { day in
+                let isSelected = selection.contains(day)
+                Button {
+                    if isSelected { selection.remove(day) } else { selection.insert(day) }
+                } label: {
+                    Text(calendar.veryShortWeekdaySymbols[day - 1])
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .foregroundStyle(isSelected ? Color(uiColor: .secondarySystemBackground) : Color.primary)
+                        .background(Circle().fill(isSelected ? accentColor : Color(uiColor: .tertiarySystemFill)))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(calendar.weekdaySymbols[day - 1])
+                .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+    }
+
+    private var accentColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.57, green: 0.79, blue: 0.68)
+            : Color(red: 0.22, green: 0.43, blue: 0.34)
     }
 }
 

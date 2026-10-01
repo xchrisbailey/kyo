@@ -1,10 +1,39 @@
 import Combine
 import Foundation
 
-/// The rule that decides which days a habit is due. Only `everyDay` exists so far; the
-/// enum is the seam where specific weekdays and weekly targets are added later.
+/// The rule that decides which days a habit is due.
 enum HabitSchedule: Codable, Equatable, Sendable {
     case everyDay
+    /// Due only on these days, as `Calendar` weekday numbers (1 = Sunday). At least one.
+    case weekdays(Set<Int>)
+    /// Due every day until checked off on this many days (1...6) in the calendar week.
+    case weeklyTarget(Int)
+
+    static let weeklyTargetRange = 1...6
+
+    /// Whether the schedule can be saved: weekdays need at least one valid day and a weekly
+    /// target must be within `weeklyTargetRange`.
+    var isValid: Bool {
+        switch self {
+        case .everyDay: true
+        case .weekdays(let days): !days.isEmpty && days.allSatisfy { (1...7).contains($0) }
+        case .weeklyTarget(let target): Self.weeklyTargetRange.contains(target)
+        }
+    }
+
+    /// Weekday numbers in the calendar's week order, starting at its `firstWeekday`.
+    static func weekdaysInWeekOrder(calendar: Calendar) -> [Int] {
+        (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
+    }
+}
+
+/// A weekly-target habit's check-offs so far this calendar week against its target.
+struct HabitWeekProgress: Equatable, Sendable {
+    /// Days checked off this week; at most one per day, and it can exceed `target`.
+    let count: Int
+    let target: Int
+
+    var isTargetMet: Bool { count >= target }
 }
 
 struct Habit: Identifiable, Codable, Equatable, Sendable {
@@ -48,12 +77,41 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
     func withCheckOffs(_ checkOffs: [TaskCompletionDay]) -> Habit {
         Habit(id: id, name: name, order: order, schedule: schedule, checkOffs: checkOffs)
     }
+
+    /// Whether the schedule makes the habit due on `date`. Weekly-target habits are due every day.
+    func isDue(on date: Date, calendar: Calendar) -> Bool {
+        switch schedule {
+        case .everyDay, .weeklyTarget: true
+        case .weekdays(let days): days.contains(calendar.component(.weekday, from: date))
+        }
+    }
+
+    /// Week progress for the calendar week containing `date` (the week starts on the calendar's
+    /// `firstWeekday`). `nil` unless the habit has a weekly target. The target is never prorated.
+    func weekProgress(on date: Date, calendar: Calendar) -> HabitWeekProgress? {
+        guard case .weeklyTarget(let target) = schedule,
+              let week = calendar.dateInterval(of: .weekOfYear, for: date) else { return nil }
+        let days = Set(checkOffs.compactMap { checkOff -> Date? in
+            let components = DateComponents(
+                era: checkOff.era, year: checkOff.year, month: checkOff.month, day: checkOff.day
+            )
+            return calendar.date(from: components).map { calendar.startOfDay(for: $0) }
+        })
+        return HabitWeekProgress(count: days.filter { week.contains($0) }.count, target: target)
+    }
 }
 
 /// A habit on Today's list, with whether it sits in the done group.
 struct TodayHabit: Identifiable, Equatable, Sendable {
     let habit: Habit
+    /// Whether the habit is in the done group: checked off today, or a weekly-target habit
+    /// whose target is already met this week.
     let isDone: Bool
+    /// Whether Today has a check-off. A habit can be done without it (target met earlier in
+    /// the week); its circle then stays empty and tapping adds Today's check-off.
+    let isCheckedOffToday: Bool
+    /// This week's progress; `nil` unless the habit has a weekly target.
+    let weekProgress: HabitWeekProgress?
 
     var id: UUID { habit.id }
 }
@@ -68,9 +126,18 @@ protocol HabitListBehavior: AnyObject {
     var todayCount: Int { get }
     /// Habits in the done group (the numerator of the "Habits done" summary).
     var doneCount: Int { get }
-    @discardableResult func addHabit(name: String) -> Habit?
-    /// Checks the habit off for Today, or removes Today's check-off.
+    /// Adds a habit at the end of the manager's order. Returns `nil` for a blank name or an
+    /// invalid schedule (no weekdays, or a weekly target outside 1...6).
+    @discardableResult func addHabit(name: String, schedule: HabitSchedule) -> Habit?
+    /// Checks the habit off for Today, or removes Today's check-off. Only habits on Today's
+    /// list can be toggled.
     @discardableResult func toggleCheckOff(id: UUID) -> Habit?
+}
+
+extension HabitListBehavior {
+    @discardableResult func addHabit(name: String) -> Habit? {
+        addHabit(name: name, schedule: .everyDay)
+    }
 }
 
 @MainActor
@@ -107,12 +174,12 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     }
 
     @discardableResult
-    func addHabit(name: String) -> Habit? {
+    func addHabit(name: String, schedule: HabitSchedule) -> Habit? {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return nil }
+        guard !trimmedName.isEmpty, schedule.isValid else { return nil }
 
         let order = (habits.map(\.order).max() ?? -1) + 1
-        let habit = Habit(name: trimmedName, order: order)
+        let habit = Habit(name: trimmedName, order: order, schedule: schedule)
         habits = Self.ordered(habits + [habit])
         refreshForCurrentDay()
         persist()
@@ -121,7 +188,8 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
 
     @discardableResult
     func toggleCheckOff(id: UUID) -> Habit? {
-        guard let index = habits.firstIndex(where: { $0.id == id }) else { return nil }
+        guard let index = habits.firstIndex(where: { $0.id == id }),
+              habits[index].isDue(on: now(), calendar: calendar) else { return nil }
 
         let today = TaskCompletionDay(date: now(), calendar: calendar)
         let habit = habits[index]
@@ -141,7 +209,17 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     /// after midnight yesterday's check-offs no longer put a habit in the done group.
     func refreshForCurrentDay() {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
-        let entries = habits.map { TodayHabit(habit: $0, isDone: $0.checkOffs.contains(today)) }
+        let date = now()
+        let entries = habits.filter { $0.isDue(on: date, calendar: calendar) }.map { habit -> TodayHabit in
+            let isCheckedOffToday = habit.checkOffs.contains(today)
+            let progress = habit.weekProgress(on: date, calendar: calendar)
+            return TodayHabit(
+                habit: habit,
+                isDone: isCheckedOffToday || progress?.isTargetMet == true,
+                isCheckedOffToday: isCheckedOffToday,
+                weekProgress: progress
+            )
+        }
         todayHabits = entries.filter { !$0.isDone } + entries.filter(\.isDone)
     }
 

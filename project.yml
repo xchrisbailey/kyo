@@ -77,6 +77,7 @@ targets:
       - KyoTests
       - Shared/DailyTask.swift
       - Shared/TaskSync.swift
+      - Shared/ApplicationContextEntries.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests

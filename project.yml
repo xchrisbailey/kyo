@@ -77,6 +77,7 @@ targets:
       - KyoTests
       - Shared/DailyTask.swift
       - Shared/Habit.swift
+      - Shared/HabitSync.swift
       - Shared/TaskSync.swift
       - Shared/ApplicationContextEntries.swift
     settings:

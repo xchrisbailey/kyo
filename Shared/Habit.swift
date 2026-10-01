@@ -253,6 +253,13 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
     /// first partial week counts only if met). Cost is linear in the log plus the streak's
     /// length.
     func streak(on date: Date, calendar: Calendar) -> Int {
+        streakRun(on: date, calendar: calendar).length
+    }
+
+    /// The streak's length and the start of its oldest counted unit (the day, or the week's
+    /// first day); `nil` when the streak is 0. Log entries before that start can't change the
+    /// streak: the unit just before it was missed, or the streak had reached its floor.
+    private func streakRun(on date: Date, calendar: Calendar) -> (length: Int, start: Date?) {
         let today = calendar.startOfDay(for: date)
         let creation = resolvedCreatedOn(fallback: TaskCompletionDay(date: date, calendar: calendar))
         let created = calendar.date(from: DateComponents(
@@ -263,11 +270,13 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
 
         if !schedule(on: date, calendar: calendar).isWeekly {
             var streak = 0
+            var start: Date?
             var day = today
             while day >= floor {
                 if isDue(on: day, calendar: calendar) {
                     if checked.contains(day) {
                         streak += 1
+                        start = day
                     } else if day != today {
                         break
                     }
@@ -275,7 +284,7 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
                 guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
                 day = previous
             }
-            return streak
+            return (streak, start)
         } else {
             var perWeek: [Date: Int] = [:]
             for day in checked {
@@ -283,13 +292,15 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
                 perWeek[week.start, default: 0] += 1
             }
             guard let currentWeek = calendar.dateInterval(of: .weekOfYear, for: today),
-                  let firstWeek = calendar.dateInterval(of: .weekOfYear, for: floor) else { return 0 }
+                  let firstWeek = calendar.dateInterval(of: .weekOfYear, for: floor) else { return (0, nil) }
             var streak = 0
+            var start: Date?
             var week = currentWeek
             while week.start >= firstWeek.start {
                 let isMet = weeklyTarget(inWeek: week, calendar: calendar).map { perWeek[week.start, default: 0] >= $0 } ?? false
                 if isMet {
                     streak += 1
+                    start = week.start
                 } else if week.start != currentWeek.start && week.start != firstWeek.start {
                     break
                 }
@@ -297,8 +308,29 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
                       let previousWeek = calendar.dateInterval(of: .weekOfYear, for: previous) else { break }
                 week = previousWeek
             }
-            return streak
+            return (streak, start)
         }
+    }
+
+    /// The habit with its log cut to what `date` (Today) needs: the current streak and, for
+    /// weekly targets, this week's progress. Check-offs before the streak's oldest counted unit
+    /// and before the current week are dropped; streak, week progress and Today's check-off are
+    /// unchanged, and stay right on later days until a new snapshot arrives. Falls back to the
+    /// full log if the cut would ever change the streak or week progress.
+    func trimmedLog(on date: Date, calendar: Calendar) -> Habit {
+        let run = streakRun(on: date, calendar: calendar)
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+        let cutoff = min(run.start ?? weekStart, weekStart)
+        let kept = checkOffs.filter { checkOff in
+            let components = DateComponents(era: checkOff.era, year: checkOff.year, month: checkOff.month, day: checkOff.day)
+            guard let day = calendar.date(from: components) else { return true }
+            return calendar.startOfDay(for: day) >= cutoff
+        }
+        let trimmed = withCheckOffs(kept)
+        guard trimmed.streak(on: date, calendar: calendar) == run.length,
+              trimmed.weekProgress(on: date, calendar: calendar) == weekProgress(on: date, calendar: calendar)
+        else { return self }
+        return trimmed
     }
 }
 
@@ -364,20 +396,39 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     private let storageKey: String
     private let now: () -> Date
     private let calendar: Calendar
+    private let sync: HabitListSync?
+    private let revisionKey: String
+    private var revision: Int64?
 
     var todayCount: Int { todayHabits.count }
     var doneCount: Int { todayHabits.filter(\.isDone).count }
+
+    /// Whether this store has habits to show. Always true unless it mirrors the phone (Watch)
+    /// and no habit snapshot was ever applied.
+    var hasSynced: Bool {
+        if case .mirror = sync { return revision != nil }
+        return true
+    }
+
+    private var isMirror: Bool {
+        if case .mirror = sync { return true }
+        return false
+    }
 
     init(
         userDefaults: UserDefaults = .standard,
         storageKey: String = HabitListStore.storageKey,
         now: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        sync: HabitListSync? = nil
     ) {
         self.userDefaults = userDefaults
         self.storageKey = storageKey
         self.now = now
         self.calendar = calendar
+        self.sync = sync
+        self.revisionKey = storageKey + ".revision"
+        self.revision = sync == nil ? nil : (userDefaults.object(forKey: revisionKey) as? NSNumber)?.int64Value
 
         if let data = userDefaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([Habit].self, from: data) {
@@ -385,10 +436,56 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
             backfillCreationDays()
         }
         refreshForCurrentDay()
+
+        switch sync {
+        case .publish(let transport):
+            // Seed a revision from the wall clock on a fresh install, as the task store does
+            // (ADR 0001), rather than publishing at revision 0 forever.
+            if revision == nil {
+                let seeded = Int64(now().timeIntervalSince1970 * 1000)
+                revision = seeded
+                userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
+            }
+            transport.publish(snapshot(revision: revision ?? 0))
+        case .mirror(let transport):
+            // Registered last: the transport may call the handler synchronously.
+            transport.setHabitSnapshotHandler { [weak self] snapshot in
+                self?.apply(snapshot)
+            }
+        case nil:
+            break
+        }
+    }
+
+    /// Applies an incoming snapshot per ADR 0001's rule: only a revision strictly greater than
+    /// the last one applied (or any, if none was) replaces the habits. The habits are saved
+    /// before the revision, so a crash between the two re-applies the same snapshot.
+    private func apply(_ snapshot: HabitListSnapshot) {
+        guard isMirror, revision.map({ snapshot.revision > $0 }) ?? true else { return }
+        habits = Self.ordered(snapshot.habits)
+        persist()
+        revision = snapshot.revision
+        userDefaults.set(NSNumber(value: snapshot.revision), forKey: revisionKey)
+        refreshForCurrentDay()
+        objectWillChange.send()
+    }
+
+    private func snapshot(revision: Int64) -> HabitListSnapshot {
+        HabitListSnapshot(revision: revision, habits: habits, trimmedOn: now(), calendar: calendar)
+    }
+
+    /// Bumps the revision with ADR 0001's hybrid clock and publishes. Phone side only.
+    private func publishChange() {
+        guard case .publish(let transport) = sync else { return }
+        let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
+        revision = candidate
+        userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
+        transport.publish(snapshot(revision: candidate))
     }
 
     @discardableResult
     func addHabit(name: String, schedule: HabitSchedule) -> Habit? {
+        guard !isMirror else { return nil }
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty, schedule.isValid else { return nil }
 
@@ -400,13 +497,14 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         habits = Self.ordered(habits + [habit])
         refreshForCurrentDay()
         persist()
+        publishChange()
         return habit
     }
 
     @discardableResult
     func editHabit(id: UUID, name: String, schedule: HabitSchedule) -> Habit? {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let index = habits.firstIndex(where: { $0.id == id }),
+        guard !isMirror, let index = habits.firstIndex(where: { $0.id == id }),
               !trimmedName.isEmpty, schedule.isValid else { return nil }
 
         let updated = habits[index].withName(trimmedName)
@@ -414,15 +512,17 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         habits[index] = updated
         refreshForCurrentDay()
         persist()
+        publishChange()
         return updated
     }
 
     @discardableResult
     func deleteHabit(id: UUID) -> Habit? {
-        guard let index = habits.firstIndex(where: { $0.id == id }) else { return nil }
+        guard !isMirror, let index = habits.firstIndex(where: { $0.id == id }) else { return nil }
         let removed = habits.remove(at: index)
         refreshForCurrentDay()
         persist()
+        publishChange()
         return removed
     }
 
@@ -430,7 +530,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     func toggleCheckOff(id: UUID) -> Habit? {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
         // A habit made not due by an edit stays on Today while it has a check-off, so it can be unchecked.
-        guard let index = habits.firstIndex(where: { $0.id == id }),
+        guard !isMirror, let index = habits.firstIndex(where: { $0.id == id }),
               habits[index].isDue(on: now(), calendar: calendar) || habits[index].checkOffs.contains(today)
         else { return nil }
 
@@ -444,6 +544,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         habits[index] = updated
         refreshForCurrentDay()
         persist()
+        publishChange()
         return updated
     }
 

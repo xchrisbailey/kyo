@@ -19,7 +19,8 @@ struct TodayView: View {
         let sync: TaskListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
         _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey, sync: sync))
         let habitStorageKey = key.map { $0 + ".habits" } ?? HabitListStore.storageKey
-        _habitList = StateObject(wrappedValue: HabitListStore(storageKey: habitStorageKey))
+        let habitSync: HabitListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
+        _habitList = StateObject(wrappedValue: HabitListStore(storageKey: habitStorageKey, sync: habitSync))
     }
 
     var body: some View {

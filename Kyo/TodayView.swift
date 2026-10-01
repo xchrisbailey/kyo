@@ -595,24 +595,47 @@ private struct HabitRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityHidden(true)
 
-            if let progress = entry.weekProgress {
-                Text("\(progress.count)/\(progress.target)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
-                    .accessibilityHidden(true)
-            }
+            trailingStatus
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
     }
 
-    /// "Completed" only when Today has a check-off; week progress follows for weekly targets.
+    /// Week progress (weekly targets) then the streak flame, hidden at 0.
+    @ViewBuilder
+    private var trailingStatus: some View {
+        let style = entry.isDone ? Color.secondary : Color.primary
+        HStack(spacing: 6) {
+            if let progress = entry.weekProgress {
+                Text("\(progress.count)/\(progress.target)")
+                    .font(.subheadline.monospacedDigit())
+                if entry.streak >= 1 { Text("·") }
+            }
+            if entry.streak >= 1 {
+                Label {
+                    Text(entry.weekProgress == nil ? "\(entry.streak)" : "\(entry.streak)w")
+                        .font(.subheadline.monospacedDigit())
+                } icon: {
+                    Image(systemName: "flame.fill")
+                        .font(.caption)
+                }
+                .labelStyle(.titleAndIcon)
+            }
+        }
+        .foregroundStyle(style)
+        .accessibilityHidden(true)
+    }
+
+    /// "Completed" only when Today has a check-off; week progress and the streak follow.
     private var accessibilityValue: String {
         var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
         if let progress = entry.weekProgress {
             value += ", \(progress.count) of \(progress.target) this week"
             if progress.isTargetMet && !entry.isCheckedOffToday { value += ", target met" }
+        }
+        if entry.streak >= 1 {
+            value += entry.weekProgress == nil ? ", \(entry.streak) day streak" : ", \(entry.streak) week streak"
         }
         return value
     }

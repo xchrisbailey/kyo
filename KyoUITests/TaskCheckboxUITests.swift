@@ -106,7 +106,7 @@ final class TaskCheckboxUITests: XCTestCase {
         assertCheckboxValue(circle, equals: "Not completed")
         XCTAssertEqual(summary.value as? String, "0 / 1 habits done")
         circle.tap()
-        assertCheckboxValue(app.buttons["Stretch"], equals: "Completed")
+        assertCheckboxValue(app.buttons["Stretch"], equals: "Completed, 1 day streak")
         XCTAssertEqual(summary.value as? String, "1 / 1 habits done")
         app.buttons["Stretch"].tap()
         assertCheckboxValue(app.buttons["Stretch"], equals: "Not completed")
@@ -145,7 +145,7 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Nothing due today"].exists)
         XCTAssertEqual(summary.value as? String, "0 / 1 habits done")
         circle.tap()
-        assertCheckboxValue(app.buttons["Today only"], equals: "Completed")
+        assertCheckboxValue(app.buttons["Today only"], equals: "Completed, 1 day streak")
         XCTAssertEqual(summary.value as? String, "1 / 1 habits done")
     }
 

@@ -45,23 +45,28 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
     /// The habit's log: one entry per calendar day it was checked off. A missed day is the
     /// absence of an entry.
     let checkOffs: [TaskCompletionDay]
+    /// The calendar day the habit was added. `nil` only for habits saved before it was recorded;
+    /// the store fills it in on load (earliest check-off, else that day).
+    let createdOn: TaskCompletionDay?
 
     init(
         id: UUID = UUID(),
         name: String,
         order: Int64,
         schedule: HabitSchedule = .everyDay,
-        checkOffs: [TaskCompletionDay] = []
+        checkOffs: [TaskCompletionDay] = [],
+        createdOn: TaskCompletionDay? = nil
     ) {
         self.id = id
         self.name = name
         self.order = order
         self.schedule = schedule
         self.checkOffs = checkOffs
+        self.createdOn = createdOn
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, order, schedule, checkOffs
+        case id, name, order, schedule, checkOffs, createdOn
     }
 
     init(from decoder: Decoder) throws {
@@ -72,10 +77,25 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
         // Missing fields decode to defaults so later schema additions need no migration.
         schedule = try container.decodeIfPresent(HabitSchedule.self, forKey: .schedule) ?? .everyDay
         checkOffs = try container.decodeIfPresent([TaskCompletionDay].self, forKey: .checkOffs) ?? []
+        createdOn = try container.decodeIfPresent(TaskCompletionDay.self, forKey: .createdOn)
     }
 
     func withCheckOffs(_ checkOffs: [TaskCompletionDay]) -> Habit {
-        Habit(id: id, name: name, order: order, schedule: schedule, checkOffs: checkOffs)
+        Habit(id: id, name: name, order: order, schedule: schedule, checkOffs: checkOffs, createdOn: createdOn)
+    }
+
+    func withCreatedOn(_ createdOn: TaskCompletionDay) -> Habit {
+        Habit(id: id, name: name, order: order, schedule: schedule, checkOffs: checkOffs, createdOn: createdOn)
+    }
+
+    /// The creation day for habits saved before it was recorded: the earliest check-off, else
+    /// `fallback`.
+    func resolvedCreatedOn(fallback: TaskCompletionDay) -> TaskCompletionDay {
+        createdOn ?? checkOffs.min(by: { Self.isEarlier($0, $1) }) ?? fallback
+    }
+
+    private static func isEarlier(_ a: TaskCompletionDay, _ b: TaskCompletionDay) -> Bool {
+        (a.era ?? 1, a.year, a.month, a.day) < (b.era ?? 1, b.year, b.month, b.day)
     }
 
     /// Whether the schedule makes the habit due on `date`. Weekly-target habits are due every day.
@@ -86,18 +106,76 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
-    /// Week progress for the calendar week containing `date` (the week starts on the calendar's
-    /// `firstWeekday`). `nil` unless the habit has a weekly target. The target is never prorated.
-    func weekProgress(on date: Date, calendar: Calendar) -> HabitWeekProgress? {
-        guard case .weeklyTarget(let target) = schedule,
-              let week = calendar.dateInterval(of: .weekOfYear, for: date) else { return nil }
-        let days = Set(checkOffs.compactMap { checkOff -> Date? in
+    /// The distinct calendar days with a check-off, as start-of-day dates.
+    private func checkOffDays(calendar: Calendar) -> Set<Date> {
+        Set(checkOffs.compactMap { checkOff -> Date? in
             let components = DateComponents(
                 era: checkOff.era, year: checkOff.year, month: checkOff.month, day: checkOff.day
             )
             return calendar.date(from: components).map { calendar.startOfDay(for: $0) }
         })
-        return HabitWeekProgress(count: days.filter { week.contains($0) }.count, target: target)
+    }
+
+    /// Week progress for the calendar week containing `date` (the week starts on the calendar's
+    /// `firstWeekday`). `nil` unless the habit has a weekly target. The target is never prorated.
+    func weekProgress(on date: Date, calendar: Calendar) -> HabitWeekProgress? {
+        guard case .weeklyTarget(let target) = schedule,
+              let week = calendar.dateInterval(of: .weekOfYear, for: date) else { return nil }
+        return HabitWeekProgress(count: checkOffDays(calendar: calendar).filter { week.contains($0) }.count, target: target)
+    }
+
+    /// The habit's streak as of `date` (Today): consecutive due days with a check-off for
+    /// day-based habits, consecutive calendar weeks with the target met for weekly-target
+    /// habits. Days that aren't due never break it; an unchecked Today or an in-progress week
+    /// never breaks it either, and adds one once checked off or the target is met. It stops at
+    /// the creation day (a weekly habit's first partial week counts only if met). Cost is
+    /// linear in the log plus the streak's length.
+    func streak(on date: Date, calendar: Calendar) -> Int {
+        let today = calendar.startOfDay(for: date)
+        let creation = resolvedCreatedOn(fallback: TaskCompletionDay(date: date, calendar: calendar))
+        let created = calendar.date(from: DateComponents(
+            era: creation.era, year: creation.year, month: creation.month, day: creation.day
+        )).map { calendar.startOfDay(for: $0) } ?? today
+        let checked = checkOffDays(calendar: calendar)
+
+        switch schedule {
+        case .everyDay, .weekdays:
+            var streak = 0
+            var day = today
+            while day >= created {
+                if isDue(on: day, calendar: calendar) {
+                    if checked.contains(day) {
+                        streak += 1
+                    } else if day != today {
+                        break
+                    }
+                }
+                guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+                day = previous
+            }
+            return streak
+        case .weeklyTarget(let target):
+            var perWeek: [Date: Int] = [:]
+            for day in checked {
+                guard let week = calendar.dateInterval(of: .weekOfYear, for: day) else { continue }
+                perWeek[week.start, default: 0] += 1
+            }
+            guard let currentWeek = calendar.dateInterval(of: .weekOfYear, for: today),
+                  let firstWeek = calendar.dateInterval(of: .weekOfYear, for: created) else { return 0 }
+            var streak = 0
+            var weekStart = currentWeek.start
+            while weekStart >= firstWeek.start {
+                let isMet = perWeek[weekStart, default: 0] >= target
+                if isMet {
+                    streak += 1
+                } else if weekStart != currentWeek.start && weekStart != firstWeek.start {
+                    break
+                }
+                guard let previous = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) else { break }
+                weekStart = previous
+            }
+            return streak
+        }
     }
 }
 
@@ -112,6 +190,8 @@ struct TodayHabit: Identifiable, Equatable, Sendable {
     let isCheckedOffToday: Bool
     /// This week's progress; `nil` unless the habit has a weekly target.
     let weekProgress: HabitWeekProgress?
+    /// The habit's streak: days for day-based habits, weeks for weekly-target habits.
+    let streak: Int
 
     var id: UUID { habit.id }
 }
@@ -169,6 +249,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         if let data = userDefaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([Habit].self, from: data) {
             habits = Self.ordered(decoded)
+            backfillCreationDays()
         }
         refreshForCurrentDay()
     }
@@ -179,7 +260,10 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         guard !trimmedName.isEmpty, schedule.isValid else { return nil }
 
         let order = (habits.map(\.order).max() ?? -1) + 1
-        let habit = Habit(name: trimmedName, order: order, schedule: schedule)
+        let habit = Habit(
+            name: trimmedName, order: order, schedule: schedule,
+            createdOn: TaskCompletionDay(date: now(), calendar: calendar)
+        )
         habits = Self.ordered(habits + [habit])
         refreshForCurrentDay()
         persist()
@@ -205,6 +289,14 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         return updated
     }
 
+    /// Gives habits saved before creation days were recorded their fallback day, and saves it.
+    private func backfillCreationDays() {
+        let today = TaskCompletionDay(date: now(), calendar: calendar)
+        guard habits.contains(where: { $0.createdOn == nil }) else { return }
+        habits = habits.map { $0.createdOn == nil ? $0.withCreatedOn($0.resolvedCreatedOn(fallback: today)) : $0 }
+        persist()
+    }
+
     /// Re-evaluates Today's list against the clock. Check-offs are keyed to calendar days, so
     /// after midnight yesterday's check-offs no longer put a habit in the done group.
     func refreshForCurrentDay() {
@@ -217,7 +309,8 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
                 habit: habit,
                 isDone: isCheckedOffToday || progress?.isTargetMet == true,
                 isCheckedOffToday: isCheckedOffToday,
-                weekProgress: progress
+                weekProgress: progress,
+                streak: habit.streak(on: date, calendar: calendar)
             )
         }
         todayHabits = entries.filter { !$0.isDone } + entries.filter(\.isDone)

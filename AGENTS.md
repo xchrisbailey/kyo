@@ -43,9 +43,16 @@ Commit and push completed changes to the GitHub remote. Before pushing, check th
 - Use one branch and one PR per ticket. Name the branch `<type>/<issue>-<slug>`, such as `feat/35-daily-habits`.
 - Tickets whose blockers are all merged run in parallel, each in its own worktree, and each PR targets `main`. Parallel work is preferred.
 - When a ticket depends on work that isn't merged yet, **stack** it:
-  - branch from the blocking ticket's branch;
-  - open its PR against that branch;
-  - after the base merges, rebase the stacked branch onto `main` and retarget its PR.
+  - The coder branches from the blocking ticket's branch and opens a draft PR against that branch.
+  - Opus owns the stack and manages it with [`gh stack`](https://github.github.com/gh-stack/) (the `github/gh-stack` extension):
+    - `gh stack init <bottom-branch> <next-branch> …` adopts the existing branches, bottom first.
+    - `gh stack submit --auto` pushes them and links the PRs as a stack on GitHub. It keeps new PRs as drafts; `--open` marks them ready.
+    - `gh stack rebase` restacks the branches after a lower layer changes.
+    - `gh stack sync --prune` runs after a lower layer merges.
+    - `gh stack link <branches or PRs>` builds the stack on GitHub without local tracking, for example when the branches came from separate worktrees.
+  - Coders never restructure a stack.
+  - Always pass `--auto` (or explicit arguments), because `gh stack submit` otherwise opens an interactive editor.
+  - Stacked PRs are in public preview. If `gh stack` fails, stack by hand instead: rebase onto the merged base or `main`, then retarget with `gh pr edit <pr> --base <branch>`.
 - Keep stacks short. Don't stack work that could run in parallel.
 - PR descriptions link the ticket with `Closes #<issue>` and name the PR this one is stacked on, if any.
 

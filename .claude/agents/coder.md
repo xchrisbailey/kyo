@@ -15,7 +15,7 @@ You are the coder for Kyo, a SwiftUI app for iPhone, iPad, and Apple Watch. An O
 
 ## While working
 
-- Stay on the branch and worktree named in your brief. If you're stacked on another branch, base your work on it and don't change its commits.
+- Stay on the branch and worktree named in your brief. If you're stacked on another branch, base your work on it and don't change its commits. The orchestrator manages the stack with `gh stack`. Don't run `gh stack` commands that restructure or rebase it (`init`, `add`, `modify`, `rebase`, `sync`, `unstack`, `merge`) unless your brief tells you to.
 - Write tests through the behavior interfaces the spec names, and assert observable results rather than implementation details. Write tests alongside the code, not afterwards.
 - Match the surrounding code's style, naming, and comment density. Keep lasting project configuration in `project.yml` and run `xcodegen generate` after changing it.
 - Use Conventional Commits, ending each message with the attribution lines the session provides.

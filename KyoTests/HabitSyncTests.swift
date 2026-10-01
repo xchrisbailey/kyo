@@ -138,7 +138,7 @@ final class HabitSyncTests: XCTestCase {
         assertConverged(phone, watch)
     }
 
-    func testWatchStoreIsReadOnly() throws {
+    func testWatchStoreCannotAddEditOrDeleteHabits() throws {
         phoneNow = sep(7); watchNow = sep(7)
         let transport = ControllableHabitTransport()
         let phone = try makePhone(transport)
@@ -146,7 +146,6 @@ final class HabitSyncTests: XCTestCase {
         let habit = try XCTUnwrap(phone.addHabit(name: "Walk"))
 
         XCTAssertNil(watch.addHabit(name: "Local"))
-        XCTAssertNil(watch.toggleCheckOff(id: habit.id))
         XCTAssertNil(watch.editHabit(id: habit.id, name: "X", schedule: .everyDay))
         XCTAssertNil(watch.deleteHabit(id: habit.id))
         assertConverged(phone, watch)

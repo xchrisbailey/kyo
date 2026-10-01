@@ -63,3 +63,24 @@ Phone-side application, in arrival order, last applied wins:
   to a date in place of the oldest check-offs without changing the reconciliation rule.
 - Streak, due-today, and week-progress rules must stay in `Shared/` and behave identically on
   both devices. A rule that diverged would make the two devices disagree.
+
+## #41: Watch check-off implementation
+
+`HabitCommand` (`Shared/HabitSync.swift`) has its own `id` and one action,
+`setCheckOff(habitID:day:isCheckedOff:)`. It travels over `transferUserInfo` under its own key
+(`kyo.habitCommand`) through the same transport queueing and buffering as task commands.
+`HabitListSnapshot` gains `acknowledgedCommandIDs`, decoding missing as empty.
+
+The phone (`.publish`) store applies commands in arrival order and records the stated day even
+when it is late. It keeps persisted, bounded (500) sets of processed command ids and deleted
+habit ids, under keys derived from its `storageKey`, like the task store. Every command is
+acknowledged, including one for a deleted or unknown habit, which changes nothing. Habits are
+only ever created on the phone, so a tombstone never has a recreation to block today; it is
+checked anyway, so no later change can bring a deleted habit back through a command.
+
+The Watch (`.mirror`) store keeps `baseHabits` (the last snapshot, under the existing storage
+key) and a persisted outbox. Its visible habits are the outbox replayed over `baseHabits`
+(set the day's check-off state if the habit exists). Acknowledgments retire outbox entries
+whatever the snapshot's revision, and the outbox is resent when the store is created. The Watch
+validates a tap like the phone does: only a habit on Today's list, which includes one an edit
+made not due that still has Today's check-off.

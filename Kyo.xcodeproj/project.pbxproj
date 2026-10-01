@@ -19,6 +19,7 @@
 		3B081FC163933FB33C056D58 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9217084F21FDCEAFA52A59 /* SettingsView.swift */; };
 		3D1BC4478D9F78530BD99848 /* HabitOrderBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981D3B2280B6BD33C4406F3E /* HabitOrderBehaviorTests.swift */; };
 		48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		503C7EB21D894122F5B633C1 /* WatchHabitCheckOffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */; };
 		5425EDE14012EAAE06A22435 /* HabitEditDeleteBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */; };
 		564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
 		5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
@@ -100,6 +101,7 @@
 		9B97E11A696463E64F14D0E4 /* HabitSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitSync.swift; sourceTree = "<group>"; };
 		A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchEditDeleteSyncTests.swift; sourceTree = "<group>"; };
+		AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHabitCheckOffTests.swift; sourceTree = "<group>"; };
 		B31A4E18D0934A2E38524F0A /* DailyTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTask.swift; sourceTree = "<group>"; };
 		B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTaskTransport.swift; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */,
 				F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */,
 				A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */,
+				AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */,
 				C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */,
 			);
 			path = KyoTests;
@@ -399,6 +402,7 @@
 				34C0009E41C9DB8518716D4D /* TaskListSyncTests.swift in Sources */,
 				EC41327604FF061FE6EF4C08 /* TaskSync.swift in Sources */,
 				1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */,
+				503C7EB21D894122F5B633C1 /* WatchHabitCheckOffTests.swift in Sources */,
 				362851DA8544D070BEF34B56 /* WatchOriginatedSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

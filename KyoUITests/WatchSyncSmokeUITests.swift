@@ -45,8 +45,54 @@ final class WatchSyncSmokeUITests: XCTestCase {
         deleteTask(editedTitleC, from: app)
     }
 
+    /// The phone half of a Watch habit check-off (ADR 0003). An iOS UI test can't drive the
+    /// Watch, so the phone adds a habit through the real, synchronized store and waits for the
+    /// Watch's set check-off command to arrive; the paired Watch, running the same build, must
+    /// have its habit row tapped (by hand, or by the Watch UI automation of the paired-simulator
+    /// setup) within `KYO_WATCH_HABIT_TIMEOUT` seconds (default 120). It then expects the
+    /// uncheck from a second tap.
+    func testWatchHabitCheckOffAndUncheckReachThePhone() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["KYO_WATCH_SYNC_SMOKE"] == "1")
+        let timeout = TimeInterval(ProcessInfo.processInfo.environment["KYO_WATCH_HABIT_TIMEOUT"] ?? "") ?? 120
+
+        let app = XCUIApplication()
+        app.launch() // No KYO_TASK_STORAGE_KEY: uses the real, synchronized store.
+
+        let name = "Sync Habit \(String(UUID().uuidString.prefix(8)))"
+        app.buttons["Add an item"].tap()
+        app.buttons["Habit"].tap()
+        let field = app.textFields["Habit name"]
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        field.typeText(name)
+        app.buttons["Save"].tap()
+        let circle = app.buttons[name]
+        XCTAssertTrue(circle.waitForExistence(timeout: 3))
+        assertCheckboxValue(circle, equals: "Not completed")
+
+        // Tap the habit row on the Watch: the phone records Today's check-off.
+        waitForValue(of: app.buttons[name], matching: "value BEGINSWITH 'Completed'", timeout: timeout,
+                     message: "Tap the habit \"\(name)\" on the paired Watch to check it off")
+        // Tap it again: the phone removes the check-off.
+        waitForValue(of: app.buttons[name], matching: "value == 'Not completed'", timeout: timeout,
+                     message: "Tap the habit \"\(name)\" on the paired Watch again to uncheck it")
+
+        // Clean up so repeated runs don't accumulate habits in the real, shared store.
+        app.buttons["Edit habit: \(name)"].tap()
+        let deleteButton = app.buttons["Delete habit"]
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 3))
+        deleteButton.tap()
+        app.buttons["Delete habit and log"].tap()
+        XCTAssertFalse(app.buttons[name].waitForExistence(timeout: 2))
+    }
+
+    private func waitForValue(of element: XCUIElement, matching format: String, timeout: TimeInterval, message: String) {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format), object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, message)
+    }
+
     private func addTask(_ title: String, to app: XCUIApplication) {
         app.buttons["Add an item"].tap()
+        app.buttons["Task"].tap()
         let field = app.textFields["New task"]
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         field.tap()

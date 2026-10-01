@@ -28,6 +28,22 @@ enum HabitSchedule: Codable, Equatable, Sendable {
 }
 
 extension HabitSchedule {
+    /// A short description for lists: "Every day", "Mon Wed Fri" (weekdays in the calendar's
+    /// week order, short symbols) or "3× a week".
+    func summary(calendar: Calendar) -> String {
+        switch self {
+        case .everyDay:
+            return "Every day"
+        case .weekdays(let days):
+            return Self.weekdaysInWeekOrder(calendar: calendar)
+                .filter(days.contains)
+                .map { calendar.shortWeekdaySymbols[$0 - 1] }
+                .joined(separator: " ")
+        case .weeklyTarget(let target):
+            return "\(target)× a week"
+        }
+    }
+
     /// Whether the schedule counts days or weeks. A streak carries across edits within a unit
     /// and restarts when the unit changes.
     var isWeekly: Bool {
@@ -136,6 +152,10 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
         let history = scheduleHistory.count == 1
             ? [HabitScheduleEntry(schedule: schedule, from: createdOn)] : scheduleHistory
         return Habit(id: id, name: name, order: order, checkOffs: checkOffs, createdOn: createdOn, scheduleHistory: history)
+    }
+
+    func withOrder(_ order: Int64) -> Habit {
+        Habit(id: id, name: name, order: order, checkOffs: checkOffs, createdOn: createdOn, scheduleHistory: scheduleHistory)
     }
 
     func withName(_ name: String) -> Habit {
@@ -321,6 +341,10 @@ protocol HabitListBehavior: AnyObject {
     /// Checks the habit off for Today, or removes Today's check-off. Only habits on Today's
     /// list can be toggled.
     @discardableResult func toggleCheckOff(id: UUID) -> Habit?
+    /// Reorders the manager's list with the same offset semantics as SwiftUI's `onMove`: the
+    /// habits at `source` end up before the habit that was at `destination`. Rewrites every
+    /// habit's `order` and saves; Today follows. Out-of-range offsets are ignored.
+    func moveHabits(fromOffsets source: IndexSet, toOffset destination: Int)
 }
 
 extension HabitListBehavior {
@@ -421,6 +445,18 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         refreshForCurrentDay()
         persist()
         return updated
+    }
+
+    func moveHabits(fromOffsets source: IndexSet, toOffset destination: Int) {
+        guard let first = source.first, let last = source.last, first >= 0, last < habits.count,
+              (0...habits.count).contains(destination) else { return }
+
+        let moving = source.map { habits[$0] }
+        var reordered = habits.enumerated().filter { !source.contains($0.offset) }.map(\.element)
+        reordered.insert(contentsOf: moving, at: destination - source.filter { $0 < destination }.count)
+        habits = reordered.enumerated().map { $1.withOrder(Int64($0)) }
+        refreshForCurrentDay()
+        persist()
     }
 
     /// Gives habits saved before creation days were recorded their fallback day, and saves it.

@@ -549,7 +549,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     }
 
     func moveHabits(fromOffsets source: IndexSet, toOffset destination: Int) {
-        guard let first = source.first, let last = source.last, first >= 0, last < habits.count,
+        guard !isMirror, let first = source.first, let last = source.last, first >= 0, last < habits.count,
               (0...habits.count).contains(destination) else { return }
 
         let moving = source.map { habits[$0] }
@@ -558,6 +558,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         habits = reordered.enumerated().map { $1.withOrder(Int64($0)) }
         refreshForCurrentDay()
         persist()
+        publishChange()
     }
 
     /// Gives habits saved before creation days were recorded their fallback day, and saves it.

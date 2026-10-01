@@ -121,6 +121,23 @@ final class HabitSyncTests: XCTestCase {
         XCTAssertEqual(watch.habits.count, 2)
     }
 
+    func testWatchFollowsPhoneReorderAndCannotReorderItself() throws {
+        phoneNow = sep(7); watchNow = sep(7)
+        let transport = ControllableHabitTransport()
+        let phone = try makePhone(transport)
+        let watch = try makeWatch(transport)
+        let walk = try XCTUnwrap(phone.addHabit(name: "Walk"))
+        let read = try XCTUnwrap(phone.addHabit(name: "Read"))
+
+        phone.moveHabits(fromOffsets: IndexSet(integer: 1), toOffset: 0)
+        assertConverged(phone, watch)
+        XCTAssertEqual(watch.habits.map(\.id), [read.id, walk.id])
+
+        watch.moveHabits(fromOffsets: IndexSet(integer: 1), toOffset: 0)
+        XCTAssertEqual(watch.habits.map(\.id), [read.id, walk.id])
+        assertConverged(phone, watch)
+    }
+
     func testWatchStoreIsReadOnly() throws {
         phoneNow = sep(7); watchNow = sep(7)
         let transport = ControllableHabitTransport()

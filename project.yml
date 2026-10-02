@@ -97,6 +97,8 @@ targets:
       - Shared/AudioRecording.swift
       - Shared/VoiceTranscriber.swift
       - Shared/LiveTranscribing.swift
+      - Shared/OnDeviceLanguageModel.swift
+      - Shared/MemoTaskSuggestions.swift
       - Shared/VoiceRecordingSession.swift
       - Shared/UserDefaultsImport.swift
     settings:

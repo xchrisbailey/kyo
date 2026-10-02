@@ -6,6 +6,7 @@ struct TodayView: View {
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
+    private let languageModel: any OnDeviceLanguageModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
     /// Created when Today first appears, once the memo store exists.
@@ -28,6 +29,8 @@ struct TodayView: View {
         // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
         let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)
         _memoStore = StateObject(wrappedValue: MemoStore(modelContainer: modelContainer, transcriber: transcriber))
+        // UI tests have no Apple Intelligence, so Memo → Task takes its manual path.
+        languageModel = isInMemory ? NoLanguageModel() : FoundationOnDeviceLanguageModel()
     }
 
     var body: some View {
@@ -159,7 +162,10 @@ struct TodayView: View {
                                 onDelete: { memoStore.deleteMemo(id: id) },
                                 onClose: { memoStore.closeMemo(id: id) },
                                 loadAudio: { memoStore.audioData(forMemoID: id) },
-                                onRetryTranscription: { memoStore.retryTranscription(id: id) }
+                                onRetryTranscription: { memoStore.retryTranscription(id: id) },
+                                makeTaskSuggestions: { text in
+                                    MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
+                                }
                             )
                         }
                     case .editHabit(let id):

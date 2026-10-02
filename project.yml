@@ -96,6 +96,7 @@ targets:
       - Shared/MemoStore.swift
       - Shared/AudioRecording.swift
       - Shared/VoiceTranscriber.swift
+      - Shared/LiveTranscribing.swift
       - Shared/VoiceRecordingSession.swift
       - Shared/UserDefaultsImport.swift
     settings:

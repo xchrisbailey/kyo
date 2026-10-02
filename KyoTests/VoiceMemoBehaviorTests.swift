@@ -101,7 +101,7 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         XCTAssertEqual(memo.transcriptState, .transcribing)
         XCTAssertEqual(memo.detail, "Transcribing…")
         XCTAssertEqual(f.store.memos.first?.transcriptState, .transcribing)
-        transcriber.release(.noTranscript)
+        transcriber.release(.noSpeech)
         await f.store.transcriptionsSettled()
     }
 
@@ -584,6 +584,8 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         let memo = try XCTUnwrap(f.store.memos.first)
 
         let reopened = MemoStore(modelContainer: f.container, now: { f.clock.now }, calendar: calendar)
+        // A memo that couldn't be transcribed is tried again on launch.
+        await reopened.transcriptionsSettled()
 
         XCTAssertEqual(reopened.memos, [memo])
         XCTAssertEqual(reopened.memos.first?.duration, 33)
@@ -628,7 +630,7 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         recordSeconds(6, f)
         f.session.stop()
         let id = try savedMemo(f.session).id
-        transcriber.release(.noTranscript)
+        transcriber.release(.noSpeech)
         await f.store.transcriptionsSettled()
         XCTAssertEqual(f.store.memo(id: id)?.detail, "No transcript")
 
@@ -734,7 +736,7 @@ final class VoiceMemoBehaviorTests: XCTestCase {
 
         XCTAssertEqual(relaunched.memo(id: id)?.text, "Picked up again")
         XCTAssertEqual(relaunchTranscriber.transcribedIDs, [id])
-        held.release(.noTranscript)
+        held.release(.noSpeech)
         await f.store.transcriptionsSettled()
     }
 

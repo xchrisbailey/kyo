@@ -25,7 +25,9 @@ struct TodayView: View {
         _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
-        _memoStore = StateObject(wrappedValue: MemoStore(modelContainer: modelContainer))
+        // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
+        let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)
+        _memoStore = StateObject(wrappedValue: MemoStore(modelContainer: modelContainer, transcriber: transcriber))
     }
 
     var body: some View {
@@ -203,7 +205,10 @@ struct TodayView: View {
         .task {
             // Once per launch: a recording a quit or crash cut short becomes a Voice memo.
             guard voiceRecording == nil else { return }
-            let session = VoiceRecordingSession(recorder: DeviceAudioRecorder(), memos: memoStore)
+            let live: any LiveTranscribing = KyoModelContainer.isInMemoryRequested ? NoLiveTranscriber() : LiveSpeechTranscriber(support: .shared)
+            let recorder = DeviceAudioRecorder()
+            recorder.beforeDeactivation = { await live.waitUntilStopped() }
+            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live)
             session.recoverInterruptedRecordings()
             voiceRecording = session
         }
@@ -221,6 +226,8 @@ struct TodayView: View {
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
                 memoStore.refreshForCurrentDay()
+                // The speech model may have been installed while Kyo was in the background.
+                memoStore.retryTranscriptionsWaitingForModel()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in

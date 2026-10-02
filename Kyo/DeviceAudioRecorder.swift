@@ -33,6 +33,9 @@ final class DeviceAudioRecorder: AudioRecording {
     }
 
     var interruptionHandler: (@MainActor () -> Void)?
+    /// Awaited before the audio session is deactivated, so something else reading the microphone
+    /// (live transcription) has let go first; a session with running input can't be deactivated.
+    var beforeDeactivation: (@MainActor () async -> Void)?
 
     private let directory: URL
     private var recorder: AVAudioRecorder?
@@ -160,7 +163,11 @@ final class DeviceAudioRecorder: AudioRecording {
         recorder = nil
         activeID = nil
         let controller = sessionController
-        pendingDeactivation = Task { await controller.deactivate() }
+        let beforeDeactivation = beforeDeactivation
+        pendingDeactivation = Task {
+            await beforeDeactivation?()
+            await controller.deactivate()
+        }
     }
 
     private func sessionBecameInactive() {

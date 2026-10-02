@@ -32,6 +32,15 @@ protocol MemoStoreBehavior: AnyObject {
     func audioData(forMemoID id: UUID) -> Data?
     /// **Try again** on a Voice memo with No transcript: transcribes it again.
     @discardableResult func retryTranscription(id: UUID) -> Memo?
+    /// Transcribes again, in the background, every Voice memo that is No transcript because the
+    /// speech model wasn't installed. Called when it may be by now: at launch, when Kyo comes
+    /// to the front, and when the transcriber reports readiness. The memo keeps showing No
+    /// transcript until a transcript arrives.
+    func retryTranscriptionsWaitingForModel()
+    /// Transcribes again, in the background, every Voice memo that is No transcript because the
+    /// device language wasn't supported and the language has changed since. Called at launch
+    /// and when the device language changes.
+    func retryTranscriptionsAfterLocaleChange()
 }
 
 @MainActor
@@ -46,27 +55,46 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private let calendar: Calendar
     private let transcriber: any VoiceTranscriber
 
-    private var pendingTranscriptions: [UUID] = []
+    /// A transcription waiting to run. A visible one shows Transcribing (a new recording, an
+    /// arrival from the Watch, **Try again**); a background one retries a No transcript memo by
+    /// itself and shows nothing until it produces a transcript.
+    private struct Attempt {
+        let id: UUID
+        var isVisible: Bool
+        /// The one automatic retry after an analysis error: it doesn't schedule another.
+        var isErrorRetry = false
+    }
+
+    private let deviceLocale: () -> String
+    private var pendingTranscriptions: [Attempt] = []
+    private var runningTranscriptionID: UUID?
     private var transcriptionTask: Task<Void, Never>?
+    private var readinessTask: Task<Void, Never>?
+    private var localeTask: Task<Void, Never>?
 
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
     /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
-    /// at a time.
+    /// at a time. `deviceLocale` is the device language as a locale identifier.
     init(
         modelContainer: ModelContainer,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
-        transcriber: any VoiceTranscriber = NoTranscriber()
+        transcriber: any VoiceTranscriber = NoTranscriber(),
+        deviceLocale: @escaping () -> String = { Locale.current.identifier }
     ) {
         self.modelContainer = modelContainer
         self.context = modelContainer.mainContext
         self.now = now
         self.calendar = calendar
         self.transcriber = transcriber
+        self.deviceLocale = deviceLocale
         self.currentDate = calendar.startOfDay(for: now())
         discardEmptyWrittenMemos()
         refreshForCurrentDay()
         resumeInterruptedTranscriptions()
+        retryTranscriptionsAtLaunch()
+        watchTranscriberReadiness()
+        watchDeviceLocale()
     }
 
     var sectionSubtitle: String {
@@ -118,7 +146,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         context.insert(record)
         save()
         refreshForCurrentDay()
-        enqueueTranscription(of: audio.id)
+        enqueueTranscription(Attempt(id: audio.id, isVisible: true))
         return record.memo
     }
 
@@ -130,12 +158,22 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     func retryTranscription(id: UUID) -> Memo? {
         guard let record = records(withID: id).first, record.kind == .voice else { return nil }
         if record.transcriptState == .noTranscript {
-            record.transcriptState = .transcribing
-            save()
-            refreshForCurrentDay()
-            enqueueTranscription(of: id)
+            beginTranscribing(record)
         }
         return record.memo
+    }
+
+    func retryTranscriptionsWaitingForModel() {
+        for record in noTranscriptRecords(retry: .whenModelReady) {
+            enqueueTranscription(Attempt(id: record.id, isVisible: false))
+        }
+    }
+
+    func retryTranscriptionsAfterLocaleChange() {
+        let current = deviceLocale()
+        for record in noTranscriptRecords(retry: .onLocaleChange) where record.transcriptLocaleIdentifier != current {
+            enqueueTranscription(Attempt(id: record.id, isVisible: false))
+        }
     }
 
     /// Returns once every transcription started so far has finished. For tests.
@@ -245,13 +283,70 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             predicate: #Predicate { $0.kindRaw == voice && $0.transcriptStateRaw == transcribing }
         )
         for record in Self.keepOrder((try? context.fetch(descriptor)) ?? []) {
-            enqueueTranscription(of: record.id)
+            enqueueTranscription(Attempt(id: record.id, isVisible: true))
         }
     }
 
-    private func enqueueTranscription(of id: UUID) {
-        guard !pendingTranscriptions.contains(id) else { return }
-        pendingTranscriptions.append(id)
+    /// What a launch tries again: the model may be installed by now, a language change may have
+    /// made the device supported, and an analysis error gets its one retry.
+    private func retryTranscriptionsAtLaunch() {
+        retryTranscriptionsWaitingForModel()
+        retryTranscriptionsAfterLocaleChange()
+        for record in noTranscriptRecords(retry: .atNextLaunch) {
+            // Cleared before it runs, so a quit mid-retry or a second error never schedules more.
+            record.transcriptRetry = .never
+            save()
+            enqueueTranscription(Attempt(id: record.id, isVisible: false, isErrorRetry: true))
+        }
+    }
+
+    private func noTranscriptRecords(retry: TranscriptRetry) -> [MemoRecord] {
+        let voice = Memo.Kind.voice.rawValue
+        let none = Memo.TranscriptState.noTranscript.rawValue
+        let raw = retry.rawValue
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate { $0.kindRaw == voice && $0.transcriptStateRaw == none && $0.transcriptRetryRaw == raw }
+        )
+        return Self.keepOrder((try? context.fetch(descriptor)) ?? [])
+    }
+
+    /// **Try again**: Transcribing shows at once.
+    private func beginTranscribing(_ record: MemoRecord) {
+        record.transcriptState = .transcribing
+        record.transcriptRetry = .never
+        save()
+        refreshForCurrentDay()
+        enqueueTranscription(Attempt(id: record.id, isVisible: true))
+    }
+
+    private func watchTranscriberReadiness() {
+        let readiness = transcriber.readinessUpdates()
+        readinessTask = Task { [weak self] in
+            for await _ in readiness {
+                guard let self else { return }
+                self.retryTranscriptionsWaitingForModel()
+            }
+        }
+    }
+
+    private func watchDeviceLocale() {
+        localeTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: NSLocale.currentLocaleDidChangeNotification) {
+                guard let self else { return }
+                self.retryTranscriptionsAfterLocaleChange()
+            }
+        }
+    }
+
+    private func enqueueTranscription(_ attempt: Attempt) {
+        if let index = pendingTranscriptions.firstIndex(where: { $0.id == attempt.id }) {
+            // Already waiting: a visible request makes the wait visible.
+            pendingTranscriptions[index].isVisible = pendingTranscriptions[index].isVisible || attempt.isVisible
+            return
+        }
+        // A background retry of what's already running adds nothing.
+        if !attempt.isVisible, runningTranscriptionID == attempt.id { return }
+        pendingTranscriptions.append(attempt)
         guard transcriptionTask == nil else { return }
         transcriptionTask = Task { [weak self] in
             await self?.drainTranscriptions()
@@ -261,31 +356,50 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     /// One memo at a time, since the system limits simultaneous analyses.
     private func drainTranscriptions() async {
         while !pendingTranscriptions.isEmpty {
-            let id = pendingTranscriptions.removeFirst()
-            guard let audio = audioData(forMemoID: id) else { continue }
-            let outcome = await transcriber.transcribe(audio: audio, memoID: id)
-            apply(outcome, toMemoWithID: id)
+            let attempt = pendingTranscriptions.removeFirst()
+            guard let audio = audioData(forMemoID: attempt.id) else { continue }
+            runningTranscriptionID = attempt.id
+            let outcome = await transcriber.transcribe(audio: audio, memoID: attempt.id)
+            runningTranscriptionID = nil
+            apply(outcome, to: attempt)
         }
         transcriptionTask = nil
     }
 
-    private func apply(_ outcome: TranscriptionOutcome, toMemoWithID id: UUID) {
-        // Deleted while transcribing, or already settled some other way: nothing to do.
-        guard let record = records(withID: id).first, record.transcriptState == .transcribing else { return }
-        switch outcome {
-        case .transcript(let text):
+    private func apply(_ outcome: TranscriptionOutcome, to attempt: Attempt) {
+        // Deleted while transcribing, or already settled some other way (a background retry
+        // overtaken by **Try again**): nothing to do.
+        let expected: Memo.TranscriptState = attempt.isVisible ? .transcribing : .noTranscript
+        guard let record = records(withID: attempt.id).first, record.transcriptState == expected else { return }
+
+        var transcript: String?
+        if case .transcript(let text) = outcome {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty {
-                record.transcriptState = .noTranscript
-            } else {
-                record.text = trimmed
-                record.transcriptState = .transcribed
-            }
-        case .noTranscript:
+            transcript = trimmed.isEmpty ? nil : trimmed
+        }
+        if let transcript {
+            record.text = transcript
+            record.transcriptState = .transcribed
+            record.transcriptRetry = .never
+        } else {
             record.transcriptState = .noTranscript
+            switch outcome {
+            case .modelNotReady:
+                record.transcriptRetry = .whenModelReady
+            case .unsupported:
+                record.transcriptRetry = .onLocaleChange
+                record.transcriptLocaleIdentifier = deviceLocale()
+            case .failed:
+                record.transcriptRetry = attempt.isErrorRetry ? .never : .atNextLaunch
+            case .transcript, .noSpeech:
+                record.transcriptRetry = .never
+            }
         }
         save()
-        refreshForCurrentDay()
+        // A background retry that fails changes nothing the user can see.
+        if attempt.isVisible || transcript != nil {
+            refreshForCurrentDay()
+        }
     }
 
     private func save() {

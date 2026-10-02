@@ -25,6 +25,11 @@ final class MemoRecord {
     /// `Memo.TranscriptState.rawValue` for a voice memo; empty for a written memo.
     var transcriptStateRaw: String = ""
     var stoppedAtCap: Bool = false
+    /// `TranscriptRetry.rawValue`: whether and when a No transcript voice memo retries by itself.
+    var transcriptRetryRaw: String = ""
+    /// The device language (`Locale.identifier`) when transcription found it unsupported, so a
+    /// later change of language retries.
+    var transcriptLocaleIdentifier: String = ""
     @Relationship(deleteRule: .cascade, inverse: \MemoAudioRecord.memo) var audio: MemoAudioRecord?
 
     init(
@@ -58,6 +63,11 @@ final class MemoRecord {
         TaskCompletionDay(era: dayEra, year: dayYear, month: dayMonth, day: dayDay)
     }
 
+    var transcriptRetry: TranscriptRetry {
+        get { TranscriptRetry(rawValue: transcriptRetryRaw) ?? .never }
+        set { transcriptRetryRaw = newValue.rawValue }
+    }
+
     var transcriptState: Memo.TranscriptState? {
         get { Memo.TranscriptState(rawValue: transcriptStateRaw) }
         set { transcriptStateRaw = newValue?.rawValue ?? "" }
@@ -75,4 +85,18 @@ final class MemoRecord {
             stoppedAtCap: stoppedAtCap
         )
     }
+}
+
+/// When a voice memo that is No transcript tries again by itself. **Try again** always works,
+/// whatever this says. Stored as its raw string so a later case needs no migration.
+enum TranscriptRetry: String, Sendable {
+    /// Silence, or nothing left to try.
+    case never = ""
+    /// The speech model wasn't installed: on launch, on coming to the front, and when the
+    /// transcriber reports readiness.
+    case whenModelReady = "modelReady"
+    /// The device or language wasn't supported: when the device language changes.
+    case onLocaleChange = "locale"
+    /// The analysis failed: once, at the next launch.
+    case atNextLaunch = "launch"
 }

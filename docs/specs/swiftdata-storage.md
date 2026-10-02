@@ -1,6 +1,6 @@
 # Moving tasks and habits to SwiftData
 
-Status: Draft for review. Specification only; implementation requires a separate user request.
+Status: Product behavior confirmed. Specification only; implementation requires a separate user request.
 
 ## Problem Statement
 
@@ -69,6 +69,16 @@ On iPhone and iPad, tasks and habits move from UserDefaults to one SwiftData sto
 - The same store classes run on both devices: `TaskListStore` and `HabitListStore` are `.publish` stores on the phone (`TodayView`) and `.mirror` stores on the Watch (`WatchTodayView`). Only the phone's content moves to SwiftData. The Watch's `.mirror` stores keep reading and writing `baseTasks`/`baseHabits`, the outbox and the revision in UserDefaults exactly as today. (#64, ADR 0004)
 - Snapshots keep carrying the same `DailyTask` and `Habit` values, and the habit snapshot keeps its trimmed log, so the Watch receives exactly what it does today. (#64, ADR 0003)
 
+### Decided during spec review
+
+- **Import marker.** A successful import sets a UserDefaults flag (`kyo.swiftDataImport.v1.done`) after the SwiftData save succeeds. The import runs only while the flag is absent. A deleted task or habit therefore can't come back from the backup, and a failed import leaves the flag unset so it's retried. (#65)
+- **The backup is frozen.** Once the import succeeds, the phone never writes task or habit content to `kyo.dailyTasks.v1` or `kyo.habits.v1` again, so the backup is the data from before the update. (#65)
+- **A store that fails to open.** The phone shows a blocking "Kyo couldn't open your data" screen with **Try again**. It never creates a fresh empty store in place of one it couldn't open. (#65)
+- **Store initializers.** The store classes get a persistence seam: SwiftData on the phone and iPad (`.publish` and standalone), UserDefaults on the Watch (`.mirror`). The behavior interfaces don't change. The `ModelContainer` is created once at app launch in `KyoApp` and handed to the stores. (#65)
+- **Tests and UI tests.** Unit tests use a fresh in-memory `ModelContainer` per test. UI tests launch with an environment flag that selects an in-memory store, which replaces `KYO_TASK_STORAGE_KEY` on the phone. The Watch keeps its key-based isolation. (#65)
+- **Stored formats.** Calendar days (completion days, check-offs, schedule-entry start days) are stored as their era, year, month and day integer fields, matching `TaskCompletionDay`, so no time-zone conversion is involved. A schedule is stored as a kind, a weekday bitmask and a weekly target. Order fields stay `Int64`. (#65)
+- **Schema versioning.** The schema starts as `VersionedSchema` V1 with a `SchemaMigrationPlan`, so later additions (memos, iCloud sync) are explicit, additive versions. (#65)
+
 ## Testing Decisions
 
 - Keep the existing behavior-testing boundary: `TaskListBehavior`, `HabitListBehavior` and the phone/Watch sync tests. The existing behavior tests run against an in-memory SwiftData store. Assert observable lists, groups, streaks, week progress and sync results, not storage layout. (#64)
@@ -92,18 +102,6 @@ On iPhone and iPad, tasks and habits move from UserDefaults to one SwiftData sto
 - An App Group or shared container for widget extensions.
 - Any user-visible change, including a migration or progress screen.
 - Changes to task or habit behavior, the snapshot formats, or the Watch commands.
-
-## Open questions
-
-These aren't decided by #64 or ADR 0004 and need an answer before or during implementation:
-
-1. **How the import records that it finished.** A failed import is retried, so a successful one presumably isn't. The old keys stay for a release, so if the import ran again after the user deleted an imported task or habit, the id check would let the backup bring it back. Where the "import done" marker lives (UserDefaults or the store) and what counts as failure need deciding.
-2. **The stores' initializers.** The behavior interfaces stay the same, but the phone stores have to be handed a SwiftData container or context while the Watch's `.mirror` stores keep only UserDefaults, and both run the same classes. How the initializer changes, and where the container is created (`KyoApp` or `TodayView`), are open.
-3. **The `sync: nil` standalone mode.** Unit tests and UI tests run stores with no sync role. On the phone, UI tests isolate their data with `KYO_TASK_STORAGE_KEY`, which today picks a different UserDefaults key. Whether standalone stores use SwiftData, and how UI tests get an isolated store, are open.
-4. **How day values, schedules and order are stored.** Check-off days, completion days and schedule entry dates are `TaskCompletionDay` (era, year, month, day). A habit schedule is an enum with a weekday set or a weekly target. Tasks and habits are ordered by `creationOrder`/`order`. The stored representation of each isn't decided, beyond check-offs and schedule-history entries being separate records.
-5. **Schema versioning.** Whether to set up a `VersionedSchema`/migration plan now, given that the schema may only add, is open.
-6. **A store that fails to open.** What the phone does if the SwiftData container can't be created isn't decided. The import's retry rule covers a failed import, not a failed store.
-7. **Phone writes to the old keys.** "Untouched" means the phone stops writing task and habit content to `kyo.dailyTasks.v1` and `kyo.habits.v1` once the import succeeds, so the backup is the pre-update data. This is the reading assumed here and should be confirmed.
 
 ## Further Notes
 

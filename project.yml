@@ -85,6 +85,7 @@ targets:
       - Shared/TaskContentPersistence.swift
       - Shared/HabitRecord.swift
       - Shared/HabitContentPersistence.swift
+      - Shared/UserDefaultsImport.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests

@@ -182,7 +182,7 @@ struct WrittenMemoComposeSheet: View {
     }
 }
 
-/// The open memo: kind · time (· duration), the title, an action row with Memo → Task and Delete,
+/// The open memo: kind · time (· duration), the title, an action row with Share, Memo → Task and Delete,
 /// the photo carousel with its add slot, and the text editor. Edits save immediately. Closing a
 /// Written memo emptied of text discards it unless it has photos.
 ///
@@ -211,6 +211,7 @@ struct MemoCardSheet: View {
     @State private var title: String
     @State private var isConfirmingDelete = false
     @State private var taskSuggestions: MemoTaskSuggestions?
+    @State private var shareItems: MemoShareItems?
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
 
@@ -303,6 +304,10 @@ struct MemoCardSheet: View {
         .sheet(item: $taskSuggestions) { suggestions in
             MemoTaskSheet(suggestions: suggestions)
         }
+        .sheet(item: $shareItems) { items in
+            MemoShareSheet(items: items) { shareItems = nil }
+                .presentationDetents([.medium, .large])
+        }
         .onDisappear(perform: onClose)
     }
 
@@ -367,6 +372,20 @@ struct MemoCardSheet: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
+            if MemoSharePayload.canShare(memo, currentText: text) {
+                Button(action: share) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KyoPalette.accent)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Shares this memo's text and photos")
+            }
+
             Button {
                 taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
             } label: {
@@ -401,6 +420,12 @@ struct MemoCardSheet: View {
             .accessibilityLabel("Delete memo")
             .accessibilityHint("Deletes this memo permanently")
         }
+    }
+
+    /// Reads the photo bytes only now, when the user shares, and opens the share sheet.
+    private func share() {
+        let photos = memo.photoIDs.compactMap(loadPhoto)
+        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: text, photos: photos))
     }
 
     private var editor: some View {

@@ -204,7 +204,6 @@ private struct WaveformView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.linear(duration: 0.1), value: levels)
         }
     }
 }

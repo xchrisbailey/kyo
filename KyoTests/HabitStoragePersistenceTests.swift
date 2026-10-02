@@ -36,42 +36,57 @@ final class HabitStoragePersistenceTests: XCTestCase {
 
     // MARK: Duplicates
 
-    func testSeededDuplicateRecordsLoadOnce() throws {
+    func testSeededDuplicateRecordsLoadOnceAndMergeTheirLogs() throws {
         let container = try HabitStorage.makeContainer()
         let context = container.mainContext
         let created = completionDay(1)
         let habit = Habit(name: "Run", order: 0, createdOn: created)
         HabitStorage.seed([Habit(name: "Other", order: 1, createdOn: created)], in: container)
 
-        // Two habit records share an id. The one with the log is the one kept.
+        // Two habit records share an id, each with its own log and schedule entries. The one
+        // with more check-offs is kept, and its name and order win.
         let kept = HabitRecord(habit: habit)
-        let extra = HabitRecord(habit: habit)
+        let extra = HabitRecord(habit: Habit(id: habit.id, name: "Run (copy)", order: 5, createdOn: created))
         context.insert(kept)
         context.insert(extra)
-        // The kept one repeats a check-off for one day and a schedule entry for one day.
-        for day in [2, 2, 3] {
+        func addCheckOff(day: Int, to record: HabitRecord) {
             let checkOff = HabitCheckOffRecord(day: completionDay(day))
             context.insert(checkOff)
-            checkOff.habit = kept
+            checkOff.habit = record
         }
-        for _ in 0..<2 {
-            let entry = HabitScheduleRecord(entry: HabitScheduleEntry(schedule: .everyDay, from: created))
+        func addEntry(_ schedule: HabitSchedule, from day: Int, to record: HabitRecord) {
+            let entry = HabitScheduleRecord(entry: HabitScheduleEntry(schedule: schedule, from: completionDay(day)))
             context.insert(entry)
-            entry.habit = kept
+            entry.habit = record
         }
+        // The kept record repeats a check-off for one day and a schedule entry for one day.
+        for day in [2, 2, 3] { addCheckOff(day: day, to: kept) }
+        addEntry(.everyDay, from: 1, to: kept)
+        addEntry(.everyDay, from: 1, to: kept)
+        // The duplicate has days and a schedule entry of its own, and one day in common.
+        for day in [3, 4, 5] { addCheckOff(day: day, to: extra) }
+        addEntry(.weekdays([2, 4]), from: 4, to: extra)
         try context.save()
 
-        let list = try makeList(container, on: 4)
+        let list = try makeList(container, on: 6)
 
         XCTAssertEqual(list.habits.map(\.name), ["Run", "Other"])
         let run = try XCTUnwrap(list.habits.first { $0.id == habit.id })
-        XCTAssertEqual(run.checkOffs, [completionDay(2), completionDay(3)])
-        XCTAssertEqual(run.scheduleHistory, [HabitScheduleEntry(schedule: .everyDay, from: created)])
-        // The repeats were removed from storage, not just hidden.
+        XCTAssertEqual(run.order, 0)
+        XCTAssertEqual(run.checkOffs, [2, 3, 4, 5].map(completionDay))
+        XCTAssertEqual(run.scheduleHistory, [
+            HabitScheduleEntry(schedule: .everyDay, from: created),
+            HabitScheduleEntry(schedule: .weekdays([2, 4]), from: completionDay(4)),
+        ])
+        // One record per habit, per day and per schedule entry, and none orphaned.
         XCTAssertEqual(try HabitStorage.recordCount(HabitRecord.self, in: container), 2)
-        XCTAssertEqual(try HabitStorage.recordCount(HabitCheckOffRecord.self, in: container), 2)
-        XCTAssertEqual(try HabitStorage.recordCount(HabitScheduleRecord.self, in: container), 2)
-        XCTAssertEqual(try makeList(container, on: 4).habits, list.habits)
+        XCTAssertEqual(try HabitStorage.recordCount(HabitCheckOffRecord.self, in: container), 4)
+        XCTAssertEqual(try HabitStorage.recordCount(HabitScheduleRecord.self, in: container), 3)
+        let orphanCheckOffs = try context.fetch(FetchDescriptor<HabitCheckOffRecord>()).filter { $0.habit == nil }
+        let orphanEntries = try context.fetch(FetchDescriptor<HabitScheduleRecord>()).filter { $0.habit == nil }
+        XCTAssertTrue(orphanCheckOffs.isEmpty)
+        XCTAssertTrue(orphanEntries.isEmpty)
+        XCTAssertEqual(try makeList(container, on: 6).habits, list.habits)
     }
 
     // MARK: Delete

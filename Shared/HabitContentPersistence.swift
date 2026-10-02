@@ -36,8 +36,9 @@ struct SwiftDataHabitContent: HabitContentPersistence {
     private var context: ModelContext { modelContainer.mainContext }
 
     /// Loads every habit, first removing duplicate records (the schema has no unique
-    /// constraints, so they are cleaned up here): habits that share an id, check-offs that
-    /// share a habit and day, and schedule entries that share a habit and effective-from day.
+    /// constraints, so they are cleaned up here): habits that share an id (their logs and
+    /// schedule histories are merged into the one kept), check-offs that share a habit and day,
+    /// and schedule entries that share a habit and effective-from day.
     func load() -> [Habit] {
         let habits = uniqueHabitRecords().values.map { record -> Habit in
             let checkOffs = uniqueCheckOffs(of: record).values
@@ -131,17 +132,26 @@ struct SwiftDataHabitContent: HabitContentPersistence {
     // MARK: Duplicates
 
     /// The habit records by id. Of records sharing an id, the one that sorts first by order,
-    /// name, then most check-offs and schedule entries is kept and the rest are deleted, so the
-    /// choice never depends on fetch order.
+    /// name, then most check-offs and schedule entries is kept, so the choice never depends on
+    /// fetch order; its own fields (name, order, creation day) win. Each duplicate's check-off
+    /// and schedule records are moved onto the kept record before the duplicate is deleted
+    /// (repeated days then collapse in the per-habit dedupe), so no log data is lost and the
+    /// delete cascades to nothing.
     private func uniqueHabitRecords() -> [UUID: HabitRecord] {
         guard let records = try? context.fetch(FetchDescriptor<HabitRecord>()) else { return [:] }
         var kept: [UUID: HabitRecord] = [:]
         for record in records.sorted(by: Self.keepsFirst) {
-            if kept[record.id] == nil {
+            guard let keeper = kept[record.id] else {
                 kept[record.id] = record
-            } else {
-                context.delete(record)
+                continue
             }
+            for checkOff in record.checkOffs ?? [] {
+                checkOff.habit = keeper
+            }
+            for entry in record.scheduleEntries ?? [] {
+                entry.habit = keeper
+            }
+            context.delete(record)
         }
         return kept
     }

@@ -39,12 +39,13 @@ protocol AudioRecording: AnyObject {
     /// The current input loudness, 0 (silent) to 1 (loud), for the waveform.
     var level: Float { get }
 
-    /// Begins capturing a new recording.
-    func start(recordingID: UUID, startedAt: Date) throws
+    /// Begins capturing a new recording. Async because activating the audio session can block,
+    /// so it never runs on the main thread.
+    func start(recordingID: UUID, startedAt: Date) async throws
     /// Stops capturing but keeps what's recorded so far.
     func pause()
     /// Carries on capturing into the same recording. Throws while the audio is still taken.
-    func resume() throws
+    func resume() async throws
     /// Ends capturing and returns the audio. The partial file stays until
     /// `removeRecordingFile(id:)`, so it can't be lost between stopping and saving.
     func stop() throws -> Data

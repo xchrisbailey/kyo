@@ -49,6 +49,7 @@ final class VoiceRecordingSession: ObservableObject {
     /// Seconds recorded before the current stretch of recording.
     private var accumulated: TimeInterval = 0
     private var stretchStartedAt = Date(timeIntervalSince1970: 0)
+    private var isResuming = false
 
     init(recorder: any AudioRecording, memos: any MemoStoreBehavior, now: @escaping () -> Date = Date.init) {
         self.recorder = recorder
@@ -92,7 +93,7 @@ final class VoiceRecordingSession: ObservableObject {
         let id = UUID()
         let start = now()
         do {
-            try recorder.start(recordingID: id, startedAt: start)
+            try await recorder.start(recordingID: id, startedAt: start)
         } catch {
             phase = .couldNotRecord
             return
@@ -118,11 +119,18 @@ final class VoiceRecordingSession: ObservableObject {
 
     /// Carries on from **Paused**, from the elapsed time it stopped at. Stays paused if the
     /// audio is still taken.
-    func resume() {
-        guard phase == .paused else { return }
+    func resume() async {
+        guard phase == .paused, !isResuming else { return }
+        isResuming = true
+        defer { isResuming = false }
         do {
-            try recorder.resume()
+            try await recorder.resume()
         } catch {
+            return
+        }
+        // Stopped, discarded or interrupted again while the audio session was waking up.
+        guard phase == .paused else {
+            recorder.pause()
             return
         }
         stretchStartedAt = now()

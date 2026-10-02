@@ -1,6 +1,23 @@
 import AVFoundation
 import Foundation
 
+/// Does the `AVAudioSession` work, which can block for a noticeable time, off the main thread.
+private actor AudioSessionController {
+    func activateForRecording() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
+        try session.setActive(true)
+    }
+
+    func reactivate() throws {
+        try AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    func deactivate() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
 /// The real `AudioRecording`: records AAC, mono, 48 kbps with `AVAudioRecorder` into the app's
 /// own `VoiceRecordings` folder, a file per recording plus a small JSON note of when it started.
 /// The file is written as audio arrives, so a crash or quit leaves a partial recording for
@@ -20,6 +37,9 @@ final class DeviceAudioRecorder: AudioRecording {
     private let directory: URL
     private var recorder: AVAudioRecorder?
     private var activeID: UUID?
+    private let sessionController = AudioSessionController()
+    /// The last deactivation, which the next recording waits for so they never overlap.
+    private var pendingDeactivation: Task<Void, Never>?
 
     private struct Note: Codable {
         let startedAt: Date
@@ -67,10 +87,9 @@ final class DeviceAudioRecorder: AudioRecording {
         return max(0, min(1, (recorder.averagePower(forChannel: 0) + 50) / 45))
     }
 
-    func start(recordingID: UUID, startedAt: Date) throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setActive(true)
+    func start(recordingID: UUID, startedAt: Date) async throws {
+        await pendingDeactivation?.value
+        try await sessionController.activateForRecording()
 
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(Note(startedAt: startedAt)).write(to: noteURL(recordingID), options: .atomic)
@@ -93,9 +112,9 @@ final class DeviceAudioRecorder: AudioRecording {
         recorder?.pause()
     }
 
-    func resume() throws {
+    func resume() async throws {
         guard let recorder else { throw RecorderError.notRecording }
-        try AVAudioSession.sharedInstance().setActive(true)
+        try await sessionController.reactivate()
         guard recorder.record() else { throw RecorderError.couldNotStart }
     }
 
@@ -140,7 +159,8 @@ final class DeviceAudioRecorder: AudioRecording {
     private func endRecording() {
         recorder = nil
         activeID = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        let controller = sessionController
+        pendingDeactivation = Task { await controller.deactivate() }
     }
 
     private func sessionBecameInactive() {

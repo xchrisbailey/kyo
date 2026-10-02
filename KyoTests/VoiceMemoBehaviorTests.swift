@@ -284,7 +284,7 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         f.recorder.simulateInterruption()
         f.clock.advance(300)
 
-        f.session.resume()
+        await f.session.resume()
         XCTAssertEqual(f.session.phase, .recording)
         XCTAssertTrue(f.recorder.isCapturing)
         recordSeconds(15, f)
@@ -311,7 +311,7 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         recordSeconds(300, f)
         f.recorder.simulateInterruption()
         f.clock.advance(1000)
-        f.session.resume()
+        await f.session.resume()
 
         recordSeconds(299, f)
         XCTAssertEqual(f.session.phase, .recording)
@@ -331,11 +331,11 @@ final class VoiceMemoBehaviorTests: XCTestCase {
         f.recorder.simulateInterruption()
         f.recorder.isAudioTaken = true
 
-        f.session.resume()
+        await f.session.resume()
         XCTAssertEqual(f.session.phase, .paused)
 
         f.recorder.isAudioTaken = false
-        f.session.resume()
+        await f.session.resume()
         XCTAssertEqual(f.session.phase, .recording)
     }
 

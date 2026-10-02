@@ -130,7 +130,7 @@ struct VoiceRecorderView: View {
 
             if session.phase == .paused {
                 Button {
-                    session.resume()
+                    Task { await session.resume() }
                 } label: {
                     Label("Resume", systemImage: "mic.fill")
                         .font(.body.weight(.semibold))

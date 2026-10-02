@@ -42,7 +42,7 @@ final class FakeAudioRecorder: AudioRecording {
         return promptAnswer
     }
 
-    func start(recordingID: UUID, startedAt: Date) throws {
+    func start(recordingID: UUID, startedAt: Date) async throws {
         if let startError { throw startError }
         startedIDs.append(recordingID)
         isCapturing = true
@@ -52,7 +52,7 @@ final class FakeAudioRecorder: AudioRecording {
         isCapturing = false
     }
 
-    func resume() throws {
+    func resume() async throws {
         if isAudioTaken { throw StillInterrupted() }
         isCapturing = true
     }

@@ -7,18 +7,25 @@ struct TodayView: View {
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
     private let languageModel: any OnDeviceLanguageModel
+    /// Where **Record memo** and **Write memo** (controls, Siri, Shortcuts) land.
+    @ObservedObject private var quickCapture: QuickCaptureRouter
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
     /// Created when Today first appears, once the memo store exists.
     @State private var voiceRecording: VoiceRecordingSession?
     @State private var isShowingRecorder = false
+    /// Whether the compose sheet holds text or a photo, which quick capture mustn't throw away.
+    @State private var composeHasDraft = false
+    /// The capture quick capture opens once the sheet it closed has finished dismissing.
+    @State private var captureAfterSheetDismissal: QuickCaptureRouter.Target?
     @State private var voiceMemoPendingDelete: UUID?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
     @State private var dayBoundaryRefreshToken = 0
     @FocusState private var isTaskDraftFocused: Bool
 
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, quickCapture: QuickCaptureRouter = .shared) {
+        self.quickCapture = quickCapture
         // UI tests launch with an in-memory store, which also means no sync, so they don't race
         // real WatchConnectivity delivery.
         let isInMemory = KyoModelContainer.isInMemoryRequested
@@ -154,7 +161,7 @@ struct TodayView: View {
                         openCalendar: { activeSheet = .calendar }
                     )
                 }
-                .sheet(item: $activeSheet) { sheet in
+                .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
                     case .calendar:
                         CalendarPreviewSheet()
@@ -163,7 +170,10 @@ struct TodayView: View {
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
-                        WrittenMemoComposeSheet(onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) })
+                        WrittenMemoComposeSheet(
+                            onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) },
+                            onDraftChange: { composeHasDraft = $0 }
+                        )
                     case .memo(let id):
                         if let memo = memoStore.memo(id: id) {
                             MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
@@ -220,6 +230,12 @@ struct TodayView: View {
             session.recoverInterruptedRecordings()
             voiceRecording = session
         }
+        .onChange(of: captureSurface, initial: true) { _, surface in
+            quickCapture.report(surface: surface)
+        }
+        // A request can wait for the recorder's session, which is made as Today first appears.
+        .onChange(of: quickCapture.pending, initial: true) { _, _ in applyPendingCapture() }
+        .onChange(of: voiceRecording != nil) { _, _ in applyPendingCapture() }
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
         }
@@ -336,6 +352,45 @@ struct TodayView: View {
 
     private func horizontalPadding(for width: CGFloat) -> CGFloat {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
+    }
+
+    /// What quick capture needs to know is showing over Today.
+    private var captureSurface: QuickCaptureRouter.Surface {
+        if isShowingRecorder { return .recorder }
+        switch activeSheet {
+        case nil: return .none
+        case .composeMemo: return .compose(hasUnsavedDraft: composeHasDraft)
+        default: return .otherSheet
+        }
+    }
+
+    /// Applies **Record memo** or **Write memo**: opens the capture, or brings forward the one in
+    /// progress. Any open sheet closes first (a memo card's player stops as it goes), and the
+    /// capture opens once it has finished dismissing, because a second modal can't present over it.
+    private func applyPendingCapture() {
+        guard let request = quickCapture.pending, voiceRecording != nil else { return }
+        quickCapture.markApplied(request)
+        let command = request.command
+        if command.closesOpenSheets, activeSheet != nil {
+            captureAfterSheetDismissal = command.target
+            activeSheet = nil
+        } else {
+            open(command.target)
+        }
+    }
+
+    private func open(_ target: QuickCaptureRouter.Target) {
+        switch target {
+        case .recorder: isShowingRecorder = true
+        case .compose: activeSheet = .composeMemo
+        }
+    }
+
+    private func openCaptureAfterSheetDismissal() {
+        composeHasDraft = false
+        guard let target = captureAfterSheetDismissal else { return }
+        captureAfterSheetDismissal = nil
+        open(target)
     }
 
     private func beginTaskDraft() {

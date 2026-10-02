@@ -20,9 +20,11 @@ enum OnDeviceLanguageAvailability: Equatable, Sendable {
 }
 
 /// What a request asks the model to do. A request's own instructions and answer take part of the
-/// context, so each task has its own text budget. Generating **Voice memo** titles will add a case.
+/// context, so each task has its own text budget.
 enum OnDeviceLanguageTask: Sendable {
     case suggestTasks
+    /// A short title for a **Voice memo**, from its **Transcript**.
+    case title
 }
 
 /// The language-model seam: Apple Intelligence, kept out of the rest of the app. The real one is
@@ -45,6 +47,11 @@ protocol OnDeviceLanguageModel: AnyObject {
     /// `textBudget(for: .suggestTasks)`. Throws when the model refuses, runs out of context or
     /// fails for any other reason.
     func suggestTasks(from text: String) async throws -> [String]
+
+    /// A short title for a **Voice memo**, proposed from its **Transcript**, which already fits
+    /// `textBudget(for: .title)`. Throws when the model refuses, runs out of context or fails for
+    /// any other reason.
+    func generateTitle(from text: String) async throws -> String
 }
 
 extension OnDeviceLanguageModel {
@@ -82,4 +89,5 @@ final class NoLanguageModel: OnDeviceLanguageModel {
     func textBudget(for task: OnDeviceLanguageTask) async -> Int { 0 }
     func tokenCount(of text: String) async -> Int { 0 }
     func suggestTasks(from text: String) async throws -> [String] { [] }
+    func generateTitle(from text: String) async throws -> String { "" }
 }

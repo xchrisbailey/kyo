@@ -64,7 +64,15 @@ struct MemoRow: View {
                         .font(.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    if let detail = memo.detail {
+                    if memo.transcriptState == .transcribing {
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .controlSize(.mini)
+                            Text("Transcribing…")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    } else if let detail = memo.detail {
                         Text(detail)
                             .font(.caption)
                             .foregroundStyle(.secondary)

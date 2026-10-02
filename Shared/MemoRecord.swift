@@ -25,6 +25,9 @@ final class MemoRecord {
     /// `Memo.TranscriptState.rawValue` for a voice memo; empty for a written memo.
     var transcriptStateRaw: String = ""
     var stoppedAtCap: Bool = false
+    /// `true` when a voice memo is No transcript because transcription couldn't run (not
+    /// because the audio was silent), so it retries by itself once that clears.
+    var retriesTranscriptionAutomatically: Bool = false
     @Relationship(deleteRule: .cascade, inverse: \MemoAudioRecord.memo) var audio: MemoAudioRecord?
 
     init(

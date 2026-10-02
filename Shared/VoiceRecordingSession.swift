@@ -5,6 +5,10 @@ import Foundation
 /// controllable clock, shows the warning in the last 30 seconds, stops and saves at the
 /// 10-minute cap, pauses when the audio is interrupted, and saves on **Stop** (never on
 /// **Discard**). The views drive it: they call `tick()` while a recording is open.
+///
+/// While recording it also runs live transcription through the `LiveTranscribing` seam, for the
+/// recorder to show. Live transcription never gates recording: if it isn't available, recording
+/// goes on and the recorder says the transcript will appear after recording.
 @MainActor
 final class VoiceRecordingSession: ObservableObject {
     enum Phase: Equatable {
@@ -26,6 +30,15 @@ final class VoiceRecordingSession: ObservableObject {
         case discarded
     }
 
+    /// Whether the recorder can show a live transcript.
+    enum LiveStatus: Equatable {
+        /// Waiting to hear whether live transcription started.
+        case starting
+        case listening
+        /// "Transcript will appear after recording".
+        case unavailable
+    }
+
     /// 10 minutes.
     static let cap: TimeInterval = 600
     /// The warning shows for this long before the cap.
@@ -39,9 +52,14 @@ final class VoiceRecordingSession: ObservableObject {
     @Published private(set) var levels: [Float] = []
     /// Set when a recording ends; cleared by `begin()`.
     @Published private(set) var outcome: Outcome?
+    @Published private(set) var liveStatus: LiveStatus = .starting
+    /// What live transcription has heard so far, kept across a pause. Only for the recorder: the
+    /// saved memo's Transcript comes from transcribing its audio.
+    @Published private(set) var liveTranscript = ""
 
     private let recorder: any AudioRecording
     private let memos: any MemoStoreBehavior
+    private let live: any LiveTranscribing
     private let now: () -> Date
 
     private var recordingID = UUID()
@@ -50,10 +68,20 @@ final class VoiceRecordingSession: ObservableObject {
     private var accumulated: TimeInterval = 0
     private var stretchStartedAt = Date(timeIntervalSince1970: 0)
     private var isResuming = false
+    /// Text heard before the current stretch of live transcription (before a pause).
+    private var liveBase = ""
+    /// Tells a live transcription that has been stopped apart from the one now running.
+    private var liveGeneration = 0
 
-    init(recorder: any AudioRecording, memos: any MemoStoreBehavior, now: @escaping () -> Date = Date.init) {
+    init(
+        recorder: any AudioRecording,
+        memos: any MemoStoreBehavior,
+        live: any LiveTranscribing = NoLiveTranscriber(),
+        now: @escaping () -> Date = Date.init
+    ) {
         self.recorder = recorder
         self.memos = memos
+        self.live = live
         self.now = now
         recorder.interruptionHandler = { [weak self] in self?.interrupted() }
     }
@@ -79,6 +107,9 @@ final class VoiceRecordingSession: ObservableObject {
         elapsed = 0
         accumulated = 0
         levels = []
+        liveStatus = .starting
+        liveTranscript = ""
+        liveBase = ""
         phase = .starting
 
         var access = recorder.microphoneAccess
@@ -102,6 +133,7 @@ final class VoiceRecordingSession: ObservableObject {
         startedAt = start
         stretchStartedAt = start
         phase = .recording
+        startLive()
     }
 
     /// Advances the elapsed time and the waveform, and ends the recording at the cap.
@@ -135,6 +167,8 @@ final class VoiceRecordingSession: ObservableObject {
         }
         stretchStartedAt = now()
         phase = .recording
+        // A recording whose live transcription never started doesn't try again.
+        if liveStatus != .unavailable { startLive() }
     }
 
     /// **Stop**: saves the recording as a Voice memo.
@@ -149,6 +183,7 @@ final class VoiceRecordingSession: ObservableObject {
     /// **Discard**: saves nothing.
     func discard() {
         guard isActive else { return }
+        stopLive()
         recorder.discard()
         phase = .idle
         outcome = .discarded
@@ -166,16 +201,48 @@ final class VoiceRecordingSession: ObservableObject {
         return recovered
     }
 
+    // MARK: Live transcription
+
+    private func startLive() {
+        liveGeneration += 1
+        let generation = liveGeneration
+        Task { [weak self] in
+            guard let self else { return }
+            let started = await self.live.start { [weak self] heard in
+                guard let self, generation == self.liveGeneration else { return }
+                self.liveTranscript = Self.joined(self.liveBase, heard)
+            }
+            // Recording ended or paused while this was starting.
+            guard generation == self.liveGeneration else { return }
+            self.liveStatus = started ? .listening : .unavailable
+        }
+    }
+
+    /// Stops listening, keeping what was heard so a resume carries on after it.
+    private func stopLive() {
+        liveGeneration += 1
+        live.stop()
+        liveBase = liveTranscript
+    }
+
+    private static func joined(_ base: String, _ heard: String) -> String {
+        let trimmed = heard.trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.isEmpty { return trimmed }
+        return trimmed.isEmpty ? base : base + " " + trimmed
+    }
+
     private func interrupted() {
         guard phase == .recording else { return }
         accumulated = min(accumulated + now().timeIntervalSince(stretchStartedAt), Self.cap)
         elapsed = accumulated
+        stopLive()
         recorder.pause()
         phase = .paused
     }
 
     private func finishAndSave(reachedCap: Bool) {
         let duration = elapsed
+        stopLive()
         let data: Data
         do {
             data = try recorder.stop()

@@ -93,11 +93,29 @@ final class ScriptedTranscriber: VoiceTranscriber, @unchecked Sendable {
     private var peak = 0
     private let held: AsyncStream<TranscriptionOutcome>
     private let heldContinuation: AsyncStream<TranscriptionOutcome>.Continuation
+    private let readiness: AsyncStream<Void>
+    private let readinessContinuation: AsyncStream<Void>.Continuation
 
     /// `immediate` answers every call at once; `nil` holds each call until `release(_:)`.
     init(immediate: TranscriptionOutcome? = nil) {
         self.immediate = immediate
         (held, heldContinuation) = AsyncStream<TranscriptionOutcome>.makeStream()
+        (readiness, readinessContinuation) = AsyncStream<Void>.makeStream()
+    }
+
+    /// Changes what calls answer at once from now on; `nil` holds them until `release(_:)`.
+    func answer(with outcome: TranscriptionOutcome?) {
+        lock.withLock { immediate = outcome }
+    }
+
+    /// What the cause clearing looks like: the model finishing its install, the network coming
+    /// back.
+    func becomeReady() {
+        readinessContinuation.yield()
+    }
+
+    func readinessUpdates() -> AsyncStream<Void> {
+        readiness
     }
 
     /// The ids transcribed so far, in order.
@@ -126,6 +144,48 @@ final class ScriptedTranscriber: VoiceTranscriber, @unchecked Sendable {
         for await outcome in held {
             return outcome
         }
-        return .noTranscript
+        return .unavailable
+    }
+}
+
+/// A stand-in for live transcription from the microphone: scripted availability, and words the
+/// test "hears" when it chooses.
+@MainActor
+final class FakeLiveTranscriber: LiveTranscribing {
+    /// What `start` answers.
+    var isAvailable = true
+    /// While `true`, `start` waits for `finishPendingStart()`.
+    var holdsStart = false
+
+    private(set) var startCount = 0
+    private(set) var stopCount = 0
+    private var onUpdate: (@MainActor (String) -> Void)?
+    private var pendingStart: CheckedContinuation<Void, Never>?
+
+    func start(onUpdate: @escaping @MainActor (String) -> Void) async -> Bool {
+        startCount += 1
+        let stopsBefore = stopCount
+        if holdsStart {
+            await withCheckedContinuation { pendingStart = $0 }
+        }
+        // A stop while starting means nothing was started, as in the real one.
+        guard isAvailable, stopCount == stopsBefore else { return false }
+        self.onUpdate = onUpdate
+        return true
+    }
+
+    func stop() {
+        stopCount += 1
+        onUpdate = nil
+    }
+
+    /// Words reach the recorder only while listening.
+    func hear(_ text: String) {
+        onUpdate?(text)
+    }
+
+    func finishPendingStart() {
+        pendingStart?.resume()
+        pendingStart = nil
     }
 }

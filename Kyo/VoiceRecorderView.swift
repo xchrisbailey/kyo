@@ -105,11 +105,36 @@ struct VoiceRecorderView: View {
                 .frame(height: 72)
                 .accessibilityHidden(true)
 
-            Spacer(minLength: 0)
+            liveTranscript
 
             controls
         }
         .frame(maxHeight: .infinity)
+    }
+
+    /// The large live transcript, or the note that it will come after recording.
+    private var liveTranscript: some View {
+        ScrollView {
+            Text(liveTranscriptText)
+                .font(.title3)
+                .foregroundStyle(session.liveTranscript.isEmpty ? Color.secondary : Color.primary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(liveTranscriptAccessibilityLabel)
+        }
+        .defaultScrollAnchor(.bottom)
+        .frame(maxHeight: .infinity)
+    }
+
+    private var liveTranscriptText: String {
+        switch session.liveStatus {
+        case .unavailable: "Transcript will appear after recording"
+        case .starting, .listening: session.liveTranscript.isEmpty ? "Listening…" : session.liveTranscript
+        }
+    }
+
+    private var liveTranscriptAccessibilityLabel: String {
+        session.liveTranscript.isEmpty ? liveTranscriptText : "Live transcript: \(session.liveTranscript)"
     }
 
     private var controls: some View {

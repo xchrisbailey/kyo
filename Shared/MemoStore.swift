@@ -32,6 +32,10 @@ protocol MemoStoreBehavior: AnyObject {
     func audioData(forMemoID id: UUID) -> Data?
     /// **Try again** on a Voice memo with No transcript: transcribes it again.
     @discardableResult func retryTranscription(id: UUID) -> Memo?
+    /// Transcribes again every Voice memo that is No transcript because transcription couldn't
+    /// run, as opposed to silence. Called when the cause may have cleared: at launch, when Kyo
+    /// comes to the front, and when the transcriber reports readiness.
+    func retryUnavailableTranscriptions()
 }
 
 @MainActor
@@ -48,6 +52,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     private var pendingTranscriptions: [UUID] = []
     private var transcriptionTask: Task<Void, Never>?
+    private var readinessTask: Task<Void, Never>?
 
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
     /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
@@ -67,6 +72,8 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         discardEmptyWrittenMemos()
         refreshForCurrentDay()
         resumeInterruptedTranscriptions()
+        retryUnavailableTranscriptions()
+        watchTranscriberReadiness()
     }
 
     var sectionSubtitle: String {
@@ -130,12 +137,22 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     func retryTranscription(id: UUID) -> Memo? {
         guard let record = records(withID: id).first, record.kind == .voice else { return nil }
         if record.transcriptState == .noTranscript {
-            record.transcriptState = .transcribing
-            save()
-            refreshForCurrentDay()
-            enqueueTranscription(of: id)
+            beginTranscribing(record)
         }
         return record.memo
+    }
+
+    func retryUnavailableTranscriptions() {
+        let voice = Memo.Kind.voice.rawValue
+        let none = Memo.TranscriptState.noTranscript.rawValue
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate {
+                $0.kindRaw == voice && $0.transcriptStateRaw == none && $0.retriesTranscriptionAutomatically
+            }
+        )
+        for record in Self.keepOrder((try? context.fetch(descriptor)) ?? []) {
+            beginTranscribing(record)
+        }
     }
 
     /// Returns once every transcription started so far has finished. For tests.
@@ -249,6 +266,25 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         }
     }
 
+    /// Moves a No transcript memo back to Transcribing and queues it.
+    private func beginTranscribing(_ record: MemoRecord) {
+        record.transcriptState = .transcribing
+        record.retriesTranscriptionAutomatically = false
+        save()
+        refreshForCurrentDay()
+        enqueueTranscription(of: record.id)
+    }
+
+    private func watchTranscriberReadiness() {
+        let readiness = transcriber.readinessUpdates()
+        readinessTask = Task { [weak self] in
+            for await _ in readiness {
+                guard let self else { return }
+                self.retryUnavailableTranscriptions()
+            }
+        }
+    }
+
     private func enqueueTranscription(of id: UUID) {
         guard !pendingTranscriptions.contains(id) else { return }
         pendingTranscriptions.append(id)
@@ -272,6 +308,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private func apply(_ outcome: TranscriptionOutcome, toMemoWithID id: UUID) {
         // Deleted while transcribing, or already settled some other way: nothing to do.
         guard let record = records(withID: id).first, record.transcriptState == .transcribing else { return }
+        record.retriesTranscriptionAutomatically = false
         switch outcome {
         case .transcript(let text):
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -281,8 +318,11 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
                 record.text = trimmed
                 record.transcriptState = .transcribed
             }
-        case .noTranscript:
+        case .noSpeech:
             record.transcriptState = .noTranscript
+        case .unavailable:
+            record.transcriptState = .noTranscript
+            record.retriesTranscriptionAutomatically = true
         }
         save()
         refreshForCurrentDay()

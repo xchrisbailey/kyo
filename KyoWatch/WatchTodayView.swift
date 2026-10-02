@@ -559,7 +559,7 @@ private struct WatchMemoRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
-            Image(systemName: memo.kind == .voice ? "waveform" : "text.alignleft")
+            Image(systemName: memo.isPhotoOnly ? "photo" : (memo.kind == .voice ? "waveform" : "text.alignleft"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.green)
                 .frame(width: 16)

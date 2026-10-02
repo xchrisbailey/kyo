@@ -15,10 +15,13 @@ struct WatchMemo: Codable, Equatable, Sendable, Identifiable {
     /// A Voice memo's recorded length in seconds. Zero for a Written memo.
     let duration: TimeInterval
     let photoCount: Int
+    /// A Written memo with no text and at least one photo, which a row shows with the photo icon.
+    let isPhotoOnly: Bool
 
     init(
         id: UUID, day: TaskCompletionDay, createdAt: Date, kind: Memo.Kind, title: String,
-        voiceState: Memo.TranscriptState? = nil, duration: TimeInterval = 0, photoCount: Int = 0
+        voiceState: Memo.TranscriptState? = nil, duration: TimeInterval = 0, photoCount: Int = 0,
+        isPhotoOnly: Bool = false
     ) {
         self.id = id
         self.day = day
@@ -28,44 +31,62 @@ struct WatchMemo: Codable, Equatable, Sendable, Identifiable {
         self.voiceState = voiceState
         self.duration = duration
         self.photoCount = photoCount
+        self.isPhotoOnly = isPhotoOnly
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, day, createdAt, kind, title, voiceState, duration, photoCount, isPhotoOnly
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        day = try container.decode(TaskCompletionDay.self, forKey: .day)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        kind = try container.decode(Memo.Kind.self, forKey: .kind)
+        title = try container.decode(String.self, forKey: .title)
+        voiceState = try container.decodeIfPresent(Memo.TranscriptState.self, forKey: .voiceState)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        photoCount = try container.decode(Int.self, forKey: .photoCount)
+        // Snapshots published before the Watch showed the photo icon never carried this field.
+        isPhotoOnly = try container.decodeIfPresent(Bool.self, forKey: .isPhotoOnly) ?? false
     }
 
     init(_ memo: Memo) {
         self.init(
             id: memo.id, day: memo.day, createdAt: memo.createdAt, kind: memo.kind, title: memo.title,
-            voiceState: memo.transcriptState, duration: memo.duration, photoCount: memo.photoCount
+            voiceState: memo.transcriptState, duration: memo.duration, photoCount: memo.photoCount,
+            isPhotoOnly: memo.isPhotoOnly
         )
     }
 
-    /// A Voice memo that is Transcribing or has No transcript shows that instead of its details.
-    private var transcriptStatus: String? {
-        guard kind == .voice else { return nil }
-        switch voiceState ?? .noTranscript {
-        case .transcribing: return "Transcribing…"
-        case .noTranscript: return "No transcript"
-        case .transcribed: return nil
-        }
-    }
-
-    /// The row's second line: "9:41 AM · 0:42 · 2 photos" (a Written memo has no duration, and
-    /// a memo with no photos no photo count), or "Transcribing…" / "No transcript".
-    func detailLine(locale: Locale = .current, timeZone: TimeZone = .current) -> String {
-        if let transcriptStatus { return transcriptStatus }
+    /// The parts of the row's second line, which always starts with the time (a Watch row has no
+    /// time column, so it's what tells Transcribing and No transcript rows apart): a Voice
+    /// memo's duration and, unless it is transcribed, its state (Transcribing shows no duration),
+    /// then the photo count when there are photos.
+    private func detailParts(locale: Locale, timeZone: TimeZone) -> [String] {
         var parts = [timeText(locale: locale, timeZone: timeZone)]
-        if kind == .voice { parts.append(Memo.formattedDuration(duration)) }
+        if kind == .voice {
+            switch voiceState ?? .noTranscript {
+            case .transcribing: parts.append("Transcribing…")
+            case .noTranscript: parts += [Memo.formattedDuration(duration), "No transcript"]
+            case .transcribed: parts.append(Memo.formattedDuration(duration))
+            }
+        }
         if let photos = photoText { parts.append(photos) }
-        return parts.joined(separator: " · ")
+        return parts
     }
 
-    /// What VoiceOver says: the kind, the title, the time, then the duration or transcript state
-    /// and the photo count.
+    /// The row's second line: "9:41 AM · 0:42 · 2 photos" (transcribed), "9:41 AM · Transcribing…",
+    /// "9:41 AM · 0:42 · No transcript", or for a Written memo "9:41 AM · 2 photos" or "9:41 AM".
+    func detailLine(locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        detailParts(locale: locale, timeZone: timeZone).joined(separator: " · ")
+    }
+
+    /// What VoiceOver says: the kind, the title, then the same parts as the detail line.
     func accessibilityLabel(locale: Locale = .current, timeZone: TimeZone = .current) -> String {
-        var parts = [kind == .voice ? "Voice memo" : "Written memo", title]
-        parts.append(timeText(locale: locale, timeZone: timeZone))
-        if kind == .voice { parts.append(Memo.formattedDuration(duration)) }
-        if let transcriptStatus { parts.append(transcriptStatus) }
-        if let photos = photoText { parts.append(photos) }
-        return parts.joined(separator: ", ")
+        let kindName = isPhotoOnly ? Memo.photoOnlyTitle : (kind == .voice ? "Voice memo" : "Written memo")
+        return ([kindName, title] + detailParts(locale: locale, timeZone: timeZone)).joined(separator: ", ")
     }
 
     private func timeText(locale: Locale, timeZone: TimeZone) -> String {

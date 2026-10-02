@@ -159,9 +159,9 @@ final class MemoSyncTests: XCTestCase {
         let watch = try makeWatch(transport)
         watchNow = phoneNow
 
-        _ = phone.addVoiceMemo(voice(at: phoneNow), stoppedAtCap: false)
+        _ = phone.addVoiceMemo(voice(at: try moment(29, 9, 41)), stoppedAtCap: false)
         XCTAssertEqual(watch.todayMemos.map(\.voiceState), [.transcribing])
-        XCTAssertEqual(detail(try XCTUnwrap(watch.todayMemos.first)), "Transcribing…")
+        XCTAssertEqual(detail(try XCTUnwrap(watch.todayMemos.first)), "9:41 AM · Transcribing…")
 
         transcriber.release(.transcript("I thought about the walk"))
         await phone.transcriptionsSettled()
@@ -314,8 +314,9 @@ final class MemoSyncTests: XCTestCase {
         XCTAssertEqual(detail(memo(.voice, .transcribed, duration: 600)), "9:41 AM · 10:00")
         XCTAssertEqual(detail(memo(.written, nil)), "9:41 AM")
         XCTAssertEqual(detail(memo(.written, nil, photos: 3)), "9:41 AM · 3 photos")
-        XCTAssertEqual(detail(memo(.voice, .transcribing, duration: 42)), "Transcribing…")
-        XCTAssertEqual(detail(memo(.voice, .noTranscript, duration: 42)), "No transcript")
+        XCTAssertEqual(detail(memo(.voice, .transcribing, duration: 42)), "9:41 AM · Transcribing…")
+        XCTAssertEqual(detail(memo(.voice, .transcribing, duration: 42, photos: 2)), "9:41 AM · Transcribing… · 2 photos")
+        XCTAssertEqual(detail(memo(.voice, .noTranscript, duration: 42)), "9:41 AM · 0:42 · No transcript")
     }
 
     func testAccessibilityLabelNamesKindTitleTimeAndDurationOrState() throws {
@@ -329,6 +330,48 @@ final class MemoSyncTests: XCTestCase {
             .replacingOccurrences(of: "\u{202F}", with: " ")
 
         XCTAssertEqual(label, "Voice memo, Walk, 9:41 AM, 0:42, No transcript, 2 photos")
+
+        let photoOnly = WatchMemo(
+            id: UUID(), day: day, createdAt: try moment(29, 9, 41), kind: .written, title: "Photo memo",
+            photoCount: 1, isPhotoOnly: true
+        )
+        let photoLabel = photoOnly.accessibilityLabel(locale: Locale(identifier: "en_US"), timeZone: calendar.timeZone)
+            .replacingOccurrences(of: "\u{202F}", with: " ")
+        XCTAssertEqual(photoLabel, "Photo memo, Photo memo, 9:41 AM, 1 photo")
+    }
+
+    func testOnlyAWrittenMemoWithNoTextAndPhotosIsPhotoOnly() throws {
+        phoneNow = try moment(29, 10)
+        let transport = ControllableMemoTransport()
+        let phone = try makePhone(transport)
+        let photoOnly = try XCTUnwrap(phone.addWrittenMemo(text: "", photos: [StoredPhoto(data: Data([1]), thumbnail: Data([2]))]))
+        let captioned = try XCTUnwrap(phone.addWrittenMemo(
+            text: "Caption", photos: [StoredPhoto(data: Data([3]), thumbnail: Data([4]))]
+        ))
+        let plain = try XCTUnwrap(phone.addWrittenMemo(text: "Plain"))
+        let recording = phone.addVoiceMemo(
+            voice(at: phoneNow), stoppedAtCap: false, photos: [StoredPhoto(data: Data([5]), thumbnail: Data([6]))]
+        )
+
+        let entries = try XCTUnwrap(transport.published.last).memos
+        func flag(_ id: UUID) -> Bool? { entries.first { $0.id == id }?.isPhotoOnly }
+        XCTAssertEqual(flag(photoOnly.id), true)
+        XCTAssertEqual(flag(captioned.id), false)
+        XCTAssertEqual(flag(plain.id), false)
+        XCTAssertEqual(flag(recording.id), false)
+    }
+
+    func testAMemoWithoutIsPhotoOnlyDecodesAsFalse() throws {
+        let entry = WatchMemo(
+            id: UUID(), day: TaskCompletionDay(date: try moment(29), calendar: calendar), createdAt: try moment(29, 9, 41),
+            kind: .written, title: "Photo memo", photoCount: 1, isPhotoOnly: true
+        )
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(entry)) as? [String: Any])
+        json.removeValue(forKey: "isPhotoOnly")
+
+        let decoded = try JSONDecoder().decode(WatchMemo.self, from: JSONSerialization.data(withJSONObject: json))
+
+        XCTAssertFalse(decoded.isPhotoOnly)
     }
 
     // MARK: Snapshot compatibility

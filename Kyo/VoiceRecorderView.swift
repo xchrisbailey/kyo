@@ -53,6 +53,12 @@ struct VoiceRecorderView: View {
                 Task { await session.begin() }
             }
         }
+        .onChange(of: session.phase) { oldPhase, phase in
+            // A tap at the first moment of recording; resuming from Paused has none.
+            if oldPhase == .starting, phase == .recording {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
+        }
         .onChange(of: session.outcome) { _, outcome in
             guard let outcome else { return }
             if case .saved(_, reachedCap: true) = outcome {

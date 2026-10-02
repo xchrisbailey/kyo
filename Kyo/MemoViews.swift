@@ -140,11 +140,17 @@ struct MemoRow: View {
 /// the text and photos as a memo; a memo with neither is discarded. Cancel keeps nothing.
 struct WrittenMemoComposeSheet: View {
     let onSave: (String, [StoredPhoto]) -> Void
+    /// Reports whether the sheet holds unsaved text or photos, so quick capture leaves it alone.
+    var onDraftChange: (Bool) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
     @State private var photos: [StoredPhoto] = []
     @FocusState private var isFocused: Bool
+
+    private var hasDraft: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photos.isEmpty
+    }
 
     var body: some View {
         NavigationStack {
@@ -188,6 +194,7 @@ struct WrittenMemoComposeSheet: View {
         }
         .presentationDetents([.medium, .large])
         .onAppear { isFocused = true }
+        .onChange(of: hasDraft) { _, hasDraft in onDraftChange(hasDraft) }
     }
 }
 

@@ -57,6 +57,28 @@ targets:
     dependencies:
       - target: KyoWatch
         embed: true
+      - target: KyoWidgets
+        embed: true
+  KyoWidgets:
+    type: app-extension
+    platform: iOS
+    # The controls run the same intents as the App Shortcuts, so the extension compiles the intents
+    # and the router they call. The intents pin themselves to the app process, where the router lives.
+    sources:
+      - KyoWidgets
+      - Kyo/QuickCaptureIntents.swift
+      - Shared/QuickCaptureRouter.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.widgets
+        SDKROOT: iphoneos
+        SUPPORTED_PLATFORMS: iphoneos iphonesimulator
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Kyo
+        # NSExtension isn't an INFOPLIST_KEY_ setting, so it comes from this partial plist.
+        INFOPLIST_FILE: Config/KyoWidgets-Info.plist
   KyoWatch:
     type: application
     platform: watchOS
@@ -105,6 +127,7 @@ targets:
       - Shared/OnDeviceLanguageModel.swift
       - Shared/MemoTaskSuggestions.swift
       - Shared/VoiceRecordingSession.swift
+      - Shared/QuickCaptureRouter.swift
       - Shared/UserDefaultsImport.swift
     settings:
       base:

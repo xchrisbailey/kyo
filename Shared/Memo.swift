@@ -5,14 +5,14 @@ import Foundation
 /// and has a **Transcript**, which is its only text. Either can carry up to 4 photos, and a
 /// Written memo with photos and no text is a photo-only memo.
 struct Memo: Identifiable, Equatable, Sendable {
-    enum Kind: String, Sendable {
+    enum Kind: String, Codable, Sendable {
         case written
         case voice
     }
 
     /// Where a Voice memo's **Transcript** stands. A new Voice memo is saved as soon as recording
     /// stops, in `transcribing`, and ends as `transcribed` or `noTranscript`.
-    enum TranscriptState: String, Sendable {
+    enum TranscriptState: String, Codable, Sendable {
         case transcribing
         case transcribed
         case noTranscript

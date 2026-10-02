@@ -4,6 +4,7 @@ import WatchKit
 struct WatchTodayView: View {
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
+    @StateObject private var memoList: WatchMemoList
     @State private var activeSheet: WatchPreviewSheet?
     @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
@@ -12,6 +13,7 @@ struct WatchTodayView: View {
     init() {
         _taskList = StateObject(wrappedValue: TaskListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
         _habitList = StateObject(wrappedValue: HabitListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
+        _memoList = StateObject(wrappedValue: WatchMemoList(sync: WatchConnectivityTaskTransport.shared))
     }
 
     var body: some View {
@@ -31,18 +33,7 @@ struct WatchTodayView: View {
                     taskRows
 
                     habitRows
-                    WatchSection(title: "Memos") {
-                        VStack(spacing: 0) {
-                            WatchMemoRow(
-                                icon: "text.alignleft",
-                                title: "An idea for the weekend",
-                                detail: "Try the trail by the lake. Bring coffee."
-                            )
-                            rowDivider
-                            WatchMemoRow(icon: "waveform", title: "Thoughts on my walk", detail: "Voice memo · 0:42")
-                        }
-                    }
-                    .listRow(top: 8)
+                    memoRows
                     WatchSection(title: "Meals") {
                         VStack(alignment: .leading, spacing: 0) {
                             WatchMealSummary()
@@ -98,20 +89,26 @@ struct WatchTodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await habitList.refreshAtEachDayBoundary()
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await memoList.refreshAtEachDayBoundary()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
+                memoList.refreshForCurrentDay()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
             taskList.refreshForCurrentDay()
             habitList.refreshForCurrentDay()
+            memoList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
             taskList.refreshForCurrentDay()
             habitList.refreshForCurrentDay()
+            memoList.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
     }
@@ -193,6 +190,33 @@ struct WatchTodayView: View {
         let wasCheckedOff = entry.isCheckedOffToday
         guard habitList.toggleCheckOff(id: entry.habit.id) != nil, !wasCheckedOff else { return }
         WKInterfaceDevice.current().play(.success)
+    }
+
+    /// Today's memos, newest first. Rows aren't tappable: the Watch has no memo detail, playback,
+    /// editing or deleting.
+    @ViewBuilder
+    private var memoRows: some View {
+        WatchSectionHeader(title: "Memos")
+            .listRow(top: 8, bottom: 5)
+
+        if memoList.todayMemos.isEmpty {
+            Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRow(background: WatchTaskRowBackground(position: .only))
+        } else {
+            ForEach(Array(memoList.todayMemos.enumerated()), id: \.element.id) { index, memo in
+                WatchMemoRow(memo: memo)
+                    .padding(.horizontal, 9)
+                    .overlay(alignment: .top) {
+                        if index > 0 { rowDivider.padding(.horizontal, 9) }
+                    }
+                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.todayMemos.count)))
+            }
+        }
     }
 
     private var habitEmptyMessage: String {
@@ -531,23 +555,21 @@ private struct WatchHabitRow: View {
 }
 
 private struct WatchMemoRow: View {
-    let icon: String
-    let title: String
-    let detail: String
+    let memo: WatchMemo
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
-            Image(systemName: icon)
+            Image(systemName: memo.isPhotoOnly ? "photo" : (memo.kind == .voice ? "waveform" : "text.alignleft"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.green)
                 .frame(width: 16)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(memo.title)
                     .font(.system(.footnote, weight: .medium))
                     .fixedSize(horizontal: false, vertical: true)
-                Text(detail)
+                Text(memo.detailLine())
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -556,7 +578,7 @@ private struct WatchMemoRow: View {
         }
         .padding(.vertical, 7)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(icon == "waveform" ? "Voice memo" : "Written memo"), \(title), \(detail)")
+        .accessibilityLabel(memo.accessibilityLabel())
     }
 }
 

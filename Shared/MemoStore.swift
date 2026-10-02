@@ -99,6 +99,14 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private let transcriber: any VoiceTranscriber
     private let languageModel: any OnDeviceLanguageModel
 
+    /// Where today's memos are published for the Watch, or `nil` when nothing is (ADR 0005).
+    private let memoSync: (any MemoSnapshotTransport)?
+    private let userDefaults: UserDefaults
+    private var memoSyncRevision: Int64?
+    /// What was last published, so a refresh that changed nothing the Watch shows publishes nothing.
+    private var lastPublishedWatchMemos: [WatchMemo]?
+    static let memoSyncRevisionKey = "kyo.memos.syncRevision"
+
     /// A transcription waiting to run. A visible one shows Transcribing (a new recording, an
     /// arrival from the Watch, **Try again**); a background one retries a No transcript memo by
     /// itself and shows nothing until it produces a transcript.
@@ -128,14 +136,18 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
     /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
     /// at a time. The `languageModel` generates a Voice memo's title, once, when its Transcript is
-    /// first finalized. `deviceLocale` is the device language as a locale identifier.
+    /// first finalized. `deviceLocale` is the device language as a locale identifier. With a
+    /// `memoSync` transport the store publishes today's memos for the Watch whenever they change,
+    /// keeping the snapshot revision in `userDefaults`.
     init(
         modelContainer: ModelContainer,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         transcriber: any VoiceTranscriber = NoTranscriber(),
         languageModel: any OnDeviceLanguageModel = NoLanguageModel(),
-        deviceLocale: @escaping () -> String = { Locale.current.identifier }
+        deviceLocale: @escaping () -> String = { Locale.current.identifier },
+        memoSync: (any MemoSnapshotTransport)? = nil,
+        userDefaults: UserDefaults = .standard
     ) {
         self.modelContainer = modelContainer
         self.context = modelContainer.mainContext
@@ -144,6 +156,10 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         self.transcriber = transcriber
         self.languageModel = languageModel
         self.deviceLocale = deviceLocale
+        self.memoSync = memoSync
+        self.userDefaults = userDefaults
+        self.memoSyncRevision = memoSync == nil
+            ? nil : (userDefaults.object(forKey: Self.memoSyncRevisionKey) as? NSNumber)?.int64Value
         self.currentDate = calendar.startOfDay(for: now())
         discardEmptyWrittenMemos()
         refreshForCurrentDay()
@@ -385,6 +401,21 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         memos = uniqueByID(fetched).map(\.memo).sorted(by: Self.isNewer)
         revision &+= 1
         hasMemos = ((try? context.fetchCount(FetchDescriptor<MemoRecord>())) ?? 0) > 0
+        publishMemosForWatchIfChanged()
+    }
+
+    /// Publishes today's memos to the Watch when what a Watch row shows has changed, and the
+    /// first time. Every change and every day rollover comes through `refreshForCurrentDay`, so
+    /// this covers both. The revision follows ADR 0001's hybrid clock.
+    private func publishMemosForWatchIfChanged() {
+        guard let memoSync else { return }
+        let watchMemos = memos.map(WatchMemo.init)
+        guard watchMemos != lastPublishedWatchMemos else { return }
+        lastPublishedWatchMemos = watchMemos
+        let candidate = max((memoSyncRevision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
+        memoSyncRevision = candidate
+        userDefaults.set(NSNumber(value: candidate), forKey: Self.memoSyncRevisionKey)
+        memoSync.publish(MemoListSnapshot(revision: candidate, memos: watchMemos))
     }
 
     /// Refreshes for the current day now, then again at every local midnight until cancelled.

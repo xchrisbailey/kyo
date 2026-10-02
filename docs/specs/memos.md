@@ -1,6 +1,6 @@
 # Memos on iPhone, iPad, and Apple Watch
 
-Status: Draft for review. Specification only; implementation requires a separate user request.
+Status: Product behavior confirmed. Specification only; implementation requires a separate user request.
 
 ## Problem Statement
 
@@ -70,7 +70,7 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 
 - Written memo: its first line. Photo-only memo: "Photo memo". (#55, #56)
 - Voice memo: an on-device Apple Intelligence title generated once, when the transcript is finalized. The user can rename it. It's never regenerated automatically, not even when the transcript is edited, and there's no "Regenerate title" action. Without a generated or user title, it falls back to "Voice memo". (#55, #56)
-- Fallback titles appear in two forms. In a row whose time column is visible, they read just **"Voice memo"** or **"Photo memo"**. Where no time column is visible, such as in shared text, they read "Voice memo · 9:41 AM" or "Photo memo · 9:41 AM". (#56; see Open questions on memo history)
+- Fallback titles appear in two forms. In a row whose time column is visible, they read just **"Voice memo"** or **"Photo memo"**. Rows on Today, in the Memos sheet and on the Watch all have a time column, so they use the bare form. The time-stamped form ("Voice memo · 9:41 AM") is used only in shared text. (#56, #58, #62)
 
 ### Recording a voice memo (iPhone/iPad)
 
@@ -118,7 +118,7 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 
 - An open memo is a card sheet. From the top: kind · time · duration, a large title (editable for voice memos), an action row (**Share**, **Memo → Task**, **Delete**), a photo carousel with an add slot, then the text or transcript editor. (#56)
 - For voice memos, the audio player (play/pause and scrubber) is pinned to the bottom. While Transcribing, the transcript area shows "Transcribing…"; with No transcript, it shows **Try again**. (#56)
-- Edits save immediately; there's no Save button. Emptying a written memo and closing it discards the memo. (#56; see Open questions)
+- Edits save immediately; there's no Save button. Emptying a written memo's text and closing it keeps it as a photo memo if it has photos; a memo with no text and no photos is discarded. (#55, #56, #62)
 - Delete in the action row follows the row rule: voice memos confirm first. (#56, prototype)
 
 ### Photos
@@ -177,7 +177,7 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 - A **Record** button sits at the top of the Memos section. It opens a full-screen recorder with the elapsed time, a simple level meter, **Stop** (saves), and **Discard** (saves nothing). There's no live transcript. The 10-minute cap matches the phone: a warning in the last 30 seconds, then an automatic stop and save. (#60)
 - Haptics: "start" when recording starts, "success" when it stops and saves, and "notification" for the cap warning. (#60)
 - Recordings not yet confirmed by the phone show straight away as "Voice memo · Waiting for iPhone". A waiting recording can't be deleted on the Watch; it's deleted on the phone after it arrives. (#59, #60)
-- With no memos today: "No memos today" plus the Record button. If no memo snapshot has ever arrived, recording still works; the list shows only waiting recordings plus the same "Open Kyo on iPhone" hint tasks and habits use. (#60)
+- With no memos today: "No memos today" plus the Record button. If no memo snapshot has ever arrived, recording still works; the list shows only waiting recordings plus the hint "Open Kyo on iPhone to sync memos", matching the habits wording. (#60, #62)
 - If microphone access is denied, the recorder shows "Kyo needs microphone access. Turn it on in Settings on Apple Watch." and saves nothing. If the Watch is out of space, recording fails with "Not enough space on Apple Watch". (#59, #60)
 
 ### Watch sync
@@ -197,6 +197,22 @@ See `docs/adr/0005-watch-memo-sync.md`. (#59)
 - Preserve accessible names and states: each row's label includes its kind, title, time, and duration or transcript state; recorder controls and the player are labelled.
 - Keep lasting target and build configuration changes (the two widget extensions, usage strings, the audio background mode) in `project.yml` and regenerate the checked-in project when needed.
 
+### Decided during spec review
+
+These close gaps found while writing this spec, confirmed by the user. (#62)
+
+- **AI titles.** If the user renames a memo while it's Transcribing, the user's title wins; the AI never overwrites a title the user set. If Apple Intelligence isn't available when the transcript is finalized, the fallback title stays and there's no later retry.
+- **Memo → Task with no text.** For a memo that's Transcribing, has No transcript, or is photo-only, Memo → Task opens the manual sheet ("No suggestions" with a blank task row). It's never hidden.
+- **Share.** While a voice memo is Transcribing, Share sends only its photos, and is unavailable if it has none. A photo-only memo shares only its photos, with no title text.
+- **Recording without live transcription.** If live transcription isn't available (model still downloading, offline, or unsupported locale), recording works normally and the recorder shows "Transcript will appear after recording". Transcription runs after recording when possible. Otherwise the memo is No transcript and retries automatically once the model is available.
+- **Silence and locale.** A recording with no recognized speech is **No transcript**, with no automatic retry; **Try again** is still offered. Transcription uses the device's language, falling back to `DictationTranscriber`, and is No transcript if neither supports it.
+- **Empty Memos section.** Today's empty Memos section reads "Tap + to add a memo", including when older memos exist (See all still shows).
+- **Cap note.** Reaching the 10-minute cap is stored on the memo, and the open memo shows "Recording stopped at 10 minutes".
+- **Quick capture over other UI.** If a memo card or the Memos sheet is open, it closes (edits are already saved), any playback stops, and the recorder opens. An in-progress recording or unsaved written draft is still brought forward instead (#61).
+- **Watch recording edge cases.** These follow the phone: interruptions pause with **Resume** and **Stop**; recording continues when the wrist is lowered (background audio); after a crash, the partial recording is saved into the outbox and sent.
+- **Watch Siri phrase.** Out of scope. The Watch has the complication and the "Record memo" control.
+- **Data protection.** The SwiftData store and media use iOS's default file protection (readable after first unlock), so a Watch recording can be received and saved while the phone is locked.
+
 ## Testing Decisions
 
 - Use one primary behavior-testing boundary on the phone: the memo store interface the views consume, backed by an in-memory SwiftData store as the SwiftData spec sets up. Assert observable memos, titles, states, ordering, groups, search results, and created tasks, not storage layout or view structure.
@@ -211,26 +227,6 @@ See `docs/adr/0005-watch-memo-sync.md`. (#59)
 - Build both app schemes and both widget extensions.
 - Device testing is required for: transcription (live and file, asset download, offline use after download, the `DictationTranscriber` fallback, iPhone and iPad); Foundation Models on an Apple Intelligence device and on one without it; microphone and camera prompts; background recording, call and Siri interruptions, and crash recovery; Watch file transfer on a paired iPhone and Watch (it doesn't work in the Simulator), extending `WatchSyncSmokeUITests` where possible; the controls, Action button, Siri phrases, and Watch complication and control, including whether a foreground Watch control opens the Watch app and whether `widgetURL` needs a registered scheme; and Watch haptics.
 
-## Open questions
-
-These are undecided or contradictory between the sources and need a decision before or during implementation.
-
-1. **Fallback titles in memo history.** #56 says the time-stamped form ("Voice memo · 9:41 AM") is used "in memo history", but #58 says memo history rows are identical to Today's rows, which show the time column and so would use the bare form. Which applies? The same question applies to the title the memo snapshot sends to the Watch, whose rows show the time in the detail line.
-2. **Emptying a written memo that has photos.** #56 says emptying a written memo and closing it discards the memo; #55 allows photo-only memos and discards only a memo with no text and no photos. The spec assumes a memo is discarded only when it has neither. Confirm.
-3. **AI title timing edge cases.** If the user renames a voice memo while it's still Transcribing, does the generated title still replace it? If the model is `.modelNotReady` when the transcript is finalized, is the title generated later, or does the memo keep the fallback for good ("generated once")?
-4. **Memo → Task with no text.** What does Memo → Task do on a voice memo that is Transcribing or has No transcript, or on a photo-only memo? The prototype showed "Suggestions need some text to read"; no ticket decides it.
-5. **Share edge cases.** Is Share unavailable while a voice memo is Transcribing (like No transcript)? Does sharing a photo-only memo include the "Photo memo · 9:41 AM" title as text, or only the photos?
-6. **Live transcript unavailable.** What does the phone recorder show when live transcription can't run (first use of a locale offline, asset downloading, unsupported locale)? Is download progress shown anywhere?
-7. **Empty transcript.** Is a recording that produced no words Transcribed with an empty transcript, or No transcript?
-8. **Transcription locale.** Is the transcript always in the device locale (`supportedLocale(equivalentTo: Locale.current)`), or is there any per-memo language choice?
-9. **Today's empty state.** The subtitle reads "Notes & voice" when empty, but the row text isn't decided, including when older memos exist (the prototype used "No memos yet" / "Tap + to add one").
-10. **The cap note.** Is "Recording stopped at 10 minutes" stored on the memo and shown whenever it's opened (as in the prototype), or shown only when the recording stops?
-11. **Quick capture with other sheets open.** What happens when Record memo or Write memo fires while an existing memo's card, the Memos sheet, or audio playback is open? #61 decides only the case of an in-progress capture.
-12. **Watch recording interruptions.** #66 covers the phone only. Does a Watch recording continue when the wrist drops or the app leaves the foreground, pause for a call, or survive a Watch app crash?
-13. **Watch never-synced hint wording.** #60 says "the same 'Open Kyo on iPhone' hint tasks and habits use"; habits use "Open Kyo on iPhone to sync habits". The memo wording isn't set.
-14. **Watch Siri phrase.** The research notes the Watch app could offer its own App Shortcut; #61 lists only the complication and the Watch control. Confirm there's no Watch Siri phrase.
-15. **Data protection.** The research didn't cover whether the store and media are readable while the phone is locked, which matters for background recording and for receiving Watch files.
-
 ## Out of Scope
 
 - AI summaries of voice memos.
@@ -241,6 +237,7 @@ These are undecided or contradictory between the sources and need a decision bef
 - Implementation. This map produces the two specs only.
 - Indexing memo content in system Spotlight (decided in #63).
 - Filter chips in the Memos sheet, and reaching past memos through the Calendar tab or any past-day view (decided in #58).
+- A Siri phrase on the Watch (#62).
 
 ## Further Notes
 

@@ -275,6 +275,13 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         session?.activationState == .activated
     }
 
+    /// Whether the session is activated and everything the counterpart sent has been delivered to
+    /// the delegate: what a `WKWatchConnectivityRefreshBackgroundTask` waits for.
+    var isActivatedWithNoPendingContent: Bool {
+        guard let session else { return true }
+        return session.activationState == .activated && !session.hasContentPending
+    }
+
     func setActivationHandler(_ handler: @escaping @MainActor () -> Void) {
         activationHandler = handler
         if isActivated { handler() }

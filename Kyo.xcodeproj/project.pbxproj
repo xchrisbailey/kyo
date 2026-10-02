@@ -55,6 +55,7 @@
 		3B081FC163933FB33C056D58 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9217084F21FDCEAFA52A59 /* SettingsView.swift */; };
 		3D1BC4478D9F78530BD99848 /* HabitOrderBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981D3B2280B6BD33C4406F3E /* HabitOrderBehaviorTests.swift */; };
 		419193232AED3C66EEEB379E /* FakeOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBF78EA45D5D2F56269A70B /* FakeOnDeviceLanguageModel.swift */; };
+		437830A55569F4D87850D902 /* WatchConnectivityRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */; };
 		44FE53BB30519A91C7935035 /* KyoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FC2C817099EDA1E5B3603072 /* KyoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		471989F72F89F16F46A48BF8 /* TranscriptionBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072205325C426413529D49A6 /* TranscriptionBehaviorTests.swift */; };
 		48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
@@ -92,6 +93,7 @@
 		7B01456F6057FEBB66857A60 /* AudioRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83017F1F6E304A53AB78724B /* AudioRecording.swift */; };
 		7CBD9A9416DFFB2AEE415131 /* DeviceAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29ED805313CFC2CAB23D3359 /* DeviceAudioRecorder.swift */; };
 		7F087DFBAE02D9603BEC4FBF /* MemoAudioRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75DA728502397E666EE0625B /* MemoAudioRecord.swift */; };
+		80DBA343FC00B7F6655D49E2 /* WatchConnectivityRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16906113B69E376D5D6D982 /* WatchConnectivityRefresh.swift */; };
 		81D40155F9E0F759D082E477 /* HabitListBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 642DDF527CFA6C09D084A117 /* HabitListBehaviorTests.swift */; };
 		85390F6294F4673815B59434 /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CF2F78994555897298356A /* QuickCaptureRouter.swift */; };
 		865DD2DF3AEB26468325D14C /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DC028D7DB3945826659DA3 /* TodayView.swift */; };
@@ -134,6 +136,7 @@
 		C92B7FCFC9BF8964D5EFE1E3 /* MemoHistoryBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B456EC7BDDC3930178B772BC /* MemoHistoryBehaviorTests.swift */; };
 		C968D219A24E038918281119 /* MemoPhotoBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 595D2E55DEF110C45E218235 /* MemoPhotoBehaviorTests.swift */; };
 		C9DFE18DDE43B00F813FBA28 /* VoiceTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C13E02E17713E5BC746D47 /* VoiceTranscriber.swift */; };
+		CA8DC0B0F5CD5DA05C56A1C3 /* WatchConnectivityRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16906113B69E376D5D6D982 /* WatchConnectivityRefresh.swift */; };
 		CCC75E590E2B5540B7DAF989 /* HabitSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B97E11A696463E64F14D0E4 /* HabitSync.swift */; };
 		CE44164FC8FCF0D7BB349C12 /* MemoTaskSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1088EDCCB7C23CC15B5D85FB /* MemoTaskSuggestions.swift */; };
 		CEC521F9E5E85AFE1273FF27 /* HabitSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B97E11A696463E64F14D0E4 /* HabitSync.swift */; };
@@ -148,10 +151,12 @@
 		E1690A8C5DB3C4A34E6585E2 /* ControllableTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBB3ABDDC4E15291ED50996E /* ControllableTaskTransport.swift */; };
 		E1C56BA74D2B9E2EC923441D /* FoundationOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77E9F4B5905CE4F84E22931F /* FoundationOnDeviceLanguageModel.swift */; };
 		E4FD0E984E48A3BB4E3F5878 /* MemoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3833347045D0B34FCE55765 /* MemoRecord.swift */; };
+		E67AC90776309A5951FD4C1B /* WatchConnectivityRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16906113B69E376D5D6D982 /* WatchConnectivityRefresh.swift */; };
 		E87AE75683FE22AE4D6D2C5A /* UserDefaultsImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371A003D7EE1BFBA7217B297 /* UserDefaultsImport.swift */; };
 		E8F81876613195C09413DF9D /* VoiceRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */; };
 		E929CCFF317E6477F2897694 /* MemoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */; };
 		E939ADF5748AB73AEC4104ED /* MemoPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1466B17A1E37FA6D0B6C529 /* MemoPhotos.swift */; };
+		E93EFE1E24D7EF669C5FB74F /* WatchAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */; };
 		EA1A289081A899CE4F595D1B /* WatchRecordingOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93771BC1E2763ADBC9FADF7 /* WatchRecordingOutbox.swift */; };
 		EC41327604FF061FE6EF4C08 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
 		ECFB965AB8B9F854BC22FD9A /* HabitRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB1FDED2BAFF17283C62172 /* HabitRecord.swift */; };
@@ -244,6 +249,8 @@
 		39937922050F5E91F34CE016 /* TaskContentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskContentPersistence.swift; sourceTree = "<group>"; };
 		39FCF9C14C37844038380111 /* HabitStreakBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitStreakBehaviorTests.swift; sourceTree = "<group>"; };
 		414C976EFE544386170551C7 /* Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Habit.swift; sourceTree = "<group>"; };
+		44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityRefreshTests.swift; sourceTree = "<group>"; };
+		4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppModel.swift; sourceTree = "<group>"; };
 		47F5D89897EBF988BF4209DD /* MemoSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoSyncTests.swift; sourceTree = "<group>"; };
 		4CF8B8FC2D53498AFD0D2E92 /* MemosSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemosSheet.swift; sourceTree = "<group>"; };
 		547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskCheckboxUITests.swift; sourceTree = "<group>"; };
@@ -273,6 +280,7 @@
 		9CFCA122DF0277FDE6E428F9 /* QuickCaptureRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureRoutingTests.swift; sourceTree = "<group>"; };
 		9E0C7B7A758ED3712E39F372 /* LiveSpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSpeechTranscriber.swift; sourceTree = "<group>"; };
 		A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A16906113B69E376D5D6D982 /* WatchConnectivityRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityRefresh.swift; sourceTree = "<group>"; };
 		A1AC1B160A330EACC207AC90 /* SpeechSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSupport.swift; sourceTree = "<group>"; };
 		A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchEditDeleteSyncTests.swift; sourceTree = "<group>"; };
 		AF81B58A643F38857A997A27 /* MemoSchemaMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoSchemaMigrationTests.swift; sourceTree = "<group>"; };
@@ -395,6 +403,7 @@
 				C90514C7D4BDDDA86EA314E2 /* UserDefaultsImportTests.swift */,
 				010F9CA8F227E5CD718E2790 /* VoiceMemoBehaviorTests.swift */,
 				C6F954AF40DA339BC0A86F2A /* VoiceMemoTitleBehaviorTests.swift */,
+				44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */,
 				A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */,
 				AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */,
 				C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */,
@@ -446,6 +455,7 @@
 				371A003D7EE1BFBA7217B297 /* UserDefaultsImport.swift */,
 				2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */,
 				92C13E02E17713E5BC746D47 /* VoiceTranscriber.swift */,
+				A16906113B69E376D5D6D982 /* WatchConnectivityRefresh.swift */,
 				B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */,
 				0859BEDFD9F2BB24A566CACF /* WatchMemoList.swift */,
 				F93771BC1E2763ADBC9FADF7 /* WatchRecordingOutbox.swift */,
@@ -479,6 +489,7 @@
 			children = (
 				5B3969547B09464204F0BFDB /* Assets.xcassets */,
 				06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */,
+				4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */,
 				E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */,
 				6F4EDFB9FEDC54141232A454 /* WatchRecorderView.swift */,
 				0337E78B4D196D57039372C8 /* WatchTodayView.swift */,
@@ -713,6 +724,7 @@
 				5271739E784A040FE33BA124 /* VoiceRecorderView.swift in Sources */,
 				E8F81876613195C09413DF9D /* VoiceRecordingSession.swift in Sources */,
 				F7AAE4501DE647A8A1B6B143 /* VoiceTranscriber.swift in Sources */,
+				80DBA343FC00B7F6655D49E2 /* WatchConnectivityRefresh.swift in Sources */,
 				5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */,
 				961388C59BB53C6FF3C0A4C5 /* WatchMemoList.swift in Sources */,
 				299C9B94591A62EDB1BA611B /* WatchRecordingOutbox.swift in Sources */,
@@ -780,6 +792,8 @@
 				9B1FB7FF1CD1B4DB9DF1F537 /* VoiceMemoTitleBehaviorTests.swift in Sources */,
 				5ED694DB41479BD59B854D4C /* VoiceRecordingSession.swift in Sources */,
 				C9DFE18DDE43B00F813FBA28 /* VoiceTranscriber.swift in Sources */,
+				CA8DC0B0F5CD5DA05C56A1C3 /* WatchConnectivityRefresh.swift in Sources */,
+				437830A55569F4D87850D902 /* WatchConnectivityRefreshTests.swift in Sources */,
 				78598615D67BDFE1164CB5B5 /* WatchConnectivityTaskTransport.swift in Sources */,
 				1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */,
 				503C7EB21D894122F5B633C1 /* WatchHabitCheckOffTests.swift in Sources */,
@@ -824,7 +838,9 @@
 				0940D03E72053CF7D4C87344 /* UserDefaultsImport.swift in Sources */,
 				EFA580C3E01F24D6A7A28CFB /* VoiceRecordingSession.swift in Sources */,
 				74ED748B535E72D9E9DCC3B9 /* VoiceTranscriber.swift in Sources */,
+				E93EFE1E24D7EF669C5FB74F /* WatchAppModel.swift in Sources */,
 				20E21F3041B152FC4F41004B /* WatchAudioRecorder.swift in Sources */,
+				E67AC90776309A5951FD4C1B /* WatchConnectivityRefresh.swift in Sources */,
 				564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */,
 				F9DD0B2CE32F036038B320CC /* WatchMemoList.swift in Sources */,
 				2770EAC67818133FC0EC6075 /* WatchRecorderView.swift in Sources */,

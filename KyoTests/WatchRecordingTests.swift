@@ -386,6 +386,29 @@ final class WatchRecordingTests: XCTestCase {
         XCTAssertEqual(link.outboxFiles, [])
     }
 
+    func testASnapshotTheTransportAlreadyHoldsRetiresAcknowledgedRecordingsWhenTheStoresAreMade() async throws {
+        // A background launch: the phone's snapshot arrived while the Watch app wasn't open. The
+        // Watch has no view yet, only the stores, and the transport hands over what it holds.
+        let link = try makeLink()
+        let watch = launchWatch(link)
+        let phone = launchPhone(link)
+        link.snapshots.disconnect()
+        let id = try await record(watch, link)
+        await settle()
+        XCTAssertNotNil(phone.memo(id: id))
+        XCTAssertEqual(link.outboxFiles, ["\(id.uuidString).caf"])
+        // The first Watch process is gone; nothing receives the snapshot until the next launch.
+        link.snapshots.setMemoSnapshotHandler { _ in }
+        link.snapshots.reconnect()
+        XCTAssertEqual(link.outboxFiles, ["\(id.uuidString).caf"])
+
+        let woken = launchWatch(link)
+
+        XCTAssertEqual(woken.outbox.entries, [])
+        XCTAssertEqual(link.outboxFiles, [])
+        XCTAssertEqual(woken.list.listedMemos.map(\.id), [id])
+    }
+
     // MARK: Retry
 
     func testAFailedTransferIsSentAgainAndAGivenUpOneWaitsForTheNextLaunch() async throws {

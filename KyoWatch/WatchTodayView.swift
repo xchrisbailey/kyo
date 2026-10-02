@@ -2,9 +2,10 @@ import SwiftUI
 import WatchKit
 
 struct WatchTodayView: View {
-    @StateObject private var taskList: TaskListStore
-    @StateObject private var habitList: HabitListStore
-    @StateObject private var memoList: WatchMemoList
+    // Owned by `WatchAppModel`, so a background launch can apply snapshots without this view.
+    @ObservedObject private var taskList = WatchAppModel.shared.taskList
+    @ObservedObject private var habitList = WatchAppModel.shared.habitList
+    @ObservedObject private var memoList = WatchAppModel.shared.memoList
     @State private var activeSheet: WatchPreviewSheet?
     /// Made once the memo list exists, which is where the outbox a recording is saved to lives.
     @State private var recordingSession: VoiceRecordingSession?
@@ -12,15 +13,6 @@ struct WatchTodayView: View {
     @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
-
-    init() {
-        _taskList = StateObject(wrappedValue: TaskListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
-        _habitList = StateObject(wrappedValue: HabitListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
-        _memoList = StateObject(wrappedValue: WatchMemoList(
-            outbox: WatchRecordingOutbox(transport: WatchConnectivityTaskTransport.shared),
-            sync: WatchConnectivityTaskTransport.shared
-        ))
-    }
 
     var body: some View {
         GeometryReader { geometry in

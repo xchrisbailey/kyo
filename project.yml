@@ -129,6 +129,7 @@ targets:
       - Shared/WatchMemoList.swift
       - Shared/MemoFileTransfer.swift
       - Shared/WatchRecordingOutbox.swift
+      - Shared/WatchConnectivityRefresh.swift
       - Shared/MemoHistory.swift
       - Shared/MemoShare.swift
       - Shared/AudioRecording.swift

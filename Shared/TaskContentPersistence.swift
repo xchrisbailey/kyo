@@ -71,7 +71,7 @@ struct SwiftDataTaskContent: TaskContentPersistence {
                 record.update(from: task)
                 missingIDs.remove(task.id)
             } else {
-                context.insert(TaskRecord(task: task))
+                Self.insert(task, into: context)
             }
         }
         for id in missingIDs {
@@ -82,6 +82,11 @@ struct SwiftDataTaskContent: TaskContentPersistence {
         if context.hasChanges {
             try? context.save()
         }
+    }
+
+    /// Inserts `task` as a task record. Doesn't save. Shared with `UserDefaultsImport`.
+    static func insert(_ task: DailyTask, into context: ModelContext) {
+        context.insert(TaskRecord(task: task))
     }
 
     private static func keepsFirst(_ lhs: TaskRecord, _ rhs: TaskRecord) -> Bool {

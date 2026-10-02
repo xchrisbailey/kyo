@@ -20,8 +20,18 @@ struct KyoApp: App {
         }
     }
 
+    /// Opens the store and, for the on-disk one, runs the one-time UserDefaults import before
+    /// any list store exists. A failed import is invisible: the app carries on and the import
+    /// is retried next launch.
     private static func openStore() -> Result<ModelContainer, Error> {
-        Result { try KyoModelContainer.make(inMemory: KyoModelContainer.isInMemoryRequested) }
+        let inMemory = KyoModelContainer.isInMemoryRequested
+        return Result {
+            let container = try KyoModelContainer.make(inMemory: inMemory)
+            if !inMemory {
+                UserDefaultsImport(modelContainer: container).run()
+            }
+            return container
+        }
     }
 }
 

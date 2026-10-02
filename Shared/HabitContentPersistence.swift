@@ -85,6 +85,12 @@ struct SwiftDataHabitContent: HabitContentPersistence {
     }
 
     private func insert(_ habit: Habit) {
+        Self.insert(habit, into: context)
+    }
+
+    /// Inserts `habit` as a habit record with a record for each check-off day and each
+    /// schedule entry. Doesn't save. Shared with `UserDefaultsImport`.
+    static func insert(_ habit: Habit, into context: ModelContext) {
         let record = HabitRecord(habit: habit)
         context.insert(record)
         for day in Set(habit.checkOffs.map(DayKey.init)) {

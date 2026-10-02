@@ -113,6 +113,7 @@ struct TodayView: View {
                                     if index > 0 { rowDivider }
                                     MemoRow(
                                         memo: memo,
+                                        loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
                                         onOpen: { activeSheet = .memo(memo.id) },
                                         onDelete: { requestDelete(of: memo) }
                                     )
@@ -157,7 +158,7 @@ struct TodayView: View {
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
-                        WrittenMemoComposeSheet(onSave: { text in memoStore.addWrittenMemo(text: text) })
+                        WrittenMemoComposeSheet(onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) })
                     case .memo(let id):
                         if let memo = memoStore.memo(id: id) {
                             MemoCardSheet(
@@ -167,6 +168,10 @@ struct TodayView: View {
                                 onDelete: { memoStore.deleteMemo(id: id) },
                                 onClose: { memoStore.closeMemo(id: id) },
                                 loadAudio: { memoStore.audioData(forMemoID: id) },
+                                loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
+                                loadPhoto: { memoStore.photoData(forPhotoID: $0) },
+                                onAddPhoto: { photo in memoStore.addPhoto(photo, toMemoID: id) },
+                                onRemovePhoto: { photoID in memoStore.removePhoto(id: photoID, fromMemoID: id) },
                                 onRetryTranscription: { memoStore.retryTranscription(id: id) },
                                 makeTaskSuggestions: { text in
                                     MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)

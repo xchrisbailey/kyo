@@ -1,6 +1,6 @@
 # 4. SwiftData storage, ready for CloudKit
 
-Status: accepted (tasks and habits implemented in #72, #73 and #74; written memos in #76, voice audio in #77 and the transcription retry policy in #78, all in `KyoSchemaV2`; photos not yet)
+Status: accepted (tasks and habits implemented in #72, #73 and #74; written memos in #76, voice audio in #77, the transcription retry policy in #78 and photos in #81, all in `KyoSchemaV2`)
 
 ## Context
 

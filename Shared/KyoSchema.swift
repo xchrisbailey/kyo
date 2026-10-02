@@ -1,8 +1,8 @@
 import Foundation
 import SwiftData
 
-/// Version 1 of Kyo's SwiftData schema. Memo models are added here, or in a later additive
-/// version, as they arrive. See docs/adr/0004-swiftdata-cloudkit-ready-storage.md.
+/// Version 1 of Kyo's SwiftData schema: tasks and habits. See
+/// docs/adr/0004-swiftdata-cloudkit-ready-storage.md.
 enum KyoSchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
 
@@ -11,13 +11,24 @@ enum KyoSchemaV1: VersionedSchema {
     }
 }
 
+/// Version 2 adds memos, and nothing else changes. Later memo models (voice audio, photos) are
+/// added the same way, in a further additive version.
+enum KyoSchemaV2: VersionedSchema {
+    static let versionIdentifier = Schema.Version(2, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        KyoSchemaV1.models + [MemoRecord.self]
+    }
+}
+
 enum KyoMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [KyoSchemaV1.self]
+        [KyoSchemaV1.self, KyoSchemaV2.self]
     }
 
+    /// Adding a model is a lightweight migration: existing tasks and habits are untouched.
     static var stages: [MigrationStage] {
-        []
+        [.lightweight(fromVersion: KyoSchemaV1.self, toVersion: KyoSchemaV2.self)]
     }
 }
 
@@ -33,12 +44,22 @@ enum KyoModelContainer {
     /// store never syncs through CloudKit until that effort explicitly turns it on, so an
     /// unrelated iCloud entitlement can't enable it.
     static func make(inMemory: Bool = false) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: KyoSchemaV1.self)
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: .none
-        )
+        try make(configuration: { schema in
+            ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory, cloudKitDatabase: .none)
+        })
+    }
+
+    /// Opens the store at `url`, migrating it to the current schema. For tests that reopen a
+    /// store written by an earlier version.
+    static func make(storeURL url: URL) throws -> ModelContainer {
+        try make(configuration: { schema in
+            ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        })
+    }
+
+    private static func make(configuration: (Schema) -> ModelConfiguration) throws -> ModelContainer {
+        let schema = Schema(versionedSchema: KyoSchemaV2.self)
+        let configuration = configuration(schema)
         return try ModelContainer(
             for: schema,
             migrationPlan: KyoMigrationPlan.self,

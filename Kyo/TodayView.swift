@@ -5,6 +5,7 @@ import UIKit
 struct TodayView: View {
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
+    @StateObject private var memoStore: MemoStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
     @State private var isShowingTaskDraft = false
@@ -20,6 +21,7 @@ struct TodayView: View {
         _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
+        _memoStore = StateObject(wrappedValue: MemoStore(modelContainer: modelContainer))
     }
 
     var body: some View {
@@ -85,11 +87,23 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        TodaySection(title: "Memos", note: "Notes & voice") {
+                        TodaySection(title: "Memos", note: memoStore.sectionSubtitle) {
                             VStack(spacing: 0) {
-                                MemoRow(icon: "text.alignleft", title: "An idea for the weekend", detail: "Try the trail by the lake. Bring coffee.")
-                                rowDivider
-                                VoiceMemoRow()
+                                if memoStore.memos.isEmpty {
+                                    Text("Tap + to add a memo")
+                                        .font(.body)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                                        .padding(.horizontal, 14)
+                                }
+                                ForEach(Array(memoStore.memos.enumerated()), id: \.element.id) { index, memo in
+                                    if index > 0 { rowDivider }
+                                    MemoRow(
+                                        memo: memo,
+                                        onOpen: { activeSheet = .memo(memo.id) },
+                                        onDelete: { _ = memoStore.deleteMemo(id: memo.id) }
+                                    )
+                                }
                             }
                         }
                         TodaySection(title: "Meals", note: "2 logged") {
@@ -116,6 +130,7 @@ struct TodayView: View {
                     TodayBottomBar(
                         addTask: beginTaskDraft,
                         addHabit: { activeSheet = .habitForm },
+                        addWrittenMemo: { activeSheet = .composeMemo },
                         openCalendar: { activeSheet = .calendar }
                     )
                 }
@@ -127,6 +142,17 @@ struct TodayView: View {
                         SettingsSheet(habitList: habitList)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
+                    case .composeMemo:
+                        WrittenMemoComposeSheet(onSave: { text in memoStore.addWrittenMemo(text: text) })
+                    case .memo(let id):
+                        if let memo = memoStore.memo(id: id) {
+                            MemoCardSheet(
+                                memo: memo,
+                                onEdit: { text in memoStore.editMemo(id: id, text: text) },
+                                onDelete: { memoStore.deleteMemo(id: id) },
+                                onClose: { memoStore.closeMemo(id: id) }
+                            )
+                        }
                     case .editHabit(let id):
                         if let habit = habitList.habits.first(where: { $0.id == id }) {
                             HabitFormSheet(
@@ -153,25 +179,32 @@ struct TodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await habitList.refreshAtEachDayBoundary()
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await memoStore.refreshAtEachDayBoundary()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
+                memoStore.refreshForCurrentDay()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             taskList.refreshForCurrentDay()
             habitList.refreshForCurrentDay()
+            memoStore.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
             taskList.refreshForCurrentDay()
             habitList.refreshForCurrentDay()
+            memoStore.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
             taskList.refreshForCurrentDay()
             habitList.refreshForCurrentDay()
+            memoStore.refreshForCurrentDay()
             dayBoundaryRefreshToken += 1
         }
     }
@@ -281,6 +314,8 @@ private enum TodayPreviewSheet: Identifiable {
     case settings
     case habitForm
     case editHabit(UUID)
+    case composeMemo
+    case memo(UUID)
 
     var id: String {
         switch self {
@@ -288,6 +323,8 @@ private enum TodayPreviewSheet: Identifiable {
         case .settings: "settings"
         case .habitForm: "habitForm"
         case .editHabit(let id): "editHabit:\(id.uuidString)"
+        case .composeMemo: "composeMemo"
+        case .memo(let id): "memo:\(id.uuidString)"
         }
     }
 }
@@ -321,6 +358,7 @@ private struct TaskDraftRow: View {
 private struct TodayBottomBar: View {
     let addTask: () -> Void
     let addHabit: () -> Void
+    let addWrittenMemo: () -> Void
     let openCalendar: () -> Void
 
     var body: some View {
@@ -344,6 +382,10 @@ private struct TodayBottomBar: View {
             Menu {
                 Button("Task", systemImage: "checkmark.circle", action: addTask)
                 Button("Habit", systemImage: "repeat", action: addHabit)
+                Button("Written memo", systemImage: "text.alignleft", action: addWrittenMemo)
+                // Enabled by the ticket "Record and play voice memos".
+                Button("Voice memo", systemImage: "waveform", action: {})
+                    .disabled(true)
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 26, weight: .medium))
@@ -354,7 +396,7 @@ private struct TodayBottomBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
-            .accessibilityHint("Adds a task or a habit")
+            .accessibilityHint("Adds a task, a habit or a memo")
 
             Button(action: openCalendar) {
                 VStack(spacing: 3) {
@@ -450,7 +492,7 @@ private struct CalendarPreviewSheet: View {
     }
 }
 
-private enum KyoPalette {
+enum KyoPalette {
     static var accent: Color {
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
@@ -838,86 +880,6 @@ private struct TaskRow: View {
     private func saveEdit() {
         guard onEdit(draft) else { return }
         isEditing = false
-    }
-}
-
-private struct MemoRow: View {
-    let icon: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(accentColor)
-                .frame(width: 28)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.body).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(minHeight: 55)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Written memo. \(title). \(detail)")
-    }
-
-    private var accentColor: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
-                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
-        })
-    }
-}
-
-private struct VoiceMemoRow: View {
-    private let bars: [CGFloat] = [5, 11, 18, 9, 22, 15, 8, 13, 20, 11, 5, 16, 9, 5]
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "waveform")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(accentColor)
-                .frame(width: 28)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Thoughts on my walk")
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                HStack(alignment: .center, spacing: 2) {
-                    ForEach(Array(bars.enumerated()), id: \.offset) { _, height in
-                        Capsule()
-                            .fill(accentColor.opacity(0.65))
-                            .frame(width: 3, height: height)
-                    }
-                }
-                .frame(height: 22, alignment: .center)
-                .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text("0:42")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize()
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(minHeight: 55)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Voice memo, Thoughts on my walk, 42 seconds")
-    }
-
-    private var accentColor: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
-                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
-        })
     }
 }
 

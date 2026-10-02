@@ -85,6 +85,9 @@ targets:
       - Shared/TaskContentPersistence.swift
       - Shared/HabitRecord.swift
       - Shared/HabitContentPersistence.swift
+      - Shared/Memo.swift
+      - Shared/MemoRecord.swift
+      - Shared/MemoStore.swift
       - Shared/UserDefaultsImport.swift
     settings:
       base:

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftData
 
 /// The rule that decides which days a habit is due.
 enum HabitSchedule: Codable, Equatable, Sendable {
@@ -416,7 +417,9 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     private static let maxBoundedSetSize = 500
 
     private let userDefaults: UserDefaults
-    private let storageKey: String
+    /// Where habit content lives: SwiftData for a `.publish` or standalone store, the
+    /// `storageKey` UserDefaults entry for a `.mirror` (Watch) store.
+    private let content: any HabitContentPersistence
     private let now: () -> Date
     private let calendar: Calendar
     private let sync: HabitListSync?
@@ -441,15 +444,20 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         return false
     }
 
+    /// A `.publish` or standalone (nil sync) store keeps its content in `modelContainer`, which
+    /// it requires; a `.mirror` store ignores the container and keeps UserDefaults. Revision,
+    /// tombstones and processed command ids stay in `userDefaults` under keys derived from
+    /// `storageKey` in every case; the content key itself is never read or written by a
+    /// non-mirror store.
     init(
         userDefaults: UserDefaults = .standard,
         storageKey: String = HabitListStore.storageKey,
+        modelContainer: ModelContainer? = nil,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         sync: HabitListSync? = nil
     ) {
         self.userDefaults = userDefaults
-        self.storageKey = storageKey
         self.now = now
         self.calendar = calendar
         self.sync = sync
@@ -459,10 +467,18 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         self.processedCommandIDsKey = storageKey + ".processedCommands"
         self.revision = sync == nil ? nil : (userDefaults.object(forKey: revisionKey) as? NSNumber)?.int64Value
 
-        var stored: [Habit] = []
-        if let data = userDefaults.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode([Habit].self, from: data) {
-            stored = Self.ordered(decoded)
+        let stored: [Habit]
+        if case .mirror = sync {
+            let content = UserDefaultsHabitContent(userDefaults: userDefaults, key: storageKey)
+            self.content = content
+            stored = Self.ordered(content.load())
+        } else {
+            guard let modelContainer else {
+                preconditionFailure("A phone or standalone HabitListStore needs a ModelContainer")
+            }
+            let content = SwiftDataHabitContent(modelContainer: modelContainer)
+            self.content = content
+            stored = Self.ordered(content.load())
         }
         if isMirror {
             baseHabits = stored
@@ -678,9 +694,11 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         if processedCommandIDs.count > Self.maxBoundedSetSize {
             processedCommandIDs.removeFirst(processedCommandIDs.count - Self.maxBoundedSetSize)
         }
-        persistProcessedCommandIDs()
+        // Content is saved before the command id is recorded as processed, so a command is never
+        // marked done while its effect is missing from storage.
         refreshForCurrentDay()
         persist()
+        persistProcessedCommandIDs()
         publishChange()
     }
 
@@ -739,8 +757,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
 
     /// Saves the habits: the phone's own, or the Watch's last snapshot (the outbox is saved apart).
     private func persist() {
-        guard let data = try? JSONEncoder().encode(isMirror ? baseHabits : habits) else { return }
-        userDefaults.set(data, forKey: storageKey)
+        content.save(isMirror ? baseHabits : habits)
     }
 
     private func persistOutbox() {

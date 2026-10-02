@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// The manager's order, seen through the habit list. September 2026 starts on a Tuesday.
@@ -6,8 +7,15 @@ final class HabitOrderBehaviorTests: XCTestCase {
     private let calendar = Calendar(identifier: .gregorian)
     private let now = Date(timeIntervalSince1970: 1_788_000_000)
 
-    private func makeList(defaults: UserDefaults) -> HabitListStore {
-        HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.now }, calendar: calendar)
+    private func makeList(container: ModelContainer) throws -> HabitListStore {
+        HabitListStore(
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: container,
+            now: { self.now }, calendar: calendar
+        )
+    }
+
+    private func makeContainer() throws -> ModelContainer {
+        try HabitStorage.makeContainer()
     }
 
     private func makeDefaults() throws -> UserDefaults {
@@ -24,7 +32,7 @@ final class HabitOrderBehaviorTests: XCTestCase {
     }
 
     func testMovingHabitsFollowsOnMoveOffsetSemantics() throws {
-        let list = makeList(defaults: try makeDefaults())
+        let list = try makeList(container: try makeContainer())
         makeABCD(list)
 
         list.moveHabits(fromOffsets: IndexSet(integer: 0), toOffset: 3)
@@ -41,7 +49,7 @@ final class HabitOrderBehaviorTests: XCTestCase {
     }
 
     func testMovingRewritesOrderValuesContiguously() throws {
-        let list = makeList(defaults: try makeDefaults())
+        let list = try makeList(container: try makeContainer())
         makeABCD(list)
 
         list.moveHabits(fromOffsets: IndexSet(integer: 3), toOffset: 1)
@@ -51,7 +59,7 @@ final class HabitOrderBehaviorTests: XCTestCase {
     }
 
     func testMovingToTheSamePlaceOrOutOfRangeChangesNothing() throws {
-        let list = makeList(defaults: try makeDefaults())
+        let list = try makeList(container: try makeContainer())
         makeABCD(list)
         let before = list.habits
 
@@ -65,19 +73,19 @@ final class HabitOrderBehaviorTests: XCTestCase {
     }
 
     func testTheOrderPersistsAcrossReopening() throws {
-        let defaults = try makeDefaults()
-        let list = makeList(defaults: defaults)
+        let container = try makeContainer()
+        let list = try makeList(container: container)
         makeABCD(list)
         list.moveHabits(fromOffsets: IndexSet(integer: 2), toOffset: 0)
 
-        let reopened = makeList(defaults: defaults)
+        let reopened = try makeList(container: container)
 
         XCTAssertEqual(names(reopened), ["C", "A", "B", "D"])
         XCTAssertEqual(reopened.todayHabits.map(\.habit.name), ["C", "A", "B", "D"])
     }
 
     func testTodayFollowsTheManagerOrderWithinEachGroup() throws {
-        let list = makeList(defaults: try makeDefaults())
+        let list = try makeList(container: try makeContainer())
         makeABCD(list)
         let ids = Dictionary(uniqueKeysWithValues: list.habits.map { ($0.name, $0.id) })
         _ = list.toggleCheckOff(id: try XCTUnwrap(ids["B"]))
@@ -94,8 +102,8 @@ final class HabitOrderBehaviorTests: XCTestCase {
     }
 
     func testNewHabitsGoToTheEndAfterAReorder() throws {
-        let defaults = try makeDefaults()
-        let list = makeList(defaults: defaults)
+        let container = try makeContainer()
+        let list = try makeList(container: container)
         makeABCD(list)
         list.moveHabits(fromOffsets: IndexSet(integer: 3), toOffset: 0)
 
@@ -103,11 +111,11 @@ final class HabitOrderBehaviorTests: XCTestCase {
 
         XCTAssertEqual(names(list), ["D", "A", "B", "C", "E"])
         XCTAssertEqual(added.order, 4)
-        XCTAssertEqual(makeList(defaults: defaults).habits.map(\.name), ["D", "A", "B", "C", "E"])
+        XCTAssertEqual(try makeList(container: container).habits.map(\.name), ["D", "A", "B", "C", "E"])
     }
 
     func testReorderingKeepsLogsSchedulesAndDeletionStillWorks() throws {
-        let list = makeList(defaults: try makeDefaults())
+        let list = try makeList(container: try makeContainer())
         let a = try XCTUnwrap(list.addHabit(name: "A", schedule: .weeklyTarget(3)))
         _ = list.addHabit(name: "B")
         _ = list.toggleCheckOff(id: a.id)

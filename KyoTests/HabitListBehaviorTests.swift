@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 @MainActor
@@ -15,7 +16,7 @@ final class HabitListBehaviorTests: XCTestCase {
     }
 
     func testAddingHabitsTrimsNameAndPreservesCreationOrder() throws {
-        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits")
+        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer())
 
         let first = try XCTUnwrap(list.addHabit(name: "  Read  "))
         let second = try XCTUnwrap(list.addHabit(name: "Walk"))
@@ -29,7 +30,7 @@ final class HabitListBehaviorTests: XCTestCase {
     }
 
     func testBlankNameDoesNotCreateAHabit() throws {
-        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits")
+        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer())
 
         XCTAssertNil(list.addHabit(name: " \n\t "))
         XCTAssertTrue(list.habits.isEmpty)
@@ -38,7 +39,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testCheckingOffMovesHabitToDoneGroupAndUncheckingRestoresIt() throws {
         let list: any HabitListBehavior = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         let first = try XCTUnwrap(list.addHabit(name: "First"))
         _ = list.addHabit(name: "Second")
@@ -60,7 +61,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testEachGroupKeepsManagerOrder() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         let a = try XCTUnwrap(list.addHabit(name: "A"))
         _ = list.addHabit(name: "B")
@@ -74,19 +75,20 @@ final class HabitListBehaviorTests: XCTestCase {
     }
 
     func testTogglingAnUnknownHabitDoesNothing() throws {
-        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits")
+        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer())
         XCTAssertNil(list.toggleCheckOff(id: UUID()))
     }
 
     func testHabitsAndCheckOffsPersistAcrossReopening() throws {
         let defaults = try makeDefaults()
+        let container = try makeContainer()
         let now = day(29)
-        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { now }, calendar: calendar)
+        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { now }, calendar: calendar)
         let first = try XCTUnwrap(list.addHabit(name: "First"))
         _ = list.addHabit(name: "Second")
         _ = list.toggleCheckOff(id: first.id)
 
-        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { now }, calendar: calendar)
+        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { now }, calendar: calendar)
 
         XCTAssertEqual(reopened.habits, list.habits)
         XCTAssertEqual(reopened.todayHabits, list.todayHabits)
@@ -97,8 +99,9 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testCheckOffsAreKeyedToTheCurrentDay() throws {
         let defaults = try makeDefaults()
+        let container = try makeContainer()
         var now = day(28, hour: 21)
-        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { now }, calendar: calendar)
+        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { now }, calendar: calendar)
         let habit = try XCTUnwrap(list.addHabit(name: "Stretch"))
         _ = list.toggleCheckOff(id: habit.id)
         XCTAssertEqual(list.doneCount, 1)
@@ -116,25 +119,25 @@ final class HabitListBehaviorTests: XCTestCase {
         _ = list.toggleCheckOff(id: habit.id)
         XCTAssertEqual(try XCTUnwrap(list.habits.first).checkOffs.count, 1)
 
-        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { now }, calendar: calendar)
+        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { now }, calendar: calendar)
         XCTAssertEqual(reopened.doneCount, 0)
     }
 
-    func testHabitsUseTheirOwnStorageKeyApartFromTasks() throws {
-        let defaults = try makeDefaults()
-        let list = HabitListStore(userDefaults: defaults)
+    func testHabitsAndTasksAreStoredApartInTheSameContainer() throws {
+        let container = try makeContainer()
+        let list = HabitListStore(userDefaults: try makeDefaults(), modelContainer: container)
         _ = list.addHabit(name: "Walk")
 
-        XCTAssertNotNil(defaults.data(forKey: HabitListStore.storageKey))
         XCTAssertNotEqual(HabitListStore.storageKey, TaskListStore.storageKey)
-        XCTAssertTrue(TaskListStore(userDefaults: defaults, modelContainer: try KyoModelContainer.make(inMemory: true)).tasks.isEmpty)
+        XCTAssertTrue(TaskListStore(userDefaults: try makeDefaults(), modelContainer: container).tasks.isEmpty)
+        XCTAssertEqual(HabitListStore(userDefaults: try makeDefaults(), modelContainer: container).habits.map(\.name), ["Walk"])
     }
 
     // MARK: Schedules (September 2026: the 27th is a Sunday, the 29th a Tuesday)
 
     func testSpecificWeekdayHabitsAppearOnlyOnTheirDays() throws {
         var now = day(29) // Tuesday
-        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar)
+        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar)
         _ = list.addHabit(name: "Every", schedule: .everyDay)
         _ = list.addHabit(name: "Tue/Thu", schedule: .weekdays([tuesday, tuesday + 2]))
         _ = list.addHabit(name: "Mon", schedule: .weekdays([monday]))
@@ -154,7 +157,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testNothingDueTodayWhenHabitsExistButNoneAreDue() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         XCTAssertTrue(list.habits.isEmpty)
         _ = list.addHabit(name: "Monday only", schedule: .weekdays([monday]))
@@ -166,7 +169,7 @@ final class HabitListBehaviorTests: XCTestCase {
     }
 
     func testInvalidSchedulesAreRejected() throws {
-        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits")
+        let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer())
 
         XCTAssertNil(list.addHabit(name: "A", schedule: .weekdays([])))
         XCTAssertNil(list.addHabit(name: "B", schedule: .weeklyTarget(0)))
@@ -178,7 +181,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testHabitThatIsNotDueCannotBeCheckedOff() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         let habit = try XCTUnwrap(list.addHabit(name: "Monday only", schedule: .weekdays([monday])))
 
@@ -188,7 +191,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testSpecificWeekdayHabitIsDoneOnceCheckedOffOnItsDay() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         let habit = try XCTUnwrap(list.addHabit(name: "Tuesdays", schedule: .weekdays([tuesday])))
         _ = list.addHabit(name: "Other")
@@ -207,7 +210,7 @@ final class HabitListBehaviorTests: XCTestCase {
         for firstWeekday in [sunday, monday] {
             var now = day(27) // Sunday
             let cal = calendar(firstWeekday: firstWeekday)
-            let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: cal)
+            let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: cal)
             let habit = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
             _ = list.toggleCheckOff(id: habit.id) // Sunday
 
@@ -228,7 +231,7 @@ final class HabitListBehaviorTests: XCTestCase {
         // Saturday Oct 3 closes the Sunday-first week; Sunday Oct 4 opens the next.
         var now = day(29)
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar(firstWeekday: sunday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar(firstWeekday: sunday)
         )
         let habit = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(1)))
         _ = list.toggleCheckOff(id: habit.id)
@@ -248,7 +251,7 @@ final class HabitListBehaviorTests: XCTestCase {
     func testMondayFirstWeekRunsThroughSunday() throws {
         var now = day(28) // Monday
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar(firstWeekday: monday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar(firstWeekday: monday)
         )
         let habit = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(2)))
         _ = list.toggleCheckOff(id: habit.id)
@@ -265,7 +268,7 @@ final class HabitListBehaviorTests: XCTestCase {
     func testWeekProgressCanExceedTheTargetAndCountsOneCheckOffPerDay() throws {
         var now = day(27)
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar(firstWeekday: sunday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar(firstWeekday: sunday)
         )
         let habit = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
         for d in 27...30 {
@@ -284,19 +287,19 @@ final class HabitListBehaviorTests: XCTestCase {
     }
 
     func testDuplicateLogEntriesForADayCountOnce() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let today = TaskCompletionDay(date: day(29), calendar: calendar)
         let habit = Habit(name: "Run", order: 0, schedule: .weeklyTarget(3), checkOffs: [today, today])
-        defaults.set(try JSONEncoder().encode([habit]), forKey: "habits")
+        HabitStorage.seed([habit], in: container)
 
-        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.day(29) }, calendar: calendar)
+        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: container, now: { self.day(29) }, calendar: calendar)
 
         XCTAssertEqual(list.todayHabits.first?.weekProgress?.count, 1)
     }
 
     func testHabitCreatedMidWeekKeepsTheFullTarget() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(1, month: 10) }, calendar: calendar(firstWeekday: sunday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(1, month: 10) }, calendar: calendar(firstWeekday: sunday)
         )
         _ = list.addHabit(name: "Run", schedule: .weeklyTarget(5)) // Thursday
 
@@ -309,7 +312,7 @@ final class HabitListBehaviorTests: XCTestCase {
     func testMetTargetHabitIsDoneWithAnEmptyTappableCircleThenTappingAddsToday() throws {
         var now = day(27)
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar(firstWeekday: sunday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar(firstWeekday: sunday)
         )
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
         _ = list.addHabit(name: "Read")
@@ -348,7 +351,7 @@ final class HabitListBehaviorTests: XCTestCase {
     func testUnmetWeeklyTargetStaysInTheToDoGroupUntilMet() throws {
         var now = day(28)
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { now }, calendar: calendar(firstWeekday: monday)
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { now }, calendar: calendar(firstWeekday: monday)
         )
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(2)))
         _ = list.toggleCheckOff(id: weekly.id)
@@ -366,7 +369,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testSummaryCountsOnlyHabitsOnTodaysList() throws {
         let list = HabitListStore(
-            userDefaults: try makeDefaults(), storageKey: "habits", now: { self.day(29) }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )
         let a = try XCTUnwrap(list.addHabit(name: "A"))
         _ = list.addHabit(name: "B", schedule: .weekdays([tuesday]))
@@ -380,25 +383,26 @@ final class HabitListBehaviorTests: XCTestCase {
 
     func testSchedulesPersistAcrossReopening() throws {
         let defaults = try makeDefaults()
-        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.day(29) }, calendar: calendar)
+        let container = try makeContainer()
+        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { self.day(29) }, calendar: calendar)
         _ = list.addHabit(name: "A", schedule: .weekdays([monday, wednesday]))
         _ = list.addHabit(name: "B", schedule: .weeklyTarget(4))
 
-        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.day(29) }, calendar: calendar)
+        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", modelContainer: container, now: { self.day(29) }, calendar: calendar)
 
         XCTAssertEqual(reopened.habits.map(\.schedule), [.weekdays([monday, wednesday]), .weeklyTarget(4)])
     }
 
     func testPersistedEveryDayHabitsFromEarlierVersionsStillDecode() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let id = UUID()
         let json = """
         [{"id":"\(id.uuidString)","name":"Stretch","order":0,"schedule":{"everyDay":{}},
           "checkOffs":[{"era":1,"year":2026,"month":9,"day":29}]}]
         """
-        defaults.set(Data(json.utf8), forKey: "habits")
+        try HabitStorage.seed(json: json, in: container)
 
-        let list = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.day(29) }, calendar: calendar)
+        let list = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: container, now: { self.day(29) }, calendar: calendar)
 
         XCTAssertEqual(list.habits.map(\.schedule), [.everyDay])
         XCTAssertEqual(list.todayHabits.map(\.habit.name), ["Stretch"])
@@ -416,6 +420,10 @@ final class HabitListBehaviorTests: XCTestCase {
 
     private func day(_ day: Int, month: Int = 9, hour: Int = 10) -> Date {
         date(month: month, day: day, hour: hour)
+    }
+
+    private func makeContainer() throws -> ModelContainer {
+        try HabitStorage.makeContainer()
     }
 
     private func makeDefaults() throws -> UserDefaults {

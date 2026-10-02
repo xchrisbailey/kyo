@@ -36,16 +36,11 @@ struct WatchTodayView: View {
 
                     habitRows
                     memoRows
-                    WatchSection(title: "Meals") {
-                        VStack(alignment: .leading, spacing: 0) {
-                            WatchMealSummary()
-                            rowDivider
-                            WatchMealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
-                            rowDivider
-                            WatchMealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
-                        }
-                    }
-                    .listRow(top: 8, bottom: 12)
+                    // The memo rows end flush, so this keeps the list's bottom margin.
+                    Color.clear
+                        .frame(height: 12)
+                        .accessibilityHidden(true)
+                        .listRow()
                 }
                 .listStyle(.plain)
                 .environment(\.defaultMinListRowHeight, 1)
@@ -318,7 +313,6 @@ struct WatchTodayView: View {
         HStack(spacing: 5) {
             WatchSummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks")
             WatchSummaryStat(value: "\(habitList.doneCount) / \(habitList.todayCount)", label: "Habits")
-            WatchSummaryStat(value: "1,240", label: "kcal")
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
@@ -369,7 +363,7 @@ private extension View {
 }
 
 /// One task row's slice of the rounded section background, so consecutive rows join into the
-/// same shape `WatchSection` draws around its content.
+/// same rounded shape.
 private struct WatchTaskRowBackground: View {
     enum Position {
         case only, first, middle, last
@@ -455,23 +449,6 @@ private struct WatchSectionHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct WatchSection<Content: View>: View {
-    let title: String
-    @Environment(\.colorScheme) private var colorScheme
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            WatchSectionHeader(title: title)
-
-            content
-                .padding(.horizontal, 9)
-                .background(Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.06), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                .accessibilityElement(children: .contain)
-        }
     }
 }
 
@@ -649,89 +626,6 @@ private struct WatchMemoRow: View {
         .padding(.vertical, 7)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(memo.accessibilityLabel())
-    }
-}
-
-private struct WatchMealSummary: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text("1,240")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .monospacedDigit()
-                Text("/ 2,000 kcal")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Text("760 left")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            WatchMacroRow(name: "Protein", amount: "86 / 130 g", progress: 0.66, opacity: 1)
-            WatchMacroRow(name: "Carbs", amount: "134 / 220 g", progress: 0.61, opacity: 0.75)
-            WatchMacroRow(name: "Fat", amount: "40 / 67 g", progress: 0.60, opacity: 0.5)
-        }
-        .padding(.vertical, 7)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Meal nutrition summary")
-    }
-}
-
-private struct WatchMacroRow: View {
-    let name: String
-    let amount: String
-    let progress: CGFloat
-    let opacity: Double
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(name)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 4)
-                Text(amount)
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                    .monospacedDigit()
-            }
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.primary.opacity(0.08))
-                    Capsule()
-                        .fill(Color.green.opacity(opacity))
-                        .frame(width: geometry.size.width * progress)
-                }
-            }
-            .frame(height: 3)
-            .accessibilityHidden(true)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name), \(amount)")
-        .accessibilityValue("\(Int(progress * 100)) percent")
-    }
-}
-
-private struct WatchMealRow: View {
-    let title: String
-    let detail: String
-    let calories: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(.footnote, weight: .medium))
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 2) {
-                Text(detail)
-                Spacer(minLength: 2)
-                Text(calories)
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.vertical, 7)
-        .accessibilityElement(children: .combine)
     }
 }
 

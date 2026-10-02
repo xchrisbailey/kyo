@@ -136,17 +136,6 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        TodaySection(title: "Meals", note: "2 logged") {
-                            VStack(spacing: 0) {
-                                MealSummary()
-                                    .padding(.horizontal, 16)
-                                rowDivider
-                                    .padding(.horizontal, 16)
-                                MealRow(title: "Yogurt, oats & berries", detail: "Breakfast · 8:15 AM", calories: "420 kcal")
-                                rowDivider
-                                MealRow(title: "Chicken & rice bowl", detail: "Lunch · 12:30 PM", calories: "820 kcal")
-                            }
-                        }
                     }
                     .frame(maxWidth: 680, alignment: .leading)
                     .frame(maxWidth: .infinity)
@@ -325,8 +314,6 @@ struct TodayView: View {
             SummaryStat(value: "\(taskList.completedCount) / \(taskList.taskCount)", label: "Tasks done")
             statDivider
             SummaryStat(value: "\(habitList.doneCount) / \(habitList.todayCount)", label: "Habits done")
-            statDivider
-            SummaryStat(value: "1,240", label: "kcal logged")
         }
         .padding(.vertical, 17)
         .overlay(alignment: .bottom) {
@@ -1014,107 +1001,6 @@ private struct TaskRow: View {
     private func saveEdit() {
         guard onEdit(draft) else { return }
         isEditing = false
-    }
-}
-
-private struct MealSummary: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("1,240")
-                        .font(.system(.title3, design: .rounded, weight: .semibold))
-                        .tracking(-0.5)
-                        .monospacedDigit()
-                        .foregroundStyle(.primary)
-                    Text("/ 2,000 kcal")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 8)
-                Text("760 left")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.top, 14)
-
-            HStack(alignment: .top, spacing: 12) {
-                MacroProgress(label: "Protein", amount: "86 / 130 g", progress: 0.66, opacity: 1)
-                MacroProgress(label: "Carbs", amount: "134 / 220 g", progress: 0.61, opacity: 0.75)
-                MacroProgress(label: "Fat", amount: "40 / 67 g", progress: 0.60, opacity: 0.5)
-            }
-            .padding(.top, 13)
-            .padding(.bottom, 15)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Meal nutrition summary")
-    }
-}
-
-private struct MacroProgress: View {
-    let label: String
-    let amount: String
-    let progress: CGFloat
-    let opacity: Double
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(amount)
-                .font(.system(.caption, design: .rounded, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color(uiColor: .separator).opacity(0.45))
-                    Capsule()
-                        .fill(accentColor.opacity(opacity))
-                        .frame(width: geometry.size.width * progress)
-                }
-            }
-            .frame(height: 4)
-            .accessibilityHidden(true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label), \(amount)")
-        .accessibilityValue("\(Int(progress * 100)) percent")
-    }
-
-    private var accentColor: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
-                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
-        })
-    }
-}
-
-private struct MealRow: View {
-    let title: String
-    let detail: String
-    let calories: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.body).foregroundStyle(.primary)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text(calories)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize()
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(minHeight: 55)
-        .accessibilityElement(children: .combine)
     }
 }
 

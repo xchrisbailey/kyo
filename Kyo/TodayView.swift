@@ -8,6 +8,10 @@ struct TodayView: View {
     @StateObject private var memoStore: MemoStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
+    /// Created when Today first appears, once the memo store exists.
+    @State private var voiceRecording: VoiceRecordingSession?
+    @State private var isShowingRecorder = false
+    @State private var voiceMemoPendingDelete: UUID?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
     @State private var dayBoundaryRefreshToken = 0
@@ -101,7 +105,7 @@ struct TodayView: View {
                                     MemoRow(
                                         memo: memo,
                                         onOpen: { activeSheet = .memo(memo.id) },
-                                        onDelete: { _ = memoStore.deleteMemo(id: memo.id) }
+                                        onDelete: { requestDelete(of: memo) }
                                     )
                                 }
                             }
@@ -131,6 +135,7 @@ struct TodayView: View {
                         addTask: beginTaskDraft,
                         addHabit: { activeSheet = .habitForm },
                         addWrittenMemo: { activeSheet = .composeMemo },
+                        addVoiceMemo: { isShowingRecorder = true },
                         openCalendar: { activeSheet = .calendar }
                     )
                 }
@@ -150,7 +155,9 @@ struct TodayView: View {
                                 memo: memo,
                                 onEdit: { text in memoStore.editMemo(id: id, text: text) },
                                 onDelete: { memoStore.deleteMemo(id: id) },
-                                onClose: { memoStore.closeMemo(id: id) }
+                                onClose: { memoStore.closeMemo(id: id) },
+                                loadAudio: { memoStore.audioData(forMemoID: id) },
+                                onRetryTranscription: { memoStore.retryTranscription(id: id) }
                             )
                         }
                     case .editHabit(let id):
@@ -163,6 +170,26 @@ struct TodayView: View {
                         }
                     }
                 }
+                .fullScreenCover(isPresented: $isShowingRecorder) {
+                    if let voiceRecording {
+                        VoiceRecorderView(session: voiceRecording, onFinish: { isShowingRecorder = false })
+                    }
+                }
+                .confirmationDialog(
+                    "Delete this voice memo?",
+                    isPresented: Binding(
+                        get: { voiceMemoPendingDelete != nil },
+                        set: { if !$0 { voiceMemoPendingDelete = nil } }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        if let id = voiceMemoPendingDelete { _ = memoStore.deleteMemo(id: id) }
+                        voiceMemoPendingDelete = nil
+                    }
+                } message: {
+                    Text("Its audio and transcript are removed. This can't be undone.")
+                }
                 .onDisappear(perform: abandonTaskDraft)
                 .onChange(of: isShowingTaskDraft) { _, isShowing in
                     if isShowing {
@@ -172,6 +199,13 @@ struct TodayView: View {
                     }
                 }
             }
+        }
+        .task {
+            // Once per launch: a recording a quit or crash cut short becomes a Voice memo.
+            guard voiceRecording == nil else { return }
+            let session = VoiceRecordingSession(recorder: DeviceAudioRecorder(), memos: memoStore)
+            session.recoverInterruptedRecordings()
+            voiceRecording = session
         }
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
@@ -297,6 +331,15 @@ struct TodayView: View {
         isTaskDraftFocused = true
     }
 
+    /// Voice memos confirm before they're deleted; Written memos go straight away.
+    private func requestDelete(of memo: Memo) {
+        if memo.kind == .voice {
+            voiceMemoPendingDelete = memo.id
+        } else {
+            _ = memoStore.deleteMemo(id: memo.id)
+        }
+    }
+
     private func saveTaskDraft() {
         taskList.addTask(text: taskDraft)
         abandonTaskDraft()
@@ -359,6 +402,7 @@ private struct TodayBottomBar: View {
     let addTask: () -> Void
     let addHabit: () -> Void
     let addWrittenMemo: () -> Void
+    let addVoiceMemo: () -> Void
     let openCalendar: () -> Void
 
     var body: some View {
@@ -383,9 +427,7 @@ private struct TodayBottomBar: View {
                 Button("Task", systemImage: "checkmark.circle", action: addTask)
                 Button("Habit", systemImage: "repeat", action: addHabit)
                 Button("Written memo", systemImage: "text.alignleft", action: addWrittenMemo)
-                // Enabled by the ticket "Record and play voice memos".
-                Button("Voice memo", systemImage: "waveform", action: {})
-                    .disabled(true)
+                Button("Voice memo", systemImage: "waveform", action: addVoiceMemo)
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 26, weight: .medium))

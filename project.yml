@@ -45,6 +45,11 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Kyo
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Kyo records your voice memos with the microphone.
+        # UIBackgroundModes isn't an INFOPLIST_KEY_ setting, so the audio background mode (recording
+        # keeps going when Kyo is left or the screen locks) comes from this partial plist, which
+        # Xcode merges with the generated Info.plist.
+        INFOPLIST_FILE: Config/Kyo-Info.plist
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
@@ -87,7 +92,11 @@ targets:
       - Shared/HabitContentPersistence.swift
       - Shared/Memo.swift
       - Shared/MemoRecord.swift
+      - Shared/MemoAudioRecord.swift
       - Shared/MemoStore.swift
+      - Shared/AudioRecording.swift
+      - Shared/VoiceTranscriber.swift
+      - Shared/VoiceRecordingSession.swift
       - Shared/UserDefaultsImport.swift
     settings:
       base:

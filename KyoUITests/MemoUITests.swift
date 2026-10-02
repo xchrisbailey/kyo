@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class MemoUITests: XCTestCase {
-    func testEmptyMemosSectionAndTheDisabledVoiceMemoEntry() throws {
+    func testEmptyMemosSectionAndTheVoiceMemoEntry() throws {
         let app = launchIsolatedApp()
 
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
@@ -12,7 +12,7 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Written memo"].waitForExistence(timeout: 3))
         let voice = app.buttons["Voice memo"]
         XCTAssertTrue(voice.exists)
-        XCTAssertFalse(voice.isEnabled)
+        XCTAssertTrue(voice.isEnabled)
     }
 
     func testWritingOpeningEditingAndDeletingAMemo() throws {

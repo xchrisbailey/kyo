@@ -15,12 +15,23 @@ protocol MemoStoreBehavior: AnyObject {
     func memo(id: UUID) -> Memo?
     /// Saves a Written memo on Today. A memo with no text is discarded: returns `nil`.
     @discardableResult func addWrittenMemo(text: String) -> Memo?
-    /// Saves new text immediately. Emptying the text keeps the memo until it's closed.
+    /// Saves a Voice memo as soon as recording stops, on the day recording started, in
+    /// Transcribing, and starts transcribing it. Saving the same recording again returns the
+    /// memo already saved.
+    @discardableResult func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo
+    /// Saves new text immediately (a Voice memo's text is its Transcript). Emptying a Written
+    /// memo's text keeps the memo until it's closed.
     @discardableResult func editMemo(id: UUID, text: String) -> Memo?
-    /// Called when a memo's card closes. Discards a memo with no text, returning it.
+    /// Called when a memo's card closes. Discards a Written memo with no text, returning it. A
+    /// Voice memo is never discarded this way.
     @discardableResult func closeMemo(id: UUID) -> Memo?
-    /// Permanent: no undo and no trash.
+    /// Permanent: no undo and no trash. Removes a Voice memo's audio too.
     @discardableResult func deleteMemo(id: UUID) -> Memo?
+
+    /// A Voice memo's stored audio, or `nil` for a Written memo or an unknown id.
+    func audioData(forMemoID id: UUID) -> Data?
+    /// **Try again** on a Voice memo with No transcript: transcribes it again.
+    @discardableResult func retryTranscription(id: UUID) -> Memo?
 }
 
 @MainActor
@@ -33,17 +44,29 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private let context: ModelContext
     private let now: () -> Date
     private let calendar: Calendar
+    private let transcriber: any VoiceTranscriber
+
+    private var pendingTranscriptions: [UUID] = []
+    private var transcriptionTask: Task<Void, Never>?
 
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
-    /// when it's created and then kept.
-    init(modelContainer: ModelContainer, now: @escaping () -> Date = Date.init, calendar: Calendar = .current) {
+    /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
+    /// at a time.
+    init(
+        modelContainer: ModelContainer,
+        now: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current,
+        transcriber: any VoiceTranscriber = NoTranscriber()
+    ) {
         self.modelContainer = modelContainer
         self.context = modelContainer.mainContext
         self.now = now
         self.calendar = calendar
+        self.transcriber = transcriber
         self.currentDate = calendar.startOfDay(for: now())
-        discardEmptyMemos()
+        discardEmptyWrittenMemos()
         refreshForCurrentDay()
+        resumeInterruptedTranscriptions()
     }
 
     var sectionSubtitle: String {
@@ -76,6 +99,53 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     }
 
     @discardableResult
+    func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo {
+        // The recording's id is the memo's id, so saving a recording twice keeps one memo.
+        if let existing = records(withID: audio.id).first {
+            return existing.memo
+        }
+        let record = MemoRecord(
+            id: audio.id,
+            kind: .voice,
+            createdAt: audio.startedAt,
+            day: TaskCompletionDay(date: audio.startedAt, calendar: calendar),
+            text: "",
+            durationSeconds: audio.duration,
+            transcriptState: .transcribing,
+            stoppedAtCap: stoppedAtCap
+        )
+        record.audio = MemoAudioRecord(data: audio.data)
+        context.insert(record)
+        save()
+        refreshForCurrentDay()
+        enqueueTranscription(of: audio.id)
+        return record.memo
+    }
+
+    func audioData(forMemoID id: UUID) -> Data? {
+        records(withID: id).first?.audio?.data
+    }
+
+    @discardableResult
+    func retryTranscription(id: UUID) -> Memo? {
+        guard let record = records(withID: id).first, record.kind == .voice else { return nil }
+        if record.transcriptState == .noTranscript {
+            record.transcriptState = .transcribing
+            save()
+            refreshForCurrentDay()
+            enqueueTranscription(of: id)
+        }
+        return record.memo
+    }
+
+    /// Returns once every transcription started so far has finished. For tests.
+    func transcriptionsSettled() async {
+        while let task = transcriptionTask {
+            await task.value
+        }
+    }
+
+    @discardableResult
     func editMemo(id: UUID, text: String) -> Memo? {
         guard let record = records(withID: id).first else { return nil }
         // Whitespace-only text is stored as empty, so "no text" is a single stored state.
@@ -90,7 +160,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     @discardableResult
     func closeMemo(id: UUID) -> Memo? {
-        guard let record = records(withID: id).first, record.text.isEmpty else { return nil }
+        guard let record = records(withID: id).first, record.kind == .written, record.text.isEmpty else { return nil }
         return deleteMemo(id: id)
     }
 
@@ -100,7 +170,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         guard let first = matches.first else { return nil }
         let removed = first.memo
         for record in matches {
-            context.delete(record)
+            deleteIncludingAudio(record)
         }
         save()
         refreshForCurrentDay()
@@ -146,14 +216,76 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         return Self.keepOrder((try? context.fetch(descriptor)) ?? [])
     }
 
-    /// A memo emptied while its card was open, then left behind by a quit, is discarded on the
-    /// next launch: a memo with no text is never kept.
-    private func discardEmptyMemos() {
-        let descriptor = FetchDescriptor<MemoRecord>(predicate: #Predicate { $0.text == "" })
+    /// A Written memo emptied while its card was open, then left behind by a quit, is discarded
+    /// on the next launch: a Written memo with no text is never kept. Only Written memos are
+    /// judged by their text; a Voice memo (and, later, a photo memo) legitimately has none.
+    private func discardEmptyWrittenMemos() {
+        let written = Memo.Kind.written.rawValue
+        let descriptor = FetchDescriptor<MemoRecord>(predicate: #Predicate { $0.kindRaw == written && $0.text == "" })
         for record in (try? context.fetch(descriptor)) ?? [] {
-            context.delete(record)
+            deleteIncludingAudio(record)
         }
         save()
+    }
+
+    private func deleteIncludingAudio(_ record: MemoRecord) {
+        if let audio = record.audio {
+            context.delete(audio)
+        }
+        context.delete(record)
+    }
+
+    // MARK: Transcription
+
+    /// A quit that interrupted a transcription leaves its memo in Transcribing; it starts again.
+    private func resumeInterruptedTranscriptions() {
+        let voice = Memo.Kind.voice.rawValue
+        let transcribing = Memo.TranscriptState.transcribing.rawValue
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate { $0.kindRaw == voice && $0.transcriptStateRaw == transcribing }
+        )
+        for record in Self.keepOrder((try? context.fetch(descriptor)) ?? []) {
+            enqueueTranscription(of: record.id)
+        }
+    }
+
+    private func enqueueTranscription(of id: UUID) {
+        guard !pendingTranscriptions.contains(id) else { return }
+        pendingTranscriptions.append(id)
+        guard transcriptionTask == nil else { return }
+        transcriptionTask = Task { [weak self] in
+            await self?.drainTranscriptions()
+        }
+    }
+
+    /// One memo at a time, since the system limits simultaneous analyses.
+    private func drainTranscriptions() async {
+        while !pendingTranscriptions.isEmpty {
+            let id = pendingTranscriptions.removeFirst()
+            guard let audio = audioData(forMemoID: id) else { continue }
+            let outcome = await transcriber.transcribe(audio: audio, memoID: id)
+            apply(outcome, toMemoWithID: id)
+        }
+        transcriptionTask = nil
+    }
+
+    private func apply(_ outcome: TranscriptionOutcome, toMemoWithID id: UUID) {
+        // Deleted while transcribing, or already settled some other way: nothing to do.
+        guard let record = records(withID: id).first, record.transcriptState == .transcribing else { return }
+        switch outcome {
+        case .transcript(let text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                record.transcriptState = .noTranscript
+            } else {
+                record.text = trimmed
+                record.transcriptState = .transcribed
+            }
+        case .noTranscript:
+            record.transcriptState = .noTranscript
+        }
+        save()
+        refreshForCurrentDay()
     }
 
     private func save() {
@@ -171,7 +303,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             if seen.insert(record.id).inserted {
                 unique.append(record)
             } else {
-                context.delete(record)
+                deleteIncludingAudio(record)
             }
         }
         save()

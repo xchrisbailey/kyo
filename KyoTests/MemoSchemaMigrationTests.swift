@@ -45,6 +45,6 @@ final class MemoSchemaMigrationTests: XCTestCase {
         let v1 = Set(KyoSchemaV1.models.map { String(describing: $0) })
         let v2 = Set(KyoSchemaV2.models.map { String(describing: $0) })
         XCTAssertTrue(v1.isSubset(of: v2))
-        XCTAssertEqual(v2.subtracting(v1), ["MemoRecord"])
+        XCTAssertEqual(v2.subtracting(v1), ["MemoRecord", "MemoAudioRecord"])
     }
 }

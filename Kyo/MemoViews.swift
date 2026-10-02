@@ -1,8 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// A row in Today's Memos section: the kind icon, the title, a detail excerpt and the creation
-/// time on the right. Tapping opens the memo; swiping or long-pressing deletes it.
+/// A row in Today's Memos section: the kind icon, the title, a detail line and the creation
+/// time on the right (with the duration under it for a Voice memo). Tapping opens the memo;
+/// swiping or long-pressing deletes it. The caller confirms before deleting a Voice memo.
 struct MemoRow: View {
     let memo: Memo
     let onOpen: () -> Void
@@ -71,10 +72,16 @@ struct MemoRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(MemoPresentation.time(memo.createdAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text(MemoPresentation.time(memo.createdAt))
+                    if memo.kind == .voice {
+                        Text(Memo.formattedDuration(memo.duration))
+                            .monospacedDigit()
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize()
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -89,9 +96,13 @@ struct MemoRow: View {
         .accessibilityAction(named: "Delete", onDelete)
     }
 
-    /// Kind, title and time, then the detail excerpt when there is one.
+    /// Kind, title and time, then the duration (Voice memo) and the detail line when there is
+    /// one. A Voice memo's title is its kind name, so it's said once.
     private var accessibilityLabel: String {
-        var parts = [MemoPresentation.kindName(for: memo.kind), memo.title, MemoPresentation.time(memo.createdAt)]
+        var parts = [MemoPresentation.kindName(for: memo.kind)]
+        if memo.kind == .written { parts.append(memo.title) }
+        parts.append(MemoPresentation.time(memo.createdAt))
+        if memo.kind == .voice { parts.append(Memo.formattedDuration(memo.duration)) }
         if let detail = memo.detail { parts.append(detail) }
         return parts.joined(separator: ". ")
     }
@@ -140,23 +151,39 @@ struct WrittenMemoComposeSheet: View {
     }
 }
 
-/// The open memo: kind · time, the title, an action row with Delete, and the text editor.
-/// Edits save immediately. Closing a memo emptied of text discards it.
+/// The open memo: kind · time (· duration), the title, an action row with Delete, and the text
+/// editor. Edits save immediately. Closing a Written memo emptied of text discards it.
+///
+/// A Voice memo adds the cap note, its Transcript area (Transcribing…, or **Try again** with No
+/// transcript, or the editable Transcript) and the audio player pinned to the bottom. Deleting
+/// one confirms first.
 struct MemoCardSheet: View {
     let memo: Memo
     let onEdit: (String) -> Void
     let onDelete: () -> Void
     let onClose: () -> Void
+    let loadAudio: () -> Data?
+    let onRetryTranscription: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    @State private var isConfirmingDelete = false
     @FocusState private var isEditorFocused: Bool
 
-    init(memo: Memo, onEdit: @escaping (String) -> Void, onDelete: @escaping () -> Void, onClose: @escaping () -> Void) {
+    init(
+        memo: Memo,
+        onEdit: @escaping (String) -> Void,
+        onDelete: @escaping () -> Void,
+        onClose: @escaping () -> Void,
+        loadAudio: @escaping () -> Data?,
+        onRetryTranscription: @escaping () -> Void
+    ) {
         self.memo = memo
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onClose = onClose
+        self.loadAudio = loadAudio
+        self.onRetryTranscription = onRetryTranscription
         _text = State(initialValue: memo.text)
     }
 
@@ -164,16 +191,40 @@ struct MemoCardSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+                if let note = memo.capNote {
+                    capNote(note)
+                }
                 actionRow
-                editor
+                if memo.kind == .voice {
+                    transcriptArea
+                } else {
+                    editor
+                }
             }
             .padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground))
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if memo.kind == .voice {
+                MemoAudioPlayerBar(loadAudio: loadAudio, duration: memo.duration)
+            }
+        }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .onChange(of: text) { _, newText in onEdit(newText) }
+        // A Transcript that arrives while the card is open replaces the empty one shown.
+        .onChange(of: memo.transcriptState) { _, _ in
+            if memo.kind == .voice { text = memo.text }
+        }
+        .confirmationDialog("Delete this voice memo?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                onDelete()
+                dismiss()
+            }
+        } message: {
+            Text("Its audio and transcript are removed. This can't be undone.")
+        }
         .onDisappear(perform: onClose)
     }
 
@@ -182,7 +233,7 @@ struct MemoCardSheet: View {
             HStack(spacing: 6) {
                 Image(systemName: MemoPresentation.icon(for: memo.kind))
                     .accessibilityHidden(true)
-                Text("\(MemoPresentation.kindName(for: memo.kind)) · \(MemoPresentation.time(memo.createdAt))")
+                Text(headerLine)
                 Spacer()
                 Button {
                     dismiss()
@@ -203,7 +254,7 @@ struct MemoCardSheet: View {
             .foregroundStyle(KyoPalette.accent)
             .padding(.top, 14)
 
-            let title = Memo.title(ofWrittenText: text)
+            let title = memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text)
             Text(title.isEmpty ? "Untitled" : title)
                 .font(.system(size: 30, weight: .bold))
                 .tracking(-0.8)
@@ -213,11 +264,28 @@ struct MemoCardSheet: View {
         }
     }
 
+    /// "Written memo · 9:41 AM", or "Voice memo · 9:41 AM · 0:42".
+    private var headerLine: String {
+        var parts = [MemoPresentation.kindName(for: memo.kind), MemoPresentation.time(memo.createdAt)]
+        if memo.kind == .voice { parts.append(Memo.formattedDuration(memo.duration)) }
+        return parts.joined(separator: " · ")
+    }
+
+    private func capNote(_ note: String) -> some View {
+        Label(note, systemImage: "clock.badge.exclamationmark")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(.orange)
+    }
+
     private var actionRow: some View {
         HStack(spacing: 10) {
             Button(role: .destructive) {
-                onDelete()
-                dismiss()
+                if memo.kind == .voice {
+                    isConfirmingDelete = true
+                } else {
+                    onDelete()
+                    dismiss()
+                }
             } label: {
                 Label("Delete", systemImage: "trash")
                     .font(.subheadline.weight(.semibold))
@@ -242,6 +310,46 @@ struct MemoCardSheet: View {
             .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
             .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityLabel("Memo text")
+    }
+
+    @ViewBuilder
+    private var transcriptArea: some View {
+        switch memo.transcriptState ?? .noTranscript {
+        case .transcribing:
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Transcribing…")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        case .noTranscript:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("No transcript")
+                    .foregroundStyle(.secondary)
+                Button(action: onRetryTranscription) {
+                    Label("Try again", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KyoPalette.accent)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Transcribes this recording again")
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
+        case .transcribed:
+            TextField("Transcript", text: $text, axis: .vertical)
+                .font(.body)
+                .lineLimit(6...)
+                .focused($isEditorFocused)
+                .padding(14)
+                .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
+                .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityLabel("Transcript")
+        }
     }
 }
 

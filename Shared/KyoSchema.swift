@@ -11,13 +11,14 @@ enum KyoSchemaV1: VersionedSchema {
     }
 }
 
-/// Version 2 adds memos, and nothing else changes. Later memo models (voice audio, photos) are
-/// added the same way, in a further additive version.
+/// Version 2 adds memos and their voice audio, and nothing else changes. It hasn't shipped, so
+/// memo models that arrive before it does (photos) join it; after it ships, they need a further
+/// additive version.
 enum KyoSchemaV2: VersionedSchema {
     static let versionIdentifier = Schema.Version(2, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        KyoSchemaV1.models + [MemoRecord.self]
+        KyoSchemaV1.models + [MemoRecord.self, MemoAudioRecord.self]
     }
 }
 

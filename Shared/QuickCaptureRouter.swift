@@ -11,6 +11,9 @@ import Foundation
 ///
 /// A request can arrive before Today exists (a cold launch from a control), so it waits in
 /// `pending` until Today takes it.
+///
+/// The Watch uses it the same way, for **Record memo** only: its control calls it from the intent's
+/// `perform()`, and its complications' `widgetURL` arrives as `Action(url:)`.
 @MainActor
 final class QuickCaptureRouter: ObservableObject {
     static let shared = QuickCaptureRouter()
@@ -20,6 +23,15 @@ final class QuickCaptureRouter: ObservableObject {
         case recordMemo
         /// **Write memo**: the compose sheet opens.
         case writeMemo
+
+        /// The URL a Watch complication opens Kyo with (`widgetURL`). Only **Record memo** has one:
+        /// the Watch has no written memo.
+        static let recordMemoURL = URL(string: "kyo://record-memo")!
+
+        init?(url: URL) {
+            guard url == Self.recordMemoURL else { return nil }
+            self = .recordMemo
+        }
     }
 
     /// What's on screen over Today, as far as quick capture cares.

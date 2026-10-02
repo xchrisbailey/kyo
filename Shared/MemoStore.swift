@@ -19,6 +19,10 @@ protocol MemoStoreBehavior: AnyObject {
     /// Transcribing, and starts transcribing it. Saving the same recording again returns the
     /// memo already saved.
     @discardableResult func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo
+    /// Renames a Voice memo: the user's title is kept from now on, and a generated title never
+    /// replaces it, even one still being generated. A blank name goes back to showing "Voice
+    /// memo". A Written memo's title is its first line, so it can't be renamed: returns `nil`.
+    @discardableResult func renameMemo(id: UUID, title: String) -> Memo?
     /// Saves new text immediately (a Voice memo's text is its Transcript). Emptying a Written
     /// memo's text keeps the memo until it's closed.
     @discardableResult func editMemo(id: UUID, text: String) -> Memo?
@@ -54,6 +58,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private let now: () -> Date
     private let calendar: Calendar
     private let transcriber: any VoiceTranscriber
+    private let languageModel: any OnDeviceLanguageModel
 
     /// A transcription waiting to run. A visible one shows Transcribing (a new recording, an
     /// arrival from the Watch, **Try again**); a background one retries a No transcript memo by
@@ -72,14 +77,25 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private var readinessTask: Task<Void, Never>?
     private var localeTask: Task<Void, Never>?
 
+    /// A title waiting to be generated, from the Transcript as it was when first finalized.
+    private struct TitleRequest {
+        let id: UUID
+        let transcript: String
+    }
+
+    private var pendingTitles: [TitleRequest] = []
+    private var titleTask: Task<Void, Never>?
+
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
     /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
-    /// at a time. `deviceLocale` is the device language as a locale identifier.
+    /// at a time. The `languageModel` generates a Voice memo's title, once, when its Transcript is
+    /// first finalized. `deviceLocale` is the device language as a locale identifier.
     init(
         modelContainer: ModelContainer,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         transcriber: any VoiceTranscriber = NoTranscriber(),
+        languageModel: any OnDeviceLanguageModel = NoLanguageModel(),
         deviceLocale: @escaping () -> String = { Locale.current.identifier }
     ) {
         self.modelContainer = modelContainer
@@ -87,6 +103,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         self.now = now
         self.calendar = calendar
         self.transcriber = transcriber
+        self.languageModel = languageModel
         self.deviceLocale = deviceLocale
         self.currentDate = calendar.startOfDay(for: now())
         discardEmptyWrittenMemos()
@@ -176,11 +193,24 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         }
     }
 
-    /// Returns once every transcription started so far has finished. For tests.
+    /// Returns once every transcription, and every title it led to, has finished. For tests.
     func transcriptionsSettled() async {
-        while let task = transcriptionTask {
+        while let task = transcriptionTask ?? titleTask {
             await task.value
         }
+    }
+
+    @discardableResult
+    func renameMemo(id: UUID, title: String) -> Memo? {
+        guard let record = records(withID: id).first, record.kind == .voice else { return nil }
+        let name = Self.singleLine(title)
+        if record.title != name || !record.titleIsUserSet {
+            record.title = name
+            record.titleIsUserSet = true
+            save()
+            refreshForCurrentDay()
+        }
+        return record.memo
     }
 
     @discardableResult
@@ -400,6 +430,63 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         if attempt.isVisible || transcript != nil {
             refreshForCurrentDay()
         }
+        if let transcript {
+            enqueueTitle(for: record, transcript: transcript)
+        }
+    }
+
+    // MARK: Titles
+
+    /// A Transcript has just been finalized for the first time: its title is generated now or
+    /// never. A title the user already set stays, and without Apple Intelligence the "Voice
+    /// memo" fallback stays, with no retry later.
+    private func enqueueTitle(for record: MemoRecord, transcript: String) {
+        guard !record.titleIsUserSet, languageModel.availability.isAvailable else { return }
+        pendingTitles.append(TitleRequest(id: record.id, transcript: transcript))
+        guard titleTask == nil else { return }
+        titleTask = Task { [weak self] in
+            await self?.drainTitles()
+        }
+    }
+
+    /// One at a time, so the on-device model never serves several memos at once.
+    private func drainTitles() async {
+        while !pendingTitles.isEmpty {
+            let request = pendingTitles.removeFirst()
+            // From the start of the Transcript, as much as fits.
+            let text = await languageModel.fittingStart(of: request.transcript, for: .title)
+            guard !text.isEmpty, let proposed = try? await languageModel.generateTitle(from: text) else { continue }
+            applyGeneratedTitle(proposed, toMemoWithID: request.id)
+        }
+        titleTask = nil
+    }
+
+    private func applyGeneratedTitle(_ proposed: String, toMemoWithID id: UUID) {
+        let title = Self.generatedTitle(from: proposed)
+        // Deleted, or renamed by the user while it was generating: the user's title wins.
+        guard !title.isEmpty, let record = records(withID: id).first, !record.titleIsUserSet else { return }
+        record.title = title
+        save()
+        refreshForCurrentDay()
+    }
+
+    /// Whitespace and line breaks collapsed to single spaces, so a title is one line.
+    private static func singleLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    private static let maximumGeneratedTitleLength = 80
+
+    /// What the model proposed, as one line without the quotes or final period models like to
+    /// add, and no longer than a row can sensibly show.
+    private static func generatedTitle(from proposed: String) -> String {
+        var title = singleLine(proposed)
+        let decoration = CharacterSet(charactersIn: "\"'“”‘’.")
+        title = title.trimmingCharacters(in: decoration).trimmingCharacters(in: .whitespaces)
+        if title.count > maximumGeneratedTitleLength {
+            title = String(title.prefix(maximumGeneratedTitleLength)).trimmingCharacters(in: .whitespaces)
+        }
+        return title
     }
 
     private func save() {

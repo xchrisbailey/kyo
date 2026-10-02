@@ -105,10 +105,10 @@ struct MemoRow: View {
     }
 
     /// Kind, title and time, then the duration (Voice memo) and the detail line when there is
-    /// one. A Voice memo's title is its kind name, so it's said once.
+    /// one. A Voice memo with no title of its own is named by its kind, so that's said once.
     private var accessibilityLabel: String {
         var parts = [MemoPresentation.kindName(for: memo.kind)]
-        if memo.kind == .written { parts.append(memo.title) }
+        if memo.kind == .written || memo.title != Memo.voiceFallbackTitle { parts.append(memo.title) }
         parts.append(MemoPresentation.time(memo.createdAt))
         if memo.kind == .voice { parts.append(Memo.formattedDuration(memo.duration)) }
         if let detail = memo.detail { parts.append(detail) }
@@ -168,6 +168,8 @@ struct WrittenMemoComposeSheet: View {
 struct MemoCardSheet: View {
     let memo: Memo
     let onEdit: (String) -> Void
+    /// Names a Voice memo. The user's title replaces a generated one for good.
+    let onRename: (String) -> Void
     let onDelete: () -> Void
     let onClose: () -> Void
     let loadAudio: () -> Data?
@@ -177,13 +179,17 @@ struct MemoCardSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
+    /// A Voice memo's title as shown in its field.
+    @State private var title: String
     @State private var isConfirmingDelete = false
     @State private var taskSuggestions: MemoTaskSuggestions?
     @FocusState private var isEditorFocused: Bool
+    @FocusState private var isTitleFocused: Bool
 
     init(
         memo: Memo,
         onEdit: @escaping (String) -> Void,
+        onRename: @escaping (String) -> Void,
         onDelete: @escaping () -> Void,
         onClose: @escaping () -> Void,
         loadAudio: @escaping () -> Data?,
@@ -192,12 +198,14 @@ struct MemoCardSheet: View {
     ) {
         self.memo = memo
         self.onEdit = onEdit
+        self.onRename = onRename
         self.onDelete = onDelete
         self.onClose = onClose
         self.loadAudio = loadAudio
         self.onRetryTranscription = onRetryTranscription
         self.makeTaskSuggestions = makeTaskSuggestions
         _text = State(initialValue: memo.text)
+        _title = State(initialValue: memo.title)
     }
 
     var body: some View {
@@ -226,6 +234,17 @@ struct MemoCardSheet: View {
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
         .onChange(of: text) { _, newText in onEdit(newText) }
+        // Typing a title is renaming; a generated title arriving in the field is not.
+        .onChange(of: title) { _, newTitle in
+            if isTitleFocused { onRename(newTitle) }
+        }
+        // A generated title that arrives while the card is open shows, unless the user is typing.
+        .onChange(of: memo.title) { _, newTitle in
+            if !isTitleFocused { title = newTitle }
+        }
+        .onChange(of: isTitleFocused) { _, isFocused in
+            if !isFocused { title = memo.title }
+        }
         // A Transcript that arrives while the card is open replaces the empty one shown.
         .onChange(of: memo.transcriptState) { _, _ in
             if memo.kind == .voice { text = memo.text }
@@ -270,13 +289,23 @@ struct MemoCardSheet: View {
             .foregroundStyle(KyoPalette.accent)
             .padding(.top, 14)
 
-            let title = memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text)
-            Text(title.isEmpty ? "Untitled" : title)
-                .font(.system(size: 30, weight: .bold))
-                .tracking(-0.8)
-                .foregroundStyle(title.isEmpty ? Color.secondary : Color.primary)
-                .lineLimit(2)
-                .accessibilityAddTraits(.isHeader)
+            if memo.kind == .voice {
+                TextField(Memo.voiceFallbackTitle, text: $title)
+                    .font(.system(size: 30, weight: .bold))
+                    .tracking(-0.8)
+                    .focused($isTitleFocused)
+                    .submitLabel(.done)
+                    .accessibilityLabel("Title")
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                let writtenTitle = Memo.title(ofWrittenText: text)
+                Text(writtenTitle.isEmpty ? "Untitled" : writtenTitle)
+                    .font(.system(size: 30, weight: .bold))
+                    .tracking(-0.8)
+                    .foregroundStyle(writtenTitle.isEmpty ? Color.secondary : Color.primary)
+                    .lineLimit(2)
+                    .accessibilityAddTraits(.isHeader)
+            }
         }
     }
 

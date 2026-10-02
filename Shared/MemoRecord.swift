@@ -6,7 +6,7 @@ import SwiftData
 /// optional, and the schema only ever grows. The day is stored as flat integer fields matching
 /// `TaskCompletionDay`, never as a timestamp.
 ///
-/// A voice memo adds a duration, a transcript state and a cap flag here, and its audio on a
+/// A voice memo adds a duration, a transcript state, a cap flag and a title here, and its audio on a
 /// separate `MemoAudioRecord`. Its transcript is `text`. Photos will be separate models too,
 /// attached through optional relationships with inverses.
 @Model
@@ -30,6 +30,10 @@ final class MemoRecord {
     /// The device language (`Locale.identifier`) when transcription found it unsupported, so a
     /// later change of language retries.
     var transcriptLocaleIdentifier: String = ""
+    /// A voice memo's generated or user title; empty means the "Voice memo" fallback.
+    var title: String = ""
+    /// Whether the user named the voice memo, so a generated title never replaces it.
+    var titleIsUserSet: Bool = false
     @Relationship(deleteRule: .cascade, inverse: \MemoAudioRecord.memo) var audio: MemoAudioRecord?
 
     init(
@@ -82,7 +86,9 @@ final class MemoRecord {
             text: text,
             duration: durationSeconds,
             transcriptState: kind == .voice ? (transcriptState ?? .noTranscript) : nil,
-            stoppedAtCap: stoppedAtCap
+            stoppedAtCap: stoppedAtCap,
+            voiceTitle: kind == .voice ? title : "",
+            isTitleUserSet: kind == .voice && titleIsUserSet
         )
     }
 }

@@ -28,9 +28,13 @@ struct TodayView: View {
         _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
         // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
         let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)
-        _memoStore = StateObject(wrappedValue: MemoStore(modelContainer: modelContainer, transcriber: transcriber))
-        // UI tests have no Apple Intelligence, so Memo → Task takes its manual path.
-        languageModel = isInMemory ? NoLanguageModel() : FoundationOnDeviceLanguageModel()
+        // UI tests have no Apple Intelligence, so Memo → Task takes its manual path and a Voice
+        // memo keeps its "Voice memo" title.
+        let languageModel: any OnDeviceLanguageModel = isInMemory ? NoLanguageModel() : FoundationOnDeviceLanguageModel()
+        _memoStore = StateObject(
+            wrappedValue: MemoStore(modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel)
+        )
+        self.languageModel = languageModel
     }
 
     var body: some View {
@@ -159,6 +163,7 @@ struct TodayView: View {
                             MemoCardSheet(
                                 memo: memo,
                                 onEdit: { text in memoStore.editMemo(id: id, text: text) },
+                                onRename: { title in memoStore.renameMemo(id: id, title: title) },
                                 onDelete: { memoStore.deleteMemo(id: id) },
                                 onClose: { memoStore.closeMemo(id: id) },
                                 loadAudio: { memoStore.audioData(forMemoID: id) },

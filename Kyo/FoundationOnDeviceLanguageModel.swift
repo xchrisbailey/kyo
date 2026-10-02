@@ -8,6 +8,14 @@ private struct ProposedTasks {
     var tasks: [String]
 }
 
+/// What the model proposes as a **Voice memo**'s title: a few words. Kept short for the same
+/// reason as above.
+@Generable
+private struct ProposedTitle {
+    @Guide(description: "A title of 2 to 6 words, with no quotes or final period")
+    var title: String
+}
+
 /// The real `OnDeviceLanguageModel`: Apple Intelligence through the Foundation Models on-device
 /// `SystemLanguageModel`. Every Foundation Models call lives here, so the rest of the app is tested
 /// through the seam. The model isn't on watchOS or in a Simulator without Apple Intelligence, so
@@ -23,6 +31,11 @@ final class FoundationOnDeviceLanguageModel: OnDeviceLanguageModel {
         You read a short personal memo and propose tasks the writer should do. \
         Only propose tasks the memo clearly implies. Phrase each as a short action. \
         Propose none when the memo has nothing to do.
+        """
+
+    private static let titleInstructions = """
+        You read the transcript of a spoken personal memo and write a short title for it. \
+        Name what the memo is about in plain words, in the language of the transcript.
         """
 
     var availability: OnDeviceLanguageAvailability {
@@ -42,10 +55,16 @@ final class FoundationOnDeviceLanguageModel: OnDeviceLanguageModel {
     func textBudget(for task: OnDeviceLanguageTask) async -> Int {
         switch task {
         case .suggestTasks:
-            let instructions = (try? await model.tokenCount(for: Instructions(Self.suggestTasksInstructions))) ?? 150
-            let schema = (try? await model.tokenCount(for: ProposedTasks.generationSchema)) ?? 100
-            return max(0, model.contextSize - instructions - schema - Self.reservedTokens)
+            await budget(instructions: Self.suggestTasksInstructions, schema: ProposedTasks.generationSchema)
+        case .title:
+            await budget(instructions: Self.titleInstructions, schema: ProposedTitle.generationSchema)
         }
+    }
+
+    private func budget(instructions: String, schema: GenerationSchema) async -> Int {
+        let instructionTokens = (try? await model.tokenCount(for: Instructions(instructions))) ?? 150
+        let schemaTokens = (try? await model.tokenCount(for: schema)) ?? 100
+        return max(0, model.contextSize - instructionTokens - schemaTokens - Self.reservedTokens)
     }
 
     func tokenCount(of text: String) async -> Int {
@@ -58,5 +77,11 @@ final class FoundationOnDeviceLanguageModel: OnDeviceLanguageModel {
         let session = LanguageModelSession(model: model, instructions: Self.suggestTasksInstructions)
         let response = try await session.respond(to: "Memo:\n\(text)", generating: ProposedTasks.self)
         return response.content.tasks
+    }
+
+    func generateTitle(from text: String) async throws -> String {
+        let session = LanguageModelSession(model: model, instructions: Self.titleInstructions)
+        let response = try await session.respond(to: "Transcript:\n\(text)", generating: ProposedTitle.self)
+        return response.content.title
     }
 }

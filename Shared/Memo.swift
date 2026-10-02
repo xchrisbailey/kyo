@@ -17,7 +17,7 @@ struct Memo: Identifiable, Equatable, Sendable {
         case noTranscript
     }
 
-    /// The title a Voice memo has until an AI or user title exists.
+    /// The title a Voice memo has until a generated or user title exists.
     static let voiceFallbackTitle = "Voice memo"
 
     let id: UUID
@@ -35,6 +35,11 @@ struct Memo: Identifiable, Equatable, Sendable {
     let transcriptState: TranscriptState?
     /// `true` when recording stopped because it reached the 10-minute cap.
     let stoppedAtCap: Bool
+    /// A Voice memo's own title: generated on device, or set by the user. Empty when it has
+    /// neither, and always empty for a Written memo, whose title is its first line.
+    let voiceTitle: String
+    /// `true` once the user has named a Voice memo; a generated title never replaces it.
+    let isTitleUserSet: Bool
 
     init(
         id: UUID,
@@ -44,7 +49,9 @@ struct Memo: Identifiable, Equatable, Sendable {
         text: String,
         duration: TimeInterval = 0,
         transcriptState: TranscriptState? = nil,
-        stoppedAtCap: Bool = false
+        stoppedAtCap: Bool = false,
+        voiceTitle: String = "",
+        isTitleUserSet: Bool = false
     ) {
         self.id = id
         self.kind = kind
@@ -54,14 +61,16 @@ struct Memo: Identifiable, Equatable, Sendable {
         self.duration = duration
         self.transcriptState = transcriptState
         self.stoppedAtCap = stoppedAtCap
+        self.voiceTitle = voiceTitle
+        self.isTitleUserSet = isTitleUserSet
     }
 
-    /// A Written memo's first non-blank line, trimmed (empty when it has no text). A Voice memo
-    /// is "Voice memo".
+    /// A Written memo's first non-blank line, trimmed (empty when it has no text). A Voice memo's
+    /// generated or user title, or "Voice memo" when it has neither.
     var title: String {
         switch kind {
         case .written: Self.title(ofWrittenText: text)
-        case .voice: Self.voiceFallbackTitle
+        case .voice: voiceTitle.isEmpty ? Self.voiceFallbackTitle : voiceTitle
         }
     }
 

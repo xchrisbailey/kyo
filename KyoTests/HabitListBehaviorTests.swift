@@ -127,7 +127,7 @@ final class HabitListBehaviorTests: XCTestCase {
 
         XCTAssertNotNil(defaults.data(forKey: HabitListStore.storageKey))
         XCTAssertNotEqual(HabitListStore.storageKey, TaskListStore.storageKey)
-        XCTAssertTrue(TaskListStore(userDefaults: defaults).tasks.isEmpty)
+        XCTAssertTrue(TaskListStore(userDefaults: defaults, modelContainer: try KyoModelContainer.make(inMemory: true)).tasks.isEmpty)
     }
 
     // MARK: Schedules (September 2026: the 27th is a Sunday, the 29th a Tuesday)

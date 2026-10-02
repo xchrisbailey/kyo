@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 @MainActor
@@ -250,6 +251,7 @@ final class TaskListSyncTests: XCTestCase {
 
     private func makePhone(
         defaults: UserDefaults? = nil,
+        container: ModelContainer? = nil,
         transport: any TaskSnapshotTransport,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = Calendar(identifier: .gregorian)
@@ -257,6 +259,7 @@ final class TaskListSyncTests: XCTestCase {
         TaskListStore(
             userDefaults: try defaults ?? makeDefaults(),
             storageKey: "phone",
+            modelContainer: try container ?? KyoModelContainer.make(inMemory: true),
             now: now,
             calendar: calendar,
             sync: .publish(to: transport)

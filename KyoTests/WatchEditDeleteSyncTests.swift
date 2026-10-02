@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Behavior tests for #21 (Watch edit and delete), through the same `TaskListBehavior` surface
@@ -95,7 +96,8 @@ final class WatchEditDeleteSyncTests: XCTestCase {
     func testOfflineWatchRenameAndDeletePersistAcrossWatchRestartThenSyncAfterReconnect() throws {
         let transport = ControllableTaskTransport()
         let phoneDefaults = try makeDefaults()
-        let phone = try makePhone(defaults: phoneDefaults, transport: transport)
+        let phoneContainer = try KyoModelContainer.make(inMemory: true)
+        let phone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: transport)
         let watchDefaults = try makeDefaults()
         let watch = try makeWatch(defaults: watchDefaults, transport: transport)
 
@@ -113,7 +115,7 @@ final class WatchEditDeleteSyncTests: XCTestCase {
 
         // Reconnect with both devices on a fresh shared transport; the Watch resends its outbox.
         let newTransport = ControllableTaskTransport()
-        let restartedPhone = try makePhone(defaults: phoneDefaults, transport: newTransport)
+        let restartedPhone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: newTransport)
         let restartedWatch = try makeWatch(defaults: watchDefaults, transport: newTransport)
 
         XCTAssertEqual(restartedPhone.tasks.map(\.text), ["Renamed offline"])
@@ -186,7 +188,8 @@ final class WatchEditDeleteSyncTests: XCTestCase {
             for phoneChange in [PhoneChange.rename, .toggle] {
                 let transport = ControllableTaskTransport()
                 let phoneDefaults = try makeDefaults()
-                let phone = try makePhone(defaults: phoneDefaults, transport: transport)
+                let phoneContainer = try KyoModelContainer.make(inMemory: true)
+                let phone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: transport)
                 let watchDefaults = try makeDefaults()
                 let watch = try makeWatch(defaults: watchDefaults, transport: transport)
                 let task = try XCTUnwrap(phone.addTask(text: "Racer"))
@@ -208,7 +211,7 @@ final class WatchEditDeleteSyncTests: XCTestCase {
                 XCTAssertTrue(watch.tasks.isEmpty, label)
 
                 let restartTransport = ControllableTaskTransport()
-                let restartedPhone = try makePhone(defaults: phoneDefaults, transport: restartTransport)
+                let restartedPhone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: restartTransport)
                 let restartedWatch = try makeWatch(defaults: watchDefaults, transport: restartTransport)
                 XCTAssertTrue(restartedPhone.tasks.isEmpty, label)
                 XCTAssertTrue(restartedWatch.tasks.isEmpty, label)
@@ -267,7 +270,8 @@ final class WatchEditDeleteSyncTests: XCTestCase {
     func testTombstoneFromWatchDeleteSurvivesPhoneRestartAndRedeliveredAdd() throws {
         let transport = ControllableTaskTransport()
         let phoneDefaults = try makeDefaults()
-        let phone = try makePhone(defaults: phoneDefaults, transport: transport)
+        let phoneContainer = try KyoModelContainer.make(inMemory: true)
+        let phone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: transport)
         let watch = try makeWatch(transport: transport)
 
         let added = try XCTUnwrap(watch.addTask(text: "Fleeting"))
@@ -276,7 +280,7 @@ final class WatchEditDeleteSyncTests: XCTestCase {
         XCTAssertTrue(phone.tasks.isEmpty)
 
         let restartedTransport = ControllableTaskTransport()
-        let restartedPhone = try makePhone(defaults: phoneDefaults, transport: restartedTransport)
+        let restartedPhone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: restartedTransport)
         restartedTransport.send(TaskCommand(id: UUID(), action: .add(taskID: added.id, text: "Fleeting")))
         restartedTransport.send(addCommand)
 
@@ -331,11 +335,13 @@ final class WatchEditDeleteSyncTests: XCTestCase {
 
     private func makePhone(
         defaults: UserDefaults? = nil,
+        container: ModelContainer? = nil,
         transport: any TaskSnapshotTransport
     ) throws -> TaskListStore {
         TaskListStore(
             userDefaults: try defaults ?? makeDefaults(),
             storageKey: "phone",
+            modelContainer: try container ?? KyoModelContainer.make(inMemory: true),
             calendar: Calendar(identifier: .gregorian),
             sync: .publish(to: transport)
         )

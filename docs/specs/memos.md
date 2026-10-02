@@ -232,7 +232,7 @@ These close gaps found while writing this spec, confirmed by the user. (#62)
 - AI summaries of voice memos.
 - Pinning a memo so it stays on Today past its day.
 - Scheduling tasks for a future day. Memo → Task always creates the task on Today; dated tasks would be a separate Tasks effort.
-- iCloud sync between iPhone and iPad (**planned as a future effort**), sharing audio and exporting memos, playback or editing on the Watch, and the Meals section.
+- iCloud sync between iPhone and iPad (**planned as a future effort**), sharing audio and exporting memos, and playback or editing on the Watch.
 - Background recording through a Live Activity without opening Kyo.
 - Implementation. This map produces the two specs only.
 - Indexing memo content in system Spotlight (decided in #63).

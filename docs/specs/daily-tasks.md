@@ -68,7 +68,7 @@ Test approach proposed during specification review:
 - Due dates, task times, reminders, priorities, tags, subtasks, recurring tasks, and manual reordering.
 - New historical-day navigation or editing workflows.
 - General cloud account synchronization across multiple phones or tablets beyond the requested paired phone/Watch behavior.
-- Implementing Habits, Memos, or Meals, or redesigning the overall app layout.
+- Implementing Habits or Memos, or redesigning the overall app layout.
 
 ## Further Notes
 

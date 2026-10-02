@@ -77,6 +77,38 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
     }
 
+    func testMemoToTaskOpensTheManualSheetAndAddsATypedTaskToToday() throws {
+        let app = launchIsolatedApp()
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Written memo"].tap()
+        let compose = app.textFields["Memo text"]
+        XCTAssertTrue(compose.waitForExistence(timeout: 3))
+        compose.typeText("Plan the weekend")
+        app.buttons["Save"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Plan the weekend.'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        row.tap()
+
+        // UI test launches have no Apple Intelligence, so the manual sheet opens.
+        let memoToTask = app.buttons["Memo → Task"]
+        XCTAssertTrue(memoToTask.waitForExistence(timeout: 3))
+        memoToTask.tap()
+        XCTAssertTrue(app.staticTexts["No suggestions"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Add another"].exists)
+        XCTAssertTrue(app.buttons["Add to Today (0)"].exists)
+
+        let task = app.textFields["Task"].firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 3))
+        task.tap()
+        task.typeText("Book the trail")
+        let add = app.buttons["Add to Today (1)"]
+        XCTAssertTrue(add.waitForExistence(timeout: 3))
+        add.tap()
+        XCTAssertTrue(app.staticTexts["Added"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Add to Today (0)"].exists)
+    }
+
     private func launchIsolatedApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

@@ -159,7 +159,7 @@ struct WrittenMemoComposeSheet: View {
     }
 }
 
-/// The open memo: kind · time (· duration), the title, an action row with Delete, and the text
+/// The open memo: kind · time (· duration), the title, an action row with Memo → Task and Delete, and the text
 /// editor. Edits save immediately. Closing a Written memo emptied of text discards it.
 ///
 /// A Voice memo adds the cap note, its Transcript area (Transcribing…, or **Try again** with No
@@ -172,10 +172,13 @@ struct MemoCardSheet: View {
     let onClose: () -> Void
     let loadAudio: () -> Data?
     let onRetryTranscription: () -> Void
+    /// Starts **Memo → Task** for the memo's text, empty when it has none.
+    let makeTaskSuggestions: (String) -> MemoTaskSuggestions
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
     @State private var isConfirmingDelete = false
+    @State private var taskSuggestions: MemoTaskSuggestions?
     @FocusState private var isEditorFocused: Bool
 
     init(
@@ -184,7 +187,8 @@ struct MemoCardSheet: View {
         onDelete: @escaping () -> Void,
         onClose: @escaping () -> Void,
         loadAudio: @escaping () -> Data?,
-        onRetryTranscription: @escaping () -> Void
+        onRetryTranscription: @escaping () -> Void,
+        makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions
     ) {
         self.memo = memo
         self.onEdit = onEdit
@@ -192,6 +196,7 @@ struct MemoCardSheet: View {
         self.onClose = onClose
         self.loadAudio = loadAudio
         self.onRetryTranscription = onRetryTranscription
+        self.makeTaskSuggestions = makeTaskSuggestions
         _text = State(initialValue: memo.text)
     }
 
@@ -232,6 +237,9 @@ struct MemoCardSheet: View {
             }
         } message: {
             Text("Its audio and transcript are removed. This can't be undone.")
+        }
+        .sheet(item: $taskSuggestions) { suggestions in
+            MemoTaskSheet(suggestions: suggestions)
         }
         .onDisappear(perform: onClose)
     }
@@ -287,6 +295,20 @@ struct MemoCardSheet: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
+            Button {
+                taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
+            } label: {
+                Label("Memo → Task", systemImage: "checklist")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KyoPalette.accent)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Turns this memo into tasks on Today")
+
             Button(role: .destructive) {
                 if memo.kind == .voice {
                     isConfirmingDelete = true

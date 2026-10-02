@@ -81,6 +81,16 @@ struct Memo: Identifiable, Equatable, Sendable {
         }
     }
 
+    /// The text **Memo → Task** reads, given the text as it stands in the open card: a Written
+    /// memo's text, or a Voice memo's Transcript once it has one. A Voice memo that is
+    /// Transcribing or has No transcript has none, and neither does a photo-only memo.
+    func taskSourceText(currentText: String) -> String {
+        switch kind {
+        case .written: currentText
+        case .voice: transcriptState == .transcribed ? currentText : ""
+        }
+    }
+
     /// The note a capped Voice memo shows, or `nil`.
     var capNote: String? {
         stoppedAtCap ? "Recording stopped at 10 minutes" : nil

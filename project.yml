@@ -79,12 +79,35 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Kyo
         # NSExtension isn't an INFOPLIST_KEY_ setting, so it comes from this partial plist.
         INFOPLIST_FILE: Config/KyoWidgets-Info.plist
+  KyoWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    # The control runs the same intent as the Watch app, so the extension compiles the intent and
+    # the router it calls. The intent pins itself to the Watch app process, where the router lives.
+    sources:
+      - KyoWatchWidgets
+      - KyoWatch/WatchQuickCaptureIntents.swift
+      - Shared/QuickCaptureRouter.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.watchkitapp.widgets
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: watchos watchsimulator
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Kyo
+        # NSExtension isn't an INFOPLIST_KEY_ setting, so it comes from this partial plist.
+        INFOPLIST_FILE: Config/KyoWatchWidgets-Info.plist
   KyoWatch:
     type: application
     platform: watchOS
     sources:
       - KyoWatch
       - Shared
+    dependencies:
+      - target: KyoWatchWidgets
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.watchkitapp

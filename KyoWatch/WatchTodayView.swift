@@ -10,6 +10,10 @@ struct WatchTodayView: View {
     /// Made once the memo list exists, which is where the outbox a recording is saved to lives.
     @State private var recordingSession: VoiceRecordingSession?
     @State private var isRecording = false
+    // Quick capture (the Record memo control and complications) asks this router to open the recorder.
+    @ObservedObject private var quickCapture = QuickCaptureRouter.shared
+    /// Set while a sheet that has to close first is dismissing, so the recorder opens once it's gone.
+    @State private var recordAfterSheetDismissal = false
     @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
@@ -57,7 +61,7 @@ struct WatchTodayView: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
         .ignoresSafeArea(edges: .top)
-        .sheet(item: $activeSheet) { sheet in
+        .sheet(item: $activeSheet, onDismiss: openRecorderAfterSheetDismissal) { sheet in
             switch sheet {
             case .add:
                 WatchTaskTextSheet(
@@ -93,6 +97,12 @@ struct WatchTodayView: View {
             session.recoverInterruptedRecordings()
             recordingSession = session
         }
+        .onChange(of: captureSurface, initial: true) { _, surface in
+            quickCapture.report(surface: surface)
+        }
+        .onChange(of: quickCapture.pending, initial: true) { _, _ in applyPendingCapture() }
+        // A request from a cold launch waits for the recording session, made in the task above.
+        .onChange(of: recordingSession == nil) { _, _ in applyPendingCapture() }
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
         }
@@ -200,6 +210,35 @@ struct WatchTodayView: View {
         let wasCheckedOff = entry.isCheckedOffToday
         guard habitList.toggleCheckOff(id: entry.habit.id) != nil, !wasCheckedOff else { return }
         WKInterfaceDevice.current().play(.success)
+    }
+
+    /// What quick capture needs to know is showing over Today.
+    private var captureSurface: QuickCaptureRouter.Surface {
+        if isRecording { return .recorder }
+        return activeSheet == nil ? .none : .otherSheet
+    }
+
+    /// Applies **Record memo**: opens the recorder and starts recording, or brings forward the
+    /// recording in progress. An open sheet closes first, and the recorder opens once it has
+    /// finished dismissing, because a second modal can't present over it.
+    private func applyPendingCapture() {
+        guard let request = quickCapture.pending, recordingSession != nil else { return }
+        quickCapture.markApplied(request)
+        let command = request.command
+        // The Watch only records, so the target is always the recorder.
+        guard command.target == .recorder, command.startsNew else { return }
+        if command.closesOpenSheets, activeSheet != nil {
+            recordAfterSheetDismissal = true
+            activeSheet = nil
+        } else {
+            isRecording = true
+        }
+    }
+
+    private func openRecorderAfterSheetDismissal() {
+        guard recordAfterSheetDismissal else { return }
+        recordAfterSheetDismissal = false
+        isRecording = true
     }
 
     /// The **Record** button, then today's memos newest first, with recordings the phone hasn't

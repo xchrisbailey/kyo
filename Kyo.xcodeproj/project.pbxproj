@@ -28,6 +28,7 @@
 		192C2E6631CDB7922F099227 /* KyoWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */; };
 		1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */; };
 		1CF84E7936ED97861DAEFC4C /* MemoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */; };
+		1FD940CE8D55552FCF0BEA28 /* WatchQuickCaptureRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB969864AACBC086BCA311A /* WatchQuickCaptureRoutingTests.swift */; };
 		20E21F3041B152FC4F41004B /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */; };
 		215C9DC387654C789B960567 /* MemoPhotoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF864DDA32AE3CFBF168ED59 /* MemoPhotoRecord.swift */; };
 		23832D63C44C43B5004359C8 /* QuickCaptureControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A25F7CB67E163F21DB96A0 /* QuickCaptureControls.swift */; };
@@ -55,10 +56,12 @@
 		3B081FC163933FB33C056D58 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9217084F21FDCEAFA52A59 /* SettingsView.swift */; };
 		3D1BC4478D9F78530BD99848 /* HabitOrderBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981D3B2280B6BD33C4406F3E /* HabitOrderBehaviorTests.swift */; };
 		419193232AED3C66EEEB379E /* FakeOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBF78EA45D5D2F56269A70B /* FakeOnDeviceLanguageModel.swift */; };
+		431AD77E4AEF720F1663DC03 /* KyoWatchWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */; };
 		437830A55569F4D87850D902 /* WatchConnectivityRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */; };
 		44FE53BB30519A91C7935035 /* KyoWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FC2C817099EDA1E5B3603072 /* KyoWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		471989F72F89F16F46A48BF8 /* TranscriptionBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 072205325C426413529D49A6 /* TranscriptionBehaviorTests.swift */; };
 		48961F7AC768CC9249ED4EF5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
+		4ACE18598F0F693C08172CB7 /* WatchQuickCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 870CD63ACC9AA3D03D28FC85 /* WatchQuickCapture.swift */; };
 		4D4A07911015CE6E1054984F /* SpeechVoiceTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6818C0B3B4E2FDD1CBC53ADF /* SpeechVoiceTranscriber.swift */; };
 		4F42503A55938D18EC686ECD /* MemoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */; };
 		503C7EB21D894122F5B633C1 /* WatchHabitCheckOffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */; };
@@ -84,6 +87,7 @@
 		6DC4AD66CCFE45220A8F9AE9 /* FakeAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D660711035D5BF26DF7475 /* FakeAudioRecorder.swift */; };
 		6E36F1F95ED24DE8E6873274 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
 		6ED9FE45E655887222BE5E7E /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414C976EFE544386170551C7 /* Habit.swift */; };
+		6F57BA7AEA051BFF60A19F3C /* WatchQuickCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B04528AD3397414FE0F9B72 /* WatchQuickCaptureIntents.swift */; };
 		74ED748B535E72D9E9DCC3B9 /* VoiceTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C13E02E17713E5BC746D47 /* VoiceTranscriber.swift */; };
 		75900AE12B0C22C1365F43F5 /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
 		78598615D67BDFE1164CB5B5 /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
@@ -117,7 +121,9 @@
 		A8CF51FBC6A7E5BC8765D9C8 /* MemoAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AAB8042959D894D9B7765E /* MemoAudioPlayer.swift */; };
 		A9403D5BABEE2F8D37D9C79F /* OnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE5820CFA449D4155D9E440 /* OnDeviceLanguageModel.swift */; };
 		A9DE6095DA25770AD70441FA /* ApplicationContextEntries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */; };
+		AA86F5B931BB2E90CE0DA447 /* WatchQuickCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B04528AD3397414FE0F9B72 /* WatchQuickCaptureIntents.swift */; };
 		AE1B3611A1BA6D196C2AB2A0 /* KyoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DB59904B88906DE30C20F7 /* KyoApp.swift */; };
+		B192ECBCFB12B4A8B99EEBF2 /* KyoWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 687E3948210348853E76970C /* KyoWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B6F10FE30B4D5F63A7969218 /* TaskContentPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39937922050F5E91F34CE016 /* TaskContentPersistence.swift */; };
 		B8362F53A104B992F9E2ED79 /* MemoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */; };
 		B867EA9FAA392802D2CA475D /* HabitContentPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D76C8BC5318D09A34468BA0 /* HabitContentPersistence.swift */; };
@@ -170,6 +176,7 @@
 		F9DD0B2CE32F036038B320CC /* WatchMemoList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0859BEDFD9F2BB24A566CACF /* WatchMemoList.swift */; };
 		FA054A5E7F8E03B8BB5D289D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */; };
 		FB4C7C1B43DBD1238B2142FF /* QuickCaptureRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CFCA122DF0277FDE6E428F9 /* QuickCaptureRoutingTests.swift */; };
+		FD2B5721D72545FA5ACD943B /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CF2F78994555897298356A /* QuickCaptureRouter.swift */; };
 		FD3CB9FB90B9A9F44BD67701 /* MemoPhotoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF864DDA32AE3CFBF168ED59 /* MemoPhotoRecord.swift */; };
 		FE5FFB2D8981270EE7F1AF70 /* MemoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3833347045D0B34FCE55765 /* MemoRecord.swift */; };
 		FEABAC9CAE9437FFB970DBDC /* MemoTaskSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1088EDCCB7C23CC15B5D85FB /* MemoTaskSuggestions.swift */; };
@@ -198,6 +205,13 @@
 			remoteGlobalIDString = 08494E8107BF6D142AC1E5B1;
 			remoteInfo = KyoWidgets;
 		};
+		DE55766853D8B2B31AF9A61C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4C3C2B95BB8CCDC2612C0F44 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 915382471BACF8AB1E7CE703;
+			remoteInfo = KyoWatchWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -223,6 +237,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C22FFB3988E5F4509C63B231 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B192ECBCFB12B4A8B99EEBF2 /* KyoWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -238,6 +263,7 @@
 		116077B52324ACC469E50656 /* MemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoViews.swift; sourceTree = "<group>"; };
 		11FB6B64CF0C4AF772416F83 /* MemoPhotoEncoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoPhotoEncoding.swift; sourceTree = "<group>"; };
 		1214E3D080AE96B4E6434CE0 /* ApplicationContextEntriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntriesTests.swift; sourceTree = "<group>"; };
+		1BB969864AACBC086BCA311A /* WatchQuickCaptureRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchQuickCaptureRoutingTests.swift; sourceTree = "<group>"; };
 		20893D31D2275ECE97F5569E /* MemoShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShareSheet.swift; sourceTree = "<group>"; };
 		24CFFEB5475D65547523A1B5 /* HabitStoragePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitStoragePersistenceTests.swift; sourceTree = "<group>"; };
 		29ED805313CFC2CAB23D3359 /* DeviceAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioRecorder.swift; sourceTree = "<group>"; };
@@ -248,6 +274,7 @@
 		379D51CE803E7A615523783C /* MemoTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoTaskSheet.swift; sourceTree = "<group>"; };
 		39937922050F5E91F34CE016 /* TaskContentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskContentPersistence.swift; sourceTree = "<group>"; };
 		39FCF9C14C37844038380111 /* HabitStreakBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitStreakBehaviorTests.swift; sourceTree = "<group>"; };
+		3B04528AD3397414FE0F9B72 /* WatchQuickCaptureIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchQuickCaptureIntents.swift; sourceTree = "<group>"; };
 		414C976EFE544386170551C7 /* Habit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Habit.swift; sourceTree = "<group>"; };
 		44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityRefreshTests.swift; sourceTree = "<group>"; };
 		4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppModel.swift; sourceTree = "<group>"; };
@@ -263,6 +290,7 @@
 		653131DE37B9A35D5F831A52 /* Memo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Memo.swift; sourceTree = "<group>"; };
 		6818C0B3B4E2FDD1CBC53ADF /* SpeechVoiceTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechVoiceTranscriber.swift; sourceTree = "<group>"; };
 		684088AB64E84A91843EB676 /* TaskRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRecord.swift; sourceTree = "<group>"; };
+		687E3948210348853E76970C /* KyoWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KyoWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B2362B3CA0D2287DFAF0AD3 /* TaskStoragePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskStoragePersistenceTests.swift; sourceTree = "<group>"; };
 		6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		6F4EDFB9FEDC54141232A454 /* WatchRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecorderView.swift; sourceTree = "<group>"; };
@@ -271,7 +299,9 @@
 		76E463F30284905F00EE9752 /* KyoWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoWidgetsBundle.swift; sourceTree = "<group>"; };
 		77E9F4B5905CE4F84E22931F /* FoundationOnDeviceLanguageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationOnDeviceLanguageModel.swift; sourceTree = "<group>"; };
 		83017F1F6E304A53AB78724B /* AudioRecording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecording.swift; sourceTree = "<group>"; };
+		870CD63ACC9AA3D03D28FC85 /* WatchQuickCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchQuickCapture.swift; sourceTree = "<group>"; };
 		89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoTaskBehaviorTests.swift; sourceTree = "<group>"; };
+		8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoWatchWidgetsBundle.swift; sourceTree = "<group>"; };
 		8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoSync.swift; sourceTree = "<group>"; };
 		92C13E02E17713E5BC746D47 /* VoiceTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceTranscriber.swift; sourceTree = "<group>"; };
 		95D660711035D5BF26DF7475 /* FakeAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAudioRecorder.swift; sourceTree = "<group>"; };
@@ -339,6 +369,7 @@
 				307D077672C7D03F18CE474A /* KyoTests */,
 				41725C5CBBC846EFDDCB3E00 /* KyoUITests */,
 				CCCFD8C4A4381833944F1A8B /* KyoWatch */,
+				C8E41D39FA28D83EA7743E91 /* KyoWatchWidgets */,
 				9527184C5A89D278DAE50E5C /* KyoWidgets */,
 				55D5902740BBF2AE7708FB73 /* Shared */,
 				8001C7CCF103AAC639493A00 /* Products */,
@@ -407,6 +438,7 @@
 				A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */,
 				AFE76D8B3FA55245CC28EE9B /* WatchHabitCheckOffTests.swift */,
 				C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */,
+				1BB969864AACBC086BCA311A /* WatchQuickCaptureRoutingTests.swift */,
 				E76EBB2338E74EB15339C268 /* WatchRecordingTests.swift */,
 			);
 			path = KyoTests;
@@ -470,6 +502,7 @@
 				E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */,
 				A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */,
 				B4B522A2DB959943189C2E4F /* KyoWatch.app */,
+				687E3948210348853E76970C /* KyoWatchWidgets.appex */,
 				FC2C817099EDA1E5B3603072 /* KyoWidgets.appex */,
 			);
 			name = Products;
@@ -484,6 +517,15 @@
 			path = KyoWidgets;
 			sourceTree = "<group>";
 		};
+		C8E41D39FA28D83EA7743E91 /* KyoWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */,
+				870CD63ACC9AA3D03D28FC85 /* WatchQuickCapture.swift */,
+			);
+			path = KyoWatchWidgets;
+			sourceTree = "<group>";
+		};
 		CCCFD8C4A4381833944F1A8B /* KyoWatch */ = {
 			isa = PBXGroup;
 			children = (
@@ -491,6 +533,7 @@
 				06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */,
 				4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */,
 				E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */,
+				3B04528AD3397414FE0F9B72 /* WatchQuickCaptureIntents.swift */,
 				6F4EDFB9FEDC54141232A454 /* WatchRecorderView.swift */,
 				0337E78B4D196D57039372C8 /* WatchTodayView.swift */,
 			);
@@ -523,10 +566,12 @@
 			buildPhases = (
 				9311104316602DA912BD3E58 /* Sources */,
 				8486E7283B7065102CDF2EBF /* Resources */,
+				C22FFB3988E5F4509C63B231 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D0D063989345100673817493 /* PBXTargetDependency */,
 			);
 			name = KyoWatch;
 			packageProductDependencies = (
@@ -575,6 +620,23 @@
 			productReference = A07C972D8FFDCE3E9D0718D5 /* KyoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		915382471BACF8AB1E7CE703 /* KyoWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 163E523B29260CEABDC3986B /* Build configuration list for PBXNativeTarget "KyoWatchWidgets" */;
+			buildPhases = (
+				4691A0720A3D812969A0C296 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KyoWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = KyoWatchWidgets;
+			productReference = 687E3948210348853E76970C /* KyoWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		E4CC3A9BEB45EB99CEE8A33E /* KyoTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 20F961A474DB2843C9B3EB51 /* Build configuration list for PBXNativeTarget "KyoTests" */;
@@ -614,6 +676,9 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = 32CA15D0E135FE98536E42DA;
 					};
+					915382471BACF8AB1E7CE703 = {
+						ProvisioningStyle = Automatic;
+					};
 					E4CC3A9BEB45EB99CEE8A33E = {
 						ProvisioningStyle = Automatic;
 					};
@@ -637,6 +702,7 @@
 				E4CC3A9BEB45EB99CEE8A33E /* KyoTests */,
 				82CBFC1F4555981498E5FA3E /* KyoUITests */,
 				09BDB7A870010BC479ADF9D8 /* KyoWatch */,
+				915382471BACF8AB1E7CE703 /* KyoWatchWidgets */,
 				08494E8107BF6D142AC1E5B1 /* KyoWidgets */,
 			);
 		};
@@ -662,6 +728,17 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4691A0720A3D812969A0C296 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				431AD77E4AEF720F1663DC03 /* KyoWatchWidgetsBundle.swift in Sources */,
+				FD2B5721D72545FA5ACD943B /* QuickCaptureRouter.swift in Sources */,
+				4ACE18598F0F693C08172CB7 /* WatchQuickCapture.swift in Sources */,
+				AA86F5B931BB2E90CE0DA447 /* WatchQuickCaptureIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		666222C52387850E947BB0D3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -799,6 +876,7 @@
 				503C7EB21D894122F5B633C1 /* WatchHabitCheckOffTests.swift in Sources */,
 				FF3FF667F44E36DEB58C96B5 /* WatchMemoList.swift in Sources */,
 				362851DA8544D070BEF34B56 /* WatchOriginatedSyncTests.swift in Sources */,
+				1FD940CE8D55552FCF0BEA28 /* WatchQuickCaptureRoutingTests.swift in Sources */,
 				EA1A289081A899CE4F595D1B /* WatchRecordingOutbox.swift in Sources */,
 				31F7726F875198B301540043 /* WatchRecordingTests.swift in Sources */,
 			);
@@ -843,6 +921,7 @@
 				E67AC90776309A5951FD4C1B /* WatchConnectivityRefresh.swift in Sources */,
 				564BA97C07CE160BA1C37336 /* WatchConnectivityTaskTransport.swift in Sources */,
 				F9DD0B2CE32F036038B320CC /* WatchMemoList.swift in Sources */,
+				6F57BA7AEA051BFF60A19F3C /* WatchQuickCaptureIntents.swift in Sources */,
 				2770EAC67818133FC0EC6075 /* WatchRecorderView.swift in Sources */,
 				5E2D638DA705A4D990745606 /* WatchRecordingOutbox.swift in Sources */,
 				05BFD19FB680D5912BD5E5A6 /* WatchTodayView.swift in Sources */,
@@ -878,9 +957,28 @@
 			target = 09BDB7A870010BC479ADF9D8 /* KyoWatch */;
 			targetProxy = 8BFE3D27AF4EAB044F39EE3B /* PBXContainerItemProxy */;
 		};
+		D0D063989345100673817493 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 915382471BACF8AB1E7CE703 /* KyoWatchWidgets */;
+			targetProxy = DE55766853D8B2B31AF9A61C /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		168743E5E0A5C87228F04317 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KyoWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
 		354A8000A5A4A11E7B130F5E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1015,6 +1113,20 @@
 			};
 			name = Debug;
 		};
+		700845B122AC646379FFCD47 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/KyoWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
 		8124CE55216044DCD44C7B22 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1084,6 +1196,15 @@
 			buildConfigurations = (
 				3FB46EFAF0D3401B38E22000 /* Debug */,
 				57FC81BA3820AED640ACBB4F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		163E523B29260CEABDC3986B /* Build configuration list for PBXNativeTarget "KyoWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				168743E5E0A5C87228F04317 /* Debug */,
+				700845B122AC646379FFCD47 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

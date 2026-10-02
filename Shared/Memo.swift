@@ -107,6 +107,16 @@ struct Memo: Identifiable, Equatable, Sendable {
         }
     }
 
+    /// The text a search looks through after the title: a Written memo's text after its first
+    /// line, or a Voice memo's Transcript with line breaks collapsed. Unlike `detail`, never a
+    /// status such as "Transcribing…".
+    var searchableDetail: String? {
+        switch kind {
+        case .written: Self.detail(ofWrittenText: text)
+        case .voice: Self.collapsed(text)
+        }
+    }
+
     /// The text **Memo → Task** reads, given the text as it stands in the open card: a Written
     /// memo's text, or a Voice memo's Transcript once it has one. A Voice memo that is
     /// Transcribing or has No transcript has none, and neither does a photo-only memo.

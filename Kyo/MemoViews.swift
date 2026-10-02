@@ -11,6 +11,10 @@ struct MemoRow: View {
     let loadThumbnail: (UUID) -> Data?
     let onOpen: () -> Void
     let onDelete: () -> Void
+    /// The search the row is a result of: its matches in the title and detail are highlighted.
+    var highlight = ""
+    /// Shown in place of the detail line when the match is deep in the text.
+    var snippet: MemoSnippet?
 
     @State private var isDeleteRevealed = false
 
@@ -63,11 +67,16 @@ struct MemoRow: View {
                     .frame(width: 28, height: 24)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(memo.title)
+                    Text(MemoHighlight.attributed(memo.title, matching: highlight))
                         .font(.body)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    if memo.transcriptState == .transcribing {
+                    if let snippet {
+                        Text(MemoHighlight.attributed(snippet))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if memo.transcriptState == .transcribing {
                         HStack(spacing: 6) {
                             ProgressView()
                                 .controlSize(.mini)
@@ -76,7 +85,7 @@ struct MemoRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     } else if let detail = memo.detail {
-                        Text(detail)
+                        Text(MemoHighlight.attributed(detail, matching: highlight))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -243,6 +252,28 @@ struct MemoCardSheet: View {
         self.makeTaskSuggestions = makeTaskSuggestions
         _text = State(initialValue: memo.text)
         _title = State(initialValue: memo.title)
+    }
+
+    /// The card for any memo, from Today or memo history, wired to the store. **Memo → Task**
+    /// adds to **Today**, whatever the memo's day.
+    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore) {
+        let id = memo.id
+        self.init(
+            memo: memo,
+            onEdit: { text in store.editMemo(id: id, text: text) },
+            onRename: { title in store.renameMemo(id: id, title: title) },
+            onDelete: { store.deleteMemo(id: id) },
+            onClose: { store.closeMemo(id: id) },
+            loadAudio: { store.audioData(forMemoID: id) },
+            loadThumbnail: { store.thumbnailData(forPhotoID: $0) },
+            loadPhoto: { store.photoData(forPhotoID: $0) },
+            onAddPhoto: { photo in store.addPhoto(photo, toMemoID: id) },
+            onRemovePhoto: { photoID in store.removePhoto(id: photoID, fromMemoID: id) },
+            onRetryTranscription: { store.retryTranscription(id: id) },
+            makeTaskSuggestions: { text in
+                MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
+            }
+        )
     }
 
     var body: some View {
@@ -477,6 +508,28 @@ struct MemoCardSheet: View {
                 .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .accessibilityLabel("Transcript")
         }
+    }
+}
+
+/// Marks the matched words of a search in a memo's text.
+enum MemoHighlight {
+    static func attributed(_ text: String, matching query: String) -> AttributedString {
+        attributed(text, ranges: MemoSearch.ranges(of: query, in: text))
+    }
+
+    static func attributed(_ snippet: MemoSnippet) -> AttributedString {
+        attributed(snippet.text, ranges: snippet.highlights)
+    }
+
+    private static func attributed(_ text: String, ranges: [Range<String.Index>]) -> AttributedString {
+        var result = AttributedString(text)
+        for range in ranges {
+            guard let marked = Range(range, in: result) else { continue }
+            result[marked].inlinePresentationIntent = .stronglyEmphasized
+            result[marked].foregroundColor = Color.primary
+            result[marked].backgroundColor = KyoPalette.accent.opacity(0.22)
+        }
+        return result
     }
 }
 

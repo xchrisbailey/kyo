@@ -39,7 +39,10 @@ struct TodayView: View {
         // memo keeps its "Voice memo" title.
         let languageModel: any OnDeviceLanguageModel = isInMemory ? NoLanguageModel() : FoundationOnDeviceLanguageModel()
         _memoStore = StateObject(
-            wrappedValue: MemoStore(modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel)
+            wrappedValue: MemoStore(
+                modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel,
+                memoSync: isInMemory ? nil : WatchConnectivityTaskTransport.shared
+            )
         )
         self.languageModel = languageModel
     }

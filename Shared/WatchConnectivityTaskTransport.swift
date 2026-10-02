@@ -9,11 +9,12 @@ import os
 /// reliably and survives unreachability instead of dropping anything (see
 /// docs/adr/0002-watch-commands-and-phone-reconciliation.md).
 @MainActor
-final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, WCSessionDelegate {
+final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
     nonisolated static let habitSnapshotKey = "kyo.habitSnapshot"
+    nonisolated static let memoSnapshotKey = "kyo.memoSnapshot"
     nonisolated static let commandKey = "kyo.taskCommand"
     nonisolated static let habitCommandKey = "kyo.habitCommand"
 
@@ -26,6 +27,8 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     private var handler: (@MainActor (TaskListSnapshot) -> Void)?
     private var latestIncomingHabits: HabitListSnapshot?
     private var habitHandler: (@MainActor (HabitListSnapshot) -> Void)?
+    private var latestIncomingMemos: MemoListSnapshot?
+    private var memoHandler: (@MainActor (MemoListSnapshot) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
     private var habitCommandHandler: (@MainActor (HabitCommand) -> Void)?
     /// Encoded commands of either kind, held until the session has activated.
@@ -69,6 +72,24 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
             logger.log("published habit revision \(snapshot.revision) (\(snapshot.habits.count) habits)")
         } catch {
             logger.error("failed to encode habit snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    /// Publishes the memo snapshot under its own key, merged with the task and habit snapshots
+    /// in one context write (see `docs/adr/0005-watch-memo-sync.md`).
+    func publish(_ snapshot: MemoListSnapshot) {
+        do {
+            publishContextEntry(try JSONEncoder().encode(snapshot), forKey: Self.memoSnapshotKey)
+            logger.log("published memo revision \(snapshot.revision) (\(snapshot.memos.count) memos)")
+        } catch {
+            logger.error("failed to encode memo snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    func setMemoSnapshotHandler(_ handler: @escaping @MainActor (MemoListSnapshot) -> Void) {
+        memoHandler = handler
+        if let latestIncomingMemos {
+            handler(latestIncomingMemos)
         }
     }
 
@@ -185,6 +206,13 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         logger.log("received habit snapshot revision \(snapshot.revision) (\(snapshot.habits.count) habits)")
     }
 
+    private func receiveMemos(data: Data) {
+        guard let snapshot = try? JSONDecoder().decode(MemoListSnapshot.self, from: data) else { return }
+        latestIncomingMemos = snapshot
+        memoHandler?(snapshot)
+        logger.log("received memo snapshot revision \(snapshot.revision) (\(snapshot.memos.count) memos)")
+    }
+
     private func receiveCommand(data: Data) {
         guard let command = try? JSONDecoder().decode(TaskCommand.self, from: data) else { return }
         if let commandHandler {
@@ -214,6 +242,7 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     ) {
         let contextData = session.receivedApplicationContext[Self.snapshotKey] as? Data
         let habitData = session.receivedApplicationContext[Self.habitSnapshotKey] as? Data
+        let memoData = session.receivedApplicationContext[Self.memoSnapshotKey] as? Data
         Task { @MainActor in
             self.sendLatest()
             self.flushPendingOutgoingCommands()
@@ -223,15 +252,20 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
             if let habitData {
                 self.receiveHabits(data: habitData)
             }
+            if let memoData {
+                self.receiveMemos(data: memoData)
+            }
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         let taskData = applicationContext[Self.snapshotKey] as? Data
         let habitData = applicationContext[Self.habitSnapshotKey] as? Data
+        let memoData = applicationContext[Self.memoSnapshotKey] as? Data
         Task { @MainActor in
             if let taskData { self.receive(data: taskData) }
             if let habitData { self.receiveHabits(data: habitData) }
+            if let memoData { self.receiveMemos(data: memoData) }
         }
     }
 

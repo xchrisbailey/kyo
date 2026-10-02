@@ -108,6 +108,7 @@ targets:
       - Shared/HabitSync.swift
       - Shared/TaskSync.swift
       - Shared/ApplicationContextEntries.swift
+      - Shared/WatchConnectivityTaskTransport.swift
       - Shared/KyoSchema.swift
       - Shared/TaskRecord.swift
       - Shared/TaskContentPersistence.swift
@@ -119,6 +120,8 @@ targets:
       - Shared/MemoPhotoRecord.swift
       - Shared/MemoPhotoEncoding.swift
       - Shared/MemoStore.swift
+      - Shared/MemoSync.swift
+      - Shared/WatchMemoList.swift
       - Shared/MemoHistory.swift
       - Shared/MemoShare.swift
       - Shared/AudioRecording.swift

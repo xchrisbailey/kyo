@@ -1,6 +1,6 @@
 # 5. Watch memo sync: memo snapshot plus file outbox
 
-Status: accepted (not yet implemented)
+Status: accepted (implemented)
 
 ## Context
 

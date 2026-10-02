@@ -5,7 +5,7 @@ import SwiftData
 /// What the views consume to capture and show **Memos**. Today's memos are listed newest
 /// first. A memo belongs to the local calendar day it was created and never moves.
 @MainActor
-protocol MemoStoreBehavior: AnyObject {
+protocol MemoStoreBehavior: AnyObject, VoiceMemoSaving {
     /// Only the memos whose day is Today, newest first.
     var memos: [Memo] { get }
     /// "2 memos" (or "1 memo") when Today has memos, "Notes & voice" when it has none.
@@ -105,7 +105,21 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private var memoSyncRevision: Int64?
     /// What was last published, so a refresh that changed nothing the Watch shows publishes nothing.
     private var lastPublishedWatchMemos: [WatchMemo]?
+    private var lastPublishedAcknowledgedMemoIDs: [UUID]?
     static let memoSyncRevisionKey = "kyo.memos.syncRevision"
+
+    /// Where Watch recordings arrive (ADR 0005), or `nil` when none do. The inbox keeps a
+    /// recording from the moment it's moved out of the system's own until its memo is saved.
+    private let watchRecordings: (any MemoFileTransport)?
+    private let watchInbox: WatchRecordingInbox
+    /// The ids of the Watch recordings already received, newest last, bounded. Published as
+    /// `acknowledgedMemoIDs`, so the Watch can retire them. A repeat delivery of one is ignored
+    /// but still acknowledged, which keeps a memo the user deleted from coming back. This is a
+    /// Watch-link record, so it lives in `userDefaults`, not SwiftData (ADR 0004).
+    private var receivedWatchRecordingIDs: [UUID]
+    static let receivedWatchRecordingIDsKey = "kyo.memos.receivedWatchRecordings"
+    /// The ids kept; older ones are forgotten, like the processed command ids.
+    static let maxReceivedWatchRecordingIDs = 500
 
     /// A transcription waiting to run. A visible one shows Transcribing (a new recording, an
     /// arrival from the Watch, **Try again**); a background one retries a No transcript memo by
@@ -133,6 +147,9 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     private var pendingTitles: [TitleRequest] = []
     private var titleTask: Task<Void, Never>?
 
+    /// With `watchRecordings` the store takes in the Watch's recordings, moving each file into
+    /// `watchInbox` as it arrives, and acknowledges them in the published memo snapshot.
+    ///
     /// `now` and `calendar` make the current day controllable. A memo's day is taken from them
     /// when it's created and then kept. The `transcriber` fills in Voice memo Transcripts, one
     /// at a time. The `languageModel` generates a Voice memo's title, once, when its Transcript is
@@ -147,6 +164,8 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         languageModel: any OnDeviceLanguageModel = NoLanguageModel(),
         deviceLocale: @escaping () -> String = { Locale.current.identifier },
         memoSync: (any MemoSnapshotTransport)? = nil,
+        watchRecordings: (any MemoFileTransport)? = nil,
+        watchInbox: WatchRecordingInbox = WatchRecordingInbox(),
         userDefaults: UserDefaults = .standard
     ) {
         self.modelContainer = modelContainer
@@ -158,6 +177,10 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         self.deviceLocale = deviceLocale
         self.memoSync = memoSync
         self.userDefaults = userDefaults
+        self.watchRecordings = watchRecordings
+        self.watchInbox = watchInbox
+        self.receivedWatchRecordingIDs = userDefaults.data(forKey: Self.receivedWatchRecordingIDsKey)
+            .flatMap { try? JSONDecoder().decode([UUID].self, from: $0) } ?? []
         self.memoSyncRevision = memoSync == nil
             ? nil : (userDefaults.object(forKey: Self.memoSyncRevisionKey) as? NSNumber)?.int64Value
         self.currentDate = calendar.startOfDay(for: now())
@@ -167,6 +190,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         retryTranscriptionsAtLaunch()
         watchTranscriberReadiness()
         watchDeviceLocale()
+        receiveWatchRecordings()
     }
 
     var sectionSubtitle: String {
@@ -248,15 +272,32 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     @discardableResult
     func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) -> Memo {
-        // The recording's id is the memo's id, so saving a recording twice keeps one memo.
+        insertVoiceMemo(
+            audio, day: TaskCompletionDay(date: audio.startedAt, calendar: calendar),
+            stoppedAtCap: stoppedAtCap, photos: photos, fromWatch: false
+        )
+    }
+
+    /// Saves a Voice memo as soon as it's recorded, in Transcribing, and starts transcribing it.
+    /// The recording's id is the memo's id, so saving a recording twice keeps one memo. A Watch
+    /// recording is also recorded as received, before the snapshot that acknowledges it is
+    /// published.
+    @discardableResult
+    private func insertVoiceMemo(
+        _ audio: RecordedAudio, day: TaskCompletionDay, stoppedAtCap: Bool, photos: [StoredPhoto], fromWatch: Bool
+    ) -> Memo {
         if let existing = records(withID: audio.id).first {
+            if fromWatch {
+                recordReceivedWatchRecording(audio.id)
+                refreshForCurrentDay()
+            }
             return existing.memo
         }
         let record = MemoRecord(
             id: audio.id,
             kind: .voice,
             createdAt: audio.startedAt,
-            day: TaskCompletionDay(date: audio.startedAt, calendar: calendar),
+            day: day,
             text: "",
             durationSeconds: audio.duration,
             transcriptState: .transcribing,
@@ -266,9 +307,64 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         context.insert(record)
         attach(photos, to: record)
         save()
+        if fromWatch { recordReceivedWatchRecording(audio.id) }
         refreshForCurrentDay()
         enqueueTranscription(Attempt(id: audio.id, isVisible: true))
         return record.memo
+    }
+
+    // MARK: Watch recordings
+
+    /// Starts receiving Watch recordings and takes in any a quit or crash left in the inbox.
+    private func receiveWatchRecordings() {
+        guard let watchRecordings else { return }
+        let inbox = watchInbox
+        // The system deletes the file when this returns, so it's moved here, on the system's
+        // thread, and only then handed to the main actor.
+        watchRecordings.setRecordingReceiver { [weak self] received in
+            guard inbox.keep(received) else { return }
+            Task { @MainActor in self?.takeInWatchRecordings() }
+        }
+        takeInWatchRecordings()
+    }
+
+    /// Makes a memo of every recording in the inbox, as Transcribing, on the day the Watch
+    /// started it. A recording already received is dropped without a memo, so a memo deleted
+    /// since doesn't come back, and acknowledged again.
+    private func takeInWatchRecordings() {
+        for received in watchInbox.pending() {
+            let entry = received.entry
+            if receivedWatchRecordingIDs.contains(entry.id) {
+                watchInbox.remove(id: entry.id)
+                // The Watch is still sending it, so it hasn't seen the acknowledgment: say it again.
+                publishMemosForWatchIfChanged(force: true)
+                continue
+            }
+            guard let data = try? Data(contentsOf: received.file) else {
+                // Unreadable: nothing to save, and nothing is acknowledged, so the Watch sends it again.
+                watchInbox.remove(id: entry.id)
+                continue
+            }
+            insertVoiceMemo(
+                RecordedAudio(id: entry.id, startedAt: entry.startedAt, duration: entry.duration, data: data),
+                day: entry.day,
+                // The Watch stops at the same 10-minute cap as the phone.
+                stoppedAtCap: entry.duration >= VoiceRecordingSession.cap,
+                photos: [], fromWatch: true
+            )
+            watchInbox.remove(id: entry.id)
+        }
+    }
+
+    private func recordReceivedWatchRecording(_ id: UUID) {
+        guard !receivedWatchRecordingIDs.contains(id) else { return }
+        receivedWatchRecordingIDs.append(id)
+        if receivedWatchRecordingIDs.count > Self.maxReceivedWatchRecordingIDs {
+            receivedWatchRecordingIDs.removeFirst(receivedWatchRecordingIDs.count - Self.maxReceivedWatchRecordingIDs)
+        }
+        if let data = try? JSONEncoder().encode(receivedWatchRecordingIDs) {
+            userDefaults.set(data, forKey: Self.receivedWatchRecordingIDsKey)
+        }
     }
 
     @discardableResult
@@ -407,15 +503,17 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     /// Publishes today's memos to the Watch when what a Watch row shows has changed, and the
     /// first time. Every change and every day rollover comes through `refreshForCurrentDay`, so
     /// this covers both. The revision follows ADR 0001's hybrid clock.
-    private func publishMemosForWatchIfChanged() {
+    private func publishMemosForWatchIfChanged(force: Bool = false) {
         guard let memoSync else { return }
         let watchMemos = memos.map(WatchMemo.init)
-        guard watchMemos != lastPublishedWatchMemos else { return }
+        let acknowledged = receivedWatchRecordingIDs
+        guard force || watchMemos != lastPublishedWatchMemos || acknowledged != lastPublishedAcknowledgedMemoIDs else { return }
         lastPublishedWatchMemos = watchMemos
+        lastPublishedAcknowledgedMemoIDs = acknowledged
         let candidate = max((memoSyncRevision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
         memoSyncRevision = candidate
         userDefaults.set(NSNumber(value: candidate), forKey: Self.memoSyncRevisionKey)
-        memoSync.publish(MemoListSnapshot(revision: candidate, memos: watchMemos))
+        memoSync.publish(MemoListSnapshot(revision: candidate, memos: watchMemos, acknowledgedMemoIDs: acknowledged))
     }
 
     /// Refreshes for the current day now, then again at every local midnight until cancelled.

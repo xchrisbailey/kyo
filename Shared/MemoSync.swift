@@ -90,7 +90,11 @@ struct WatchMemo: Codable, Equatable, Sendable, Identifiable {
     }
 
     private func timeText(locale: Locale, timeZone: TimeZone) -> String {
-        createdAt.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, timeZone: timeZone))
+        Self.timeText(of: createdAt, locale: locale, timeZone: timeZone)
+    }
+
+    static func timeText(of date: Date, locale: Locale, timeZone: TimeZone) -> String {
+        date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, timeZone: timeZone))
     }
 
     private var photoText: String? {
@@ -108,8 +112,8 @@ struct WatchMemo: Codable, Equatable, Sendable, Identifiable {
 struct MemoListSnapshot: Codable, Equatable, Sendable {
     let revision: Int64
     let memos: [WatchMemo]
-    /// Ids of Watch recordings the phone has received and saved. The Watch outbox (#86) retires
-    /// entries on these, mirroring `acknowledgedCommandIDs`; nothing fills it yet.
+    /// Ids of Watch recordings the phone has received and saved. The Watch outbox retires
+    /// entries on these, mirroring `acknowledgedCommandIDs`.
     let acknowledgedMemoIDs: [UUID]
 
     init(revision: Int64, memos: [WatchMemo], acknowledgedMemoIDs: [UUID] = []) {

@@ -8,6 +8,12 @@ enum MicrophoneAccess: Equatable, Sendable {
     case denied
 }
 
+/// Why a recording couldn't start or be saved, when the recorder knows.
+enum AudioRecordingError: Error, Equatable, Sendable {
+    /// The device has no room for the recording. Nothing is saved.
+    case outOfSpace
+}
+
 /// A finished (or recovered) **Voice memo** recording: AAC, mono, 48 kbps.
 struct RecordedAudio: Equatable, Sendable {
     /// Becomes the memo's id, so a recording is never saved twice.

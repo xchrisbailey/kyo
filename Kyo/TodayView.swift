@@ -41,7 +41,8 @@ struct TodayView: View {
         _memoStore = StateObject(
             wrappedValue: MemoStore(
                 modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel,
-                memoSync: isInMemory ? nil : WatchConnectivityTaskTransport.shared
+                memoSync: isInMemory ? nil : WatchConnectivityTaskTransport.shared,
+                watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
             )
         )
         self.languageModel = languageModel

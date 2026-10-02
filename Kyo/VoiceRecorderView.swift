@@ -3,7 +3,8 @@ import UIKit
 
 /// The full-screen recorder behind **+ > Voice memo**: the elapsed time and a waveform, with
 /// **Discard** (saves nothing) and **Stop** (saves). Shows the 10-minute cap warning, **Paused**
-/// with **Resume** and **Stop** after an interruption, and the denied-microphone state.
+/// with **Resume** and **Stop** after an interruption, and the denied-microphone state. Up to 4
+/// photos can be attached while recording; they're saved with the memo on **Stop**.
 struct VoiceRecorderView: View {
     @ObservedObject var session: VoiceRecordingSession
     let onFinish: () -> Void
@@ -106,6 +107,12 @@ struct VoiceRecorderView: View {
                 .accessibilityHidden(true)
 
             liveTranscript
+
+            MemoPendingPhotos(
+                photos: session.photos,
+                onAdd: { photo in session.addPhoto(photo) },
+                onRemove: { id in session.removePhoto(id: id) }
+            )
 
             controls
         }

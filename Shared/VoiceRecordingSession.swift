@@ -6,6 +6,9 @@ import Foundation
 /// 10-minute cap, pauses when the audio is interrupted, and saves on **Stop** (never on
 /// **Discard**). The views drive it: they call `tick()` while a recording is open.
 ///
+/// Photos taken while recording wait here, up to 4, and go with the memo when it's saved; a
+/// **Discard** drops them.
+///
 /// While recording it also runs live transcription through the `LiveTranscribing` seam, for the
 /// recorder to show. Live transcription never gates recording: if it isn't available, recording
 /// goes on and the recorder says the transcript will appear after recording.
@@ -56,6 +59,8 @@ final class VoiceRecordingSession: ObservableObject {
     /// What live transcription has heard so far, kept across a pause. Only for the recorder: the
     /// saved memo's Transcript comes from transcribing its audio.
     @Published private(set) var liveTranscript = ""
+    /// Photos attached to the recording so far, oldest first. Cleared when a recording begins.
+    @Published private(set) var photos: [StoredPhoto] = []
 
     private let recorder: any AudioRecording
     private let memos: any MemoStoreBehavior
@@ -110,6 +115,7 @@ final class VoiceRecordingSession: ObservableObject {
         liveStatus = .starting
         liveTranscript = ""
         liveBase = ""
+        photos = []
         phase = .starting
 
         var access = recorder.microphoneAccess
@@ -171,6 +177,19 @@ final class VoiceRecordingSession: ObservableObject {
         if liveStatus != .unavailable { startLive() }
     }
 
+    /// Attaches a photo to the recording. Returns `false` when there are already 4, or no
+    /// recording is under way.
+    @discardableResult
+    func addPhoto(_ photo: StoredPhoto) -> Bool {
+        guard isActive, photos.count < Memo.maximumPhotos else { return false }
+        if !photos.contains(where: { $0.id == photo.id }) { photos.append(photo) }
+        return true
+    }
+
+    func removePhoto(id: UUID) {
+        photos.removeAll { $0.id == id }
+    }
+
     /// **Stop**: saves the recording as a Voice memo.
     func stop() {
         guard isActive else { return }
@@ -185,6 +204,7 @@ final class VoiceRecordingSession: ObservableObject {
         guard isActive else { return }
         stopLive()
         recorder.discard()
+        photos = []
         phase = .idle
         outcome = .discarded
     }
@@ -253,7 +273,8 @@ final class VoiceRecordingSession: ObservableObject {
         }
         let memo = memos.addVoiceMemo(
             RecordedAudio(id: recordingID, startedAt: startedAt, duration: duration, data: data),
-            stoppedAtCap: reachedCap
+            stoppedAtCap: reachedCap,
+            photos: photos
         )
         recorder.removeRecordingFile(id: recordingID)
         phase = .idle

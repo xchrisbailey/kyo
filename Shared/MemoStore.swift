@@ -13,12 +13,26 @@ protocol MemoStoreBehavior: AnyObject {
 
     /// Any memo, from any day, by id.
     func memo(id: UUID) -> Memo?
-    /// Saves a Written memo on Today. A memo with no text is discarded: returns `nil`.
-    @discardableResult func addWrittenMemo(text: String) -> Memo?
+    /// Saves a Written memo on Today, with up to 4 photos (any beyond that are dropped). A memo
+    /// with no text and no photos is discarded: returns `nil`. With photos and no text it's a
+    /// photo-only memo, titled "Photo memo".
+    @discardableResult func addWrittenMemo(text: String, photos: [StoredPhoto]) -> Memo?
     /// Saves a Voice memo as soon as recording stops, on the day recording started, in
-    /// Transcribing, and starts transcribing it. Saving the same recording again returns the
-    /// memo already saved.
-    @discardableResult func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo
+    /// Transcribing, and starts transcribing it. Up to 4 photos taken while recording go with
+    /// it. Saving the same recording again returns the memo already saved.
+    @discardableResult func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) -> Memo
+    /// Attaches a photo to a memo, written or voice, after the ones it has. Returns `nil` and
+    /// attaches nothing when the memo is unknown or already has 4 photos. Attaching a photo
+    /// already attached changes nothing.
+    @discardableResult func addPhoto(_ photo: StoredPhoto, toMemoID id: UUID) -> Memo?
+    /// Removes one photo from a memo, for good. Removing the last photo of a memo with no text
+    /// leaves it until it's closed, like emptying its text.
+    @discardableResult func removePhoto(id photoID: UUID, fromMemoID id: UUID) -> Memo?
+    /// A photo's stored HEIC, or `nil` for an unknown id. Reads the photo bytes, so only the open
+    /// memo uses it.
+    func photoData(forPhotoID id: UUID) -> Data?
+    /// A photo's small thumbnail, or `nil` for an unknown id. Never reads the photo bytes.
+    func thumbnailData(forPhotoID id: UUID) -> Data?
     /// Renames a Voice memo: the user's title is kept from now on, and a generated title never
     /// replaces it, even one still being generated. A blank name goes back to showing "Voice
     /// memo". A Written memo's title is its first line, so it can't be renamed: returns `nil`.
@@ -26,10 +40,10 @@ protocol MemoStoreBehavior: AnyObject {
     /// Saves new text immediately (a Voice memo's text is its Transcript). Emptying a Written
     /// memo's text keeps the memo until it's closed.
     @discardableResult func editMemo(id: UUID, text: String) -> Memo?
-    /// Called when a memo's card closes. Discards a Written memo with no text, returning it. A
-    /// Voice memo is never discarded this way.
+    /// Called when a memo's card closes. Discards a Written memo with no text and no photos,
+    /// returning it. A Voice memo, and a Written memo with photos, are never discarded this way.
     @discardableResult func closeMemo(id: UUID) -> Memo?
-    /// Permanent: no undo and no trash. Removes a Voice memo's audio too.
+    /// Permanent: no undo and no trash. Removes a Voice memo's audio and every photo too.
     @discardableResult func deleteMemo(id: UUID) -> Memo?
 
     /// A Voice memo's stored audio, or `nil` for a Written memo or an unknown id.
@@ -45,6 +59,18 @@ protocol MemoStoreBehavior: AnyObject {
     /// device language wasn't supported and the language has changed since. Called at launch
     /// and when the device language changes.
     func retryTranscriptionsAfterLocaleChange()
+}
+
+extension MemoStoreBehavior {
+    @discardableResult
+    func addWrittenMemo(text: String) -> Memo? {
+        addWrittenMemo(text: text, photos: [])
+    }
+
+    @discardableResult
+    func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo {
+        addVoiceMemo(audio, stoppedAtCap: stoppedAtCap, photos: [])
+    }
 }
 
 @MainActor
@@ -127,9 +153,9 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     }
 
     @discardableResult
-    func addWrittenMemo(text: String) -> Memo? {
+    func addWrittenMemo(text: String, photos: [StoredPhoto]) -> Memo? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+        guard !trimmed.isEmpty || !photos.isEmpty else { return nil }
         let createdAt = now()
         let record = MemoRecord(
             kind: .written,
@@ -138,13 +164,14 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             text: trimmed
         )
         context.insert(record)
+        attach(photos, to: record)
         save()
         refreshForCurrentDay()
         return record.memo
     }
 
     @discardableResult
-    func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool) -> Memo {
+    func addVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) -> Memo {
         // The recording's id is the memo's id, so saving a recording twice keeps one memo.
         if let existing = records(withID: audio.id).first {
             return existing.memo
@@ -161,10 +188,46 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         )
         record.audio = MemoAudioRecord(data: audio.data)
         context.insert(record)
+        attach(photos, to: record)
         save()
         refreshForCurrentDay()
         enqueueTranscription(Attempt(id: audio.id, isVisible: true))
         return record.memo
+    }
+
+    @discardableResult
+    func addPhoto(_ photo: StoredPhoto, toMemoID id: UUID) -> Memo? {
+        guard let record = records(withID: id).first else { return nil }
+        if record.orderedPhotos.contains(where: { $0.id == photo.id }) { return record.memo }
+        guard record.orderedPhotos.count < Memo.maximumPhotos else { return nil }
+        attach([photo], to: record)
+        save()
+        refreshForCurrentDay()
+        return record.memo
+    }
+
+    @discardableResult
+    func removePhoto(id photoID: UUID, fromMemoID id: UUID) -> Memo? {
+        guard let record = records(withID: id).first,
+              let photo = record.orderedPhotos.first(where: { $0.id == photoID })
+        else { return nil }
+        record.photos?.removeAll { $0.id == photoID }
+        context.delete(photo)
+        save()
+        refreshForCurrentDay()
+        return record.memo
+    }
+
+    func photoData(forPhotoID id: UUID) -> Data? {
+        photoRecord(withID: id)?.data
+    }
+
+    func thumbnailData(forPhotoID id: UUID) -> Data? {
+        var descriptor = FetchDescriptor<MemoPhotoRecord>(predicate: #Predicate { $0.id == id })
+        // Only the small columns: the photo bytes stay on disk.
+        descriptor.propertiesToFetch = [\.id, \.thumbnail]
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor))?.first?.thumbnail
     }
 
     func audioData(forMemoID id: UUID) -> Data? {
@@ -228,7 +291,9 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     @discardableResult
     func closeMemo(id: UUID) -> Memo? {
-        guard let record = records(withID: id).first, record.kind == .written, record.text.isEmpty else { return nil }
+        guard let record = records(withID: id).first, record.kind == .written,
+              record.text.isEmpty, record.orderedPhotos.isEmpty
+        else { return nil }
         return deleteMemo(id: id)
     }
 
@@ -238,7 +303,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         guard let first = matches.first else { return nil }
         let removed = first.memo
         for record in matches {
-            deleteIncludingAudio(record)
+            deleteIncludingMedia(record)
         }
         save()
         refreshForCurrentDay()
@@ -284,21 +349,44 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         return Self.keepOrder((try? context.fetch(descriptor)) ?? [])
     }
 
+    private func photoRecord(withID id: UUID) -> MemoPhotoRecord? {
+        var descriptor = FetchDescriptor<MemoPhotoRecord>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor))?.first
+    }
+
+    /// Adds `photos` after the ones `record` has, up to the limit of 4.
+    private func attach(_ photos: [StoredPhoto], to record: MemoRecord) {
+        var taken = Set(record.orderedPhotos.map(\.id))
+        var next = (record.orderedPhotos.map(\.order).max() ?? -1) + 1
+        for photo in photos {
+            guard taken.count < Memo.maximumPhotos else { break }
+            guard taken.insert(photo.id).inserted else { continue }
+            let stored = MemoPhotoRecord(id: photo.id, order: next, data: photo.data, thumbnail: photo.thumbnail)
+            context.insert(stored)
+            stored.memo = record
+            next += 1
+        }
+    }
+
     /// A Written memo emptied while its card was open, then left behind by a quit, is discarded
-    /// on the next launch: a Written memo with no text is never kept. Only Written memos are
-    /// judged by their text; a Voice memo (and, later, a photo memo) legitimately has none.
+    /// on the next launch: a Written memo with no text and no photos is never kept. Only Written
+    /// memos are judged by their text; a Voice memo, and a photo-only memo, legitimately have none.
     private func discardEmptyWrittenMemos() {
         let written = Memo.Kind.written.rawValue
         let descriptor = FetchDescriptor<MemoRecord>(predicate: #Predicate { $0.kindRaw == written && $0.text == "" })
-        for record in (try? context.fetch(descriptor)) ?? [] {
-            deleteIncludingAudio(record)
+        for record in (try? context.fetch(descriptor)) ?? [] where record.orderedPhotos.isEmpty {
+            deleteIncludingMedia(record)
         }
         save()
     }
 
-    private func deleteIncludingAudio(_ record: MemoRecord) {
+    private func deleteIncludingMedia(_ record: MemoRecord) {
         if let audio = record.audio {
             context.delete(audio)
+        }
+        for photo in record.photos ?? [] {
+            context.delete(photo)
         }
         context.delete(record)
     }
@@ -504,7 +592,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             if seen.insert(record.id).inserted {
                 unique.append(record)
             } else {
-                deleteIncludingAudio(record)
+                deleteIncludingMedia(record)
             }
         }
         save()

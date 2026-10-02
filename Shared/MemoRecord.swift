@@ -7,8 +7,8 @@ import SwiftData
 /// `TaskCompletionDay`, never as a timestamp.
 ///
 /// A voice memo adds a duration, a transcript state, a cap flag and a title here, and its audio on a
-/// separate `MemoAudioRecord`. Its transcript is `text`. Photos will be separate models too,
-/// attached through optional relationships with inverses.
+/// separate `MemoAudioRecord`. Its transcript is `text`. Photos are `MemoPhotoRecord`s, one per
+/// photo, attached through an optional relationship with its inverse.
 @Model
 final class MemoRecord {
     var id: UUID = UUID()
@@ -35,6 +35,7 @@ final class MemoRecord {
     /// Whether the user named the voice memo, so a generated title never replaces it.
     var titleIsUserSet: Bool = false
     @Relationship(deleteRule: .cascade, inverse: \MemoAudioRecord.memo) var audio: MemoAudioRecord?
+    @Relationship(deleteRule: .cascade, inverse: \MemoPhotoRecord.memo) var photos: [MemoPhotoRecord]?
 
     init(
         id: UUID = UUID(),
@@ -77,6 +78,13 @@ final class MemoRecord {
         set { transcriptStateRaw = newValue?.rawValue ?? "" }
     }
 
+    /// The photos in the order they were added.
+    var orderedPhotos: [MemoPhotoRecord] {
+        (photos ?? []).sorted { lhs, rhs in
+            lhs.order != rhs.order ? lhs.order < rhs.order : lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+
     var memo: Memo {
         Memo(
             id: id,
@@ -88,7 +96,8 @@ final class MemoRecord {
             transcriptState: kind == .voice ? (transcriptState ?? .noTranscript) : nil,
             stoppedAtCap: stoppedAtCap,
             voiceTitle: kind == .voice ? title : "",
-            isTitleUserSet: kind == .voice && titleIsUserSet
+            isTitleUserSet: kind == .voice && titleIsUserSet,
+            photoIDs: orderedPhotos.map(\.id)
         )
     }
 }

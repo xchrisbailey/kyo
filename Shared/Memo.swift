@@ -2,7 +2,8 @@ import Foundation
 
 /// A **Memo** as the rest of the app sees it: a captured thought that belongs to the local
 /// calendar day it was created. A **Written memo** is its text; a **Voice memo** keeps its audio
-/// and has a **Transcript**, which is its only text.
+/// and has a **Transcript**, which is its only text. Either can carry up to 4 photos, and a
+/// Written memo with photos and no text is a photo-only memo.
 struct Memo: Identifiable, Equatable, Sendable {
     enum Kind: String, Sendable {
         case written
@@ -19,6 +20,10 @@ struct Memo: Identifiable, Equatable, Sendable {
 
     /// The title a Voice memo has until a generated or user title exists.
     static let voiceFallbackTitle = "Voice memo"
+    /// The title a photo-only memo has: a Written memo with no text but at least one photo.
+    static let photoOnlyTitle = "Photo memo"
+    /// The most photos a memo can carry.
+    static let maximumPhotos = 4
 
     let id: UUID
     let kind: Kind
@@ -40,6 +45,8 @@ struct Memo: Identifiable, Equatable, Sendable {
     let voiceTitle: String
     /// `true` once the user has named a Voice memo; a generated title never replaces it.
     let isTitleUserSet: Bool
+    /// The ids of the memo's photos, in the order they were added. Never the photo bytes.
+    let photoIDs: [UUID]
 
     init(
         id: UUID,
@@ -51,7 +58,8 @@ struct Memo: Identifiable, Equatable, Sendable {
         transcriptState: TranscriptState? = nil,
         stoppedAtCap: Bool = false,
         voiceTitle: String = "",
-        isTitleUserSet: Bool = false
+        isTitleUserSet: Bool = false,
+        photoIDs: [UUID] = []
     ) {
         self.id = id
         self.kind = kind
@@ -63,13 +71,22 @@ struct Memo: Identifiable, Equatable, Sendable {
         self.stoppedAtCap = stoppedAtCap
         self.voiceTitle = voiceTitle
         self.isTitleUserSet = isTitleUserSet
+        self.photoIDs = photoIDs
     }
 
-    /// A Written memo's first non-blank line, trimmed (empty when it has no text). A Voice memo's
-    /// generated or user title, or "Voice memo" when it has neither.
+    var photoCount: Int { photoIDs.count }
+
+    /// A Written memo with photos and no text.
+    var isPhotoOnly: Bool {
+        kind == .written && Self.title(ofWrittenText: text).isEmpty && !photoIDs.isEmpty
+    }
+
+    /// A Written memo's first non-blank line, trimmed, or "Photo memo" when it has no text but has
+    /// photos (empty when it has neither). A Voice memo's generated or user title, or "Voice
+    /// memo" when it has neither.
     var title: String {
         switch kind {
-        case .written: Self.title(ofWrittenText: text)
+        case .written: Self.title(ofWrittenText: text, photoCount: photoCount)
         case .voice: voiceTitle.isEmpty ? Self.voiceFallbackTitle : voiceTitle
         }
     }
@@ -107,6 +124,12 @@ struct Memo: Identifiable, Equatable, Sendable {
 
     static func title(ofWrittenText text: String) -> String {
         lines(of: text).first ?? ""
+    }
+
+    /// `title(ofWrittenText:)`, or "Photo memo" for a Written memo with no text and photos.
+    static func title(ofWrittenText text: String, photoCount: Int) -> String {
+        let title = title(ofWrittenText: text)
+        return title.isEmpty && photoCount > 0 ? photoOnlyTitle : title
     }
 
     static func detail(ofWrittenText text: String) -> String? {

@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class MemoUITests: XCTestCase {
-    func testEmptyMemosSectionAndTheDisabledVoiceMemoEntry() throws {
+    func testEmptyMemosSectionAndTheVoiceMemoEntry() throws {
         let app = launchIsolatedApp()
 
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
@@ -12,7 +12,58 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Written memo"].waitForExistence(timeout: 3))
         let voice = app.buttons["Voice memo"]
         XCTAssertTrue(voice.exists)
-        XCTAssertFalse(voice.isEnabled)
+        XCTAssertTrue(voice.isEnabled)
+    }
+
+    func testDiscardingARecordingSavesNothing() throws {
+        let app = launchIsolatedApp()
+        openRecorder(in: app)
+
+        app.buttons["Discard"].tap()
+
+        XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
+    }
+
+    func testRecordingAVoiceMemoThenOpeningAndDeletingItWithConfirmation() throws {
+        let app = launchIsolatedApp()
+        openRecorder(in: app)
+        Thread.sleep(forTimeInterval: 1.5)
+
+        app.buttons["Stop"].tap()
+
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Voice memo. '")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1 memo"].exists)
+
+        // Opening the card shows the pinned player and No transcript with Try again.
+        row.tap()
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Try again"].waitForExistence(timeout: 3))
+        app.buttons["Delete memo"].tap()
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3))
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
+    }
+
+    func testDeletingAVoiceMemoFromItsRowConfirmsFirst() throws {
+        let app = launchIsolatedApp()
+        openRecorder(in: app)
+        Thread.sleep(forTimeInterval: 1)
+        app.buttons["Stop"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Voice memo. '")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+
+        row.press(forDuration: 1)
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 3))
+        XCTAssertTrue(row.exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+
+        row.press(forDuration: 1)
+        app.buttons["Delete"].tap()
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
     }
 
     func testWritingOpeningEditingAndDeletingAMemo() throws {
@@ -75,6 +126,17 @@ final class MemoUITests: XCTestCase {
         app.buttons["Close memo"].tap()
 
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
+    }
+
+    /// Opens the recorder from the + menu and allows the microphone if the system asks.
+    private func openRecorder(in app: XCUIApplication) {
+        app.buttons["Add an item"].tap()
+        app.buttons["Voice memo"].tap()
+        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.buttons["Allow"]
+        if allow.waitForExistence(timeout: 3) {
+            allow.tap()
+        }
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 5))
     }
 
     private func launchIsolatedApp() -> XCUIApplication {

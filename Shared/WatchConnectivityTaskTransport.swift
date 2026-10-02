@@ -7,9 +7,10 @@ import os
 /// "latest wins" full-list sync (see docs/adr/0001-phone-authoritative-task-snapshots.md) —
 /// and `TaskCommand`s from the Watch to the phone over `transferUserInfo`, which queues
 /// reliably and survives unreachability instead of dropping anything (see
-/// docs/adr/0002-watch-commands-and-phone-reconciliation.md).
+/// docs/adr/0002-watch-commands-and-phone-reconciliation.md). Watch recordings travel the same
+/// way as files over `transferFile` (see docs/adr/0005-watch-memo-sync.md).
 @MainActor
-final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, WCSessionDelegate {
+final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, MemoFileTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
@@ -35,6 +36,10 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     private var pendingOutgoingCommands: [OutgoingCommand] = []
     private var pendingIncomingCommands: [TaskCommand] = []
     private var pendingIncomingHabitCommands: [HabitCommand] = []
+    private var activationHandler: (@MainActor () -> Void)?
+    private var transferFinishedHandler: (@MainActor (UUID, (any Error)?) -> Void)?
+    /// Receives files on the system's thread, so it isn't actor-isolated.
+    private nonisolated let fileRelay = ReceivedFileRelay()
 
     /// A command already encoded for `transferUserInfo`, under the key for its kind.
     private struct OutgoingCommand {
@@ -46,6 +51,37 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     /// Reads just the `id` of an encoded command of either kind.
     private struct CommandIdentity: Decodable {
         let id: UUID
+    }
+
+    /// Hands each received file to the phone's receiver on the thread the system calls on, before
+    /// anything hops to the main actor, because the system deletes the file when
+    /// `session(_:didReceive:)` returns. A file that arrives before there's a receiver (the
+    /// session activates before the memo store exists) is moved to a hold folder first, and
+    /// handed over when the receiver is registered, including after a relaunch.
+    private final class ReceivedFileRelay: @unchecked Sendable {
+        private let lock = NSLock()
+        private var receiver: (@Sendable (ReceivedWatchRecording) -> Void)?
+        private let hold = WatchRecordingInbox(
+            directory: URL.applicationSupportDirectory.appending(path: "WatchRecordingHold", directoryHint: .isDirectory)
+        )
+
+        func handle(_ received: ReceivedWatchRecording) {
+            let receiver = lock.withLock { self.receiver }
+            if let receiver {
+                receiver(received)
+            } else {
+                hold.keep(received)
+            }
+        }
+
+        func setReceiver(_ receiver: @escaping @Sendable (ReceivedWatchRecording) -> Void) {
+            lock.withLock { self.receiver = receiver }
+            for held in hold.pending() {
+                receiver(held)
+                // The receiver has moved the audio out; this clears what's left.
+                hold.remove(id: held.entry.id)
+            }
+        }
     }
 
     private override init() {
@@ -233,6 +269,42 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         logger.log("received habit command \(command.id)")
     }
 
+    // MARK: - MemoFileTransport
+
+    var isActivated: Bool {
+        session?.activationState == .activated
+    }
+
+    /// Whether the session is activated and everything the counterpart sent has been delivered to
+    /// the delegate: what a `WKWatchConnectivityRefreshBackgroundTask` waits for.
+    var isActivatedWithNoPendingContent: Bool {
+        guard let session else { return true }
+        return session.activationState == .activated && !session.hasContentPending
+    }
+
+    func setActivationHandler(_ handler: @escaping @MainActor () -> Void) {
+        activationHandler = handler
+        if isActivated { handler() }
+    }
+
+    func transferRecording(_ entry: WatchRecordingEntry, file: URL) {
+        guard let session, session.activationState == .activated else { return }
+        session.transferFile(file, metadata: entry.metadata())
+        logger.log("transferring recording \(entry.id)")
+    }
+
+    var outstandingRecordingIDs: Set<UUID> {
+        Set((session?.outstandingFileTransfers ?? []).compactMap { WatchRecordingEntry(metadata: $0.file.metadata)?.id })
+    }
+
+    func setTransferFinishedHandler(_ handler: @escaping @MainActor (UUID, (any Error)?) -> Void) {
+        transferFinishedHandler = handler
+    }
+
+    nonisolated func setRecordingReceiver(_ receiver: @escaping @Sendable (ReceivedWatchRecording) -> Void) {
+        fileRelay.setReceiver(receiver)
+    }
+
     // MARK: - WCSessionDelegate
 
     nonisolated func session(
@@ -255,6 +327,11 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
             if let memoData {
                 self.receiveMemos(data: memoData)
             }
+            // After the received context, so a recording the phone has already confirmed is
+            // retired before the outbox looks for what to send.
+            if self.isActivated {
+                self.activationHandler?()
+            }
         }
     }
 
@@ -276,6 +353,19 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
             if let taskData { self.receiveCommand(data: taskData) }
             if let habitData { self.receiveHabitCommand(data: habitData) }
         }
+    }
+
+    nonisolated func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: (any Error)?) {
+        guard let id = WatchRecordingEntry(metadata: fileTransfer.file.metadata)?.id else { return }
+        Task { @MainActor in
+            self.transferFinishedHandler?(id, error)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        // Not a recording of ours: the system deletes the file when this returns.
+        guard let entry = WatchRecordingEntry(metadata: file.metadata) else { return }
+        fileRelay.handle(ReceivedWatchRecording(file: file.fileURL, entry: entry))
     }
 
     #if os(iOS)

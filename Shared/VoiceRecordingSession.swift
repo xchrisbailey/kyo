@@ -1,6 +1,22 @@
 import Combine
 import Foundation
 
+/// Where a finished recording goes: the phone's memo store, or the Watch's outbox (ADR 0005).
+@MainActor
+protocol VoiceMemoSaving: AnyObject {
+    /// Saves `audio` as a Voice memo, on the day recording started. Throws
+    /// `AudioRecordingError.outOfSpace` when there's no room, saving nothing.
+    @discardableResult
+    func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) throws -> Memo
+}
+
+extension VoiceMemoSaving where Self: MemoStoreBehavior {
+    @discardableResult
+    func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) throws -> Memo {
+        addVoiceMemo(audio, stoppedAtCap: stoppedAtCap, photos: photos)
+    }
+}
+
 /// One **Voice memo** recording from permission to save. It keeps the elapsed time from a
 /// controllable clock, shows the warning in the last 30 seconds, stops and saves at the
 /// 10-minute cap, pauses when the audio is interrupted, and saves on **Stop** (never on
@@ -49,7 +65,16 @@ final class VoiceRecordingSession: ObservableObject {
     /// How many recent levels the waveform keeps.
     static let waveformLength = 48
 
+    /// Why the recorder is in `couldNotRecord`.
+    enum Failure: Equatable {
+        /// The device has no room: the Watch's "Not enough space on Apple Watch".
+        case outOfSpace
+        case other
+    }
+
     @Published private(set) var phase: Phase = .idle
+    /// Set with `couldNotRecord`; `nil` otherwise.
+    @Published private(set) var failure: Failure?
     @Published private(set) var elapsed: TimeInterval = 0
     /// Recent input levels, 0 to 1, oldest first, for the waveform.
     @Published private(set) var levels: [Float] = []
@@ -63,7 +88,7 @@ final class VoiceRecordingSession: ObservableObject {
     @Published private(set) var photos: [StoredPhoto] = []
 
     private let recorder: any AudioRecording
-    private let memos: any MemoStoreBehavior
+    private let memos: any VoiceMemoSaving
     private let live: any LiveTranscribing
     private let now: () -> Date
 
@@ -80,7 +105,7 @@ final class VoiceRecordingSession: ObservableObject {
 
     init(
         recorder: any AudioRecording,
-        memos: any MemoStoreBehavior,
+        memos: any VoiceMemoSaving,
         live: any LiveTranscribing = NoLiveTranscriber(),
         now: @escaping () -> Date = Date.init
     ) {
@@ -109,6 +134,7 @@ final class VoiceRecordingSession: ObservableObject {
     func begin() async {
         guard phase == .idle || phase == .microphoneDenied || phase == .couldNotRecord else { return }
         outcome = nil
+        failure = nil
         elapsed = 0
         accumulated = 0
         levels = []
@@ -132,7 +158,7 @@ final class VoiceRecordingSession: ObservableObject {
         do {
             try await recorder.start(recordingID: id, startedAt: start)
         } catch {
-            phase = .couldNotRecord
+            fail(because: error)
             return
         }
         recordingID = id
@@ -215,7 +241,9 @@ final class VoiceRecordingSession: ObservableObject {
         guard !isActive else { return [] }
         var recovered: [Memo] = []
         for audio in recorder.recoverPartialRecordings() {
-            recovered.append(memos.addVoiceMemo(audio, stoppedAtCap: false))
+            // Out of space: the file stays, and the next launch tries again.
+            guard let memo = try? memos.saveVoiceMemo(audio, stoppedAtCap: false, photos: []) else { continue }
+            recovered.append(memo)
             recorder.removeRecordingFile(id: audio.id)
         }
         return recovered
@@ -260,6 +288,11 @@ final class VoiceRecordingSession: ObservableObject {
         phase = .paused
     }
 
+    private func fail(because error: any Error) {
+        failure = (error as? AudioRecordingError) == .outOfSpace ? .outOfSpace : .other
+        phase = .couldNotRecord
+    }
+
     private func finishAndSave(reachedCap: Bool) {
         let duration = elapsed
         stopLive()
@@ -268,14 +301,22 @@ final class VoiceRecordingSession: ObservableObject {
             data = try recorder.stop()
         } catch {
             // The partial file stays on disk, so the next launch recovers it.
-            phase = .couldNotRecord
+            fail(because: error)
             return
         }
-        let memo = memos.addVoiceMemo(
-            RecordedAudio(id: recordingID, startedAt: startedAt, duration: duration, data: data),
-            stoppedAtCap: reachedCap,
-            photos: photos
-        )
+        let memo: Memo
+        do {
+            memo = try memos.saveVoiceMemo(
+                RecordedAudio(id: recordingID, startedAt: startedAt, duration: duration, data: data),
+                stoppedAtCap: reachedCap,
+                photos: photos
+            )
+        } catch {
+            // No room: nothing is saved, so the partial file doesn't come back as a memo later.
+            recorder.removeRecordingFile(id: recordingID)
+            fail(because: error)
+            return
+        }
         recorder.removeRecordingFile(id: recordingID)
         phase = .idle
         outcome = .saved(memo, reachedCap: reachedCap)

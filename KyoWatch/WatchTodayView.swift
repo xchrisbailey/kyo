@@ -2,19 +2,17 @@ import SwiftUI
 import WatchKit
 
 struct WatchTodayView: View {
-    @StateObject private var taskList: TaskListStore
-    @StateObject private var habitList: HabitListStore
-    @StateObject private var memoList: WatchMemoList
+    // Owned by `WatchAppModel`, so a background launch can apply snapshots without this view.
+    @ObservedObject private var taskList = WatchAppModel.shared.taskList
+    @ObservedObject private var habitList = WatchAppModel.shared.habitList
+    @ObservedObject private var memoList = WatchAppModel.shared.memoList
     @State private var activeSheet: WatchPreviewSheet?
+    /// Made once the memo list exists, which is where the outbox a recording is saved to lives.
+    @State private var recordingSession: VoiceRecordingSession?
+    @State private var isRecording = false
     @State private var dayBoundaryRefreshToken = 0
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
-
-    init() {
-        _taskList = StateObject(wrappedValue: TaskListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
-        _habitList = StateObject(wrappedValue: HabitListStore(sync: .mirror(from: WatchConnectivityTaskTransport.shared)))
-        _memoList = StateObject(wrappedValue: WatchMemoList(sync: WatchConnectivityTaskTransport.shared))
-    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -82,6 +80,18 @@ struct WatchTodayView: View {
             case .calendar:
                 WatchCalendarPreviewSheet()
             }
+        }
+        .sheet(isPresented: $isRecording) {
+            if let recordingSession {
+                WatchRecorderView(session: recordingSession) { isRecording = false }
+            }
+        }
+        .task {
+            // Once per launch: a recording a quit or crash cut short goes into the outbox.
+            guard recordingSession == nil, let outbox = memoList.outbox else { return }
+            let session = VoiceRecordingSession(recorder: WatchAudioRecorder(), memos: outbox)
+            session.recoverInterruptedRecordings()
+            recordingSession = session
         }
         .task(id: dayBoundaryRefreshToken) {
             await taskList.refreshAtEachDayBoundary()
@@ -192,14 +202,28 @@ struct WatchTodayView: View {
         WKInterfaceDevice.current().play(.success)
     }
 
-    /// Today's memos, newest first. Rows aren't tappable: the Watch has no memo detail, playback,
+    /// The **Record** button, then today's memos newest first, with recordings the phone hasn't
+    /// confirmed shown as waiting. Rows aren't tappable: the Watch has no memo detail, playback,
     /// editing or deleting.
     @ViewBuilder
     private var memoRows: some View {
         WatchSectionHeader(title: "Memos")
             .listRow(top: 8, bottom: 5)
 
-        if memoList.todayMemos.isEmpty {
+        Button {
+            isRecording = true
+        } label: {
+            Label("Record", systemImage: "mic.fill")
+                .font(.footnote.weight(.semibold))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .disabled(recordingSession == nil)
+        .accessibilityHint("Records a voice memo")
+        .listRow(top: 0, bottom: 5)
+
+        if memoList.listedMemos.isEmpty {
             Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -208,13 +232,20 @@ struct WatchTodayView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .listRow(background: WatchTaskRowBackground(position: .only))
         } else {
-            ForEach(Array(memoList.todayMemos.enumerated()), id: \.element.id) { index, memo in
+            ForEach(Array(memoList.listedMemos.enumerated()), id: \.element.id) { index, memo in
                 WatchMemoRow(memo: memo)
                     .padding(.horizontal, 9)
                     .overlay(alignment: .top) {
                         if index > 0 { rowDivider.padding(.horizontal, 9) }
                     }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.todayMemos.count)))
+                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.listedMemos.count)))
+            }
+            if !memoList.hasSynced {
+                Text("Open Kyo on iPhone to sync memos")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(top: 5, bottom: 0)
             }
         }
     }
@@ -555,11 +586,11 @@ private struct WatchHabitRow: View {
 }
 
 private struct WatchMemoRow: View {
-    let memo: WatchMemo
+    let memo: WatchListedMemo
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
-            Image(systemName: memo.isPhotoOnly ? "photo" : (memo.kind == .voice ? "waveform" : "text.alignleft"))
+            Image(systemName: memo.isPhotoOnly ? "photo" : (memo.isVoice ? "waveform" : "text.alignleft"))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.green)
                 .frame(width: 16)

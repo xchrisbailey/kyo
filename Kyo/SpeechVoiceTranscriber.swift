@@ -78,8 +78,8 @@ struct SpeechVoiceTranscriber: VoiceTranscriber {
         return try await collector.value
     }
 
-    /// A recording is a CAF (see `DeviceAudioRecorder`); audio that arrives from the Watch is
-    /// an M4A.
+    /// A recording is a CAF (see `DeviceAudioRecorder`), and so is one from the Watch (see
+    /// `WatchAudioRecorder`), but an M4A is still read.
     private static func fileExtension(for audio: Data) -> String {
         audio.starts(with: Array("caff".utf8)) ? "caf" : "m4a"
     }

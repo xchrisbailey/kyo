@@ -20,6 +20,8 @@
 		0F5397CEF6471032CBA0A5CE /* OnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE5820CFA449D4155D9E440 /* OnDeviceLanguageModel.swift */; };
 		113664DA547499D4E4164233 /* MemoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */; };
 		12EB4B91896B5106FC4B9875 /* ControllableHabitTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F0FA4B0C6B322FE58E2D89 /* ControllableHabitTransport.swift */; };
+		154169D5E2BE21BEA5EAFC3D /* MemoShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */; };
+		18FBAA59E580DAA856D4BCB4 /* MemoShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20893D31D2275ECE97F5569E /* MemoShareSheet.swift */; };
 		192C2E6631CDB7922F099227 /* KyoWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */; };
 		1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */; };
 		1CF84E7936ED97861DAEFC4C /* MemoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */; };
@@ -94,8 +96,11 @@
 		B93BA645296B5AE73D939F6C /* UserDefaultsImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90514C7D4BDDDA86EA314E2 /* UserDefaultsImportTests.swift */; };
 		BA09FF5EDD4F9BD5FA862F5C /* TaskCheckboxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */; };
 		BA39C2DBA4691E05588376EE /* HabitContentPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D76C8BC5318D09A34468BA0 /* HabitContentPersistence.swift */; };
+		BF53B829C46FC3ADC74F8910 /* MemoShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */; };
 		C0722D5A1471D43807BFB8F7 /* MemoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3833347045D0B34FCE55765 /* MemoRecord.swift */; };
+		C4FEA02E52A7412CBEE30440 /* MemoShare.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */; };
 		C5C468FD2A9F0B2E38CAFD96 /* LiveTranscribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E732658F120C804D3C719F02 /* LiveTranscribing.swift */; };
+		C60B14F60C7CB61246D16E0C /* MemoShareBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5B587AC7D91BEC5B52EE9E /* MemoShareBehaviorTests.swift */; };
 		C62AC03B92213F78C1AAACE8 /* MemoSchemaMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF81B58A643F38857A997A27 /* MemoSchemaMigrationTests.swift */; };
 		C6B1E57F8AAE309F530ECF57 /* HabitSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B97E11A696463E64F14D0E4 /* HabitSync.swift */; };
 		C81EBA3C8264EEFB2218344B /* MemoTaskSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1088EDCCB7C23CC15B5D85FB /* MemoTaskSuggestions.swift */; };
@@ -172,6 +177,7 @@
 		116077B52324ACC469E50656 /* MemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoViews.swift; sourceTree = "<group>"; };
 		11FB6B64CF0C4AF772416F83 /* MemoPhotoEncoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoPhotoEncoding.swift; sourceTree = "<group>"; };
 		1214E3D080AE96B4E6434CE0 /* ApplicationContextEntriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntriesTests.swift; sourceTree = "<group>"; };
+		20893D31D2275ECE97F5569E /* MemoShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShareSheet.swift; sourceTree = "<group>"; };
 		24CFFEB5475D65547523A1B5 /* HabitStoragePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitStoragePersistenceTests.swift; sourceTree = "<group>"; };
 		29ED805313CFC2CAB23D3359 /* DeviceAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioRecorder.swift; sourceTree = "<group>"; };
 		2D76C8BC5318D09A34468BA0 /* HabitContentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitContentPersistence.swift; sourceTree = "<group>"; };
@@ -224,6 +230,7 @@
 		D2EAE14AED2B63EAAB0D0D6A /* HabitManagerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitManagerUITests.swift; sourceTree = "<group>"; };
 		D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncSmokeUITests.swift; sourceTree = "<group>"; };
 		D8AAB8042959D894D9B7765E /* MemoAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoAudioPlayer.swift; sourceTree = "<group>"; };
+		DB5B587AC7D91BEC5B52EE9E /* MemoShareBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShareBehaviorTests.swift; sourceTree = "<group>"; };
 		E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntries.swift; sourceTree = "<group>"; };
 		E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E63C88A027256BF6CE3A9B41 /* HabitForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitForm.swift; sourceTree = "<group>"; };
@@ -236,6 +243,7 @@
 		EF864DDA32AE3CFBF168ED59 /* MemoPhotoRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoPhotoRecord.swift; sourceTree = "<group>"; };
 		F03EDD307CE59DF5F2A81BF3 /* MemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoUITests.swift; sourceTree = "<group>"; };
 		F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSyncTests.swift; sourceTree = "<group>"; };
+		F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShare.swift; sourceTree = "<group>"; };
 		F7528978887517D357C79DAE /* KyoSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoSchema.swift; sourceTree = "<group>"; };
 		FAC66624B9DD030335619A70 /* MemoStoreBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoStoreBehaviorTests.swift; sourceTree = "<group>"; };
 		FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitEditDeleteBehaviorTests.swift; sourceTree = "<group>"; };
@@ -266,6 +274,7 @@
 				9E0C7B7A758ED3712E39F372 /* LiveSpeechTranscriber.swift */,
 				D8AAB8042959D894D9B7765E /* MemoAudioPlayer.swift */,
 				C1466B17A1E37FA6D0B6C529 /* MemoPhotos.swift */,
+				20893D31D2275ECE97F5569E /* MemoShareSheet.swift */,
 				379D51CE803E7A615523783C /* MemoTaskSheet.swift */,
 				116077B52324ACC469E50656 /* MemoViews.swift */,
 				BD9217084F21FDCEAFA52A59 /* SettingsView.swift */,
@@ -294,6 +303,7 @@
 				ED804D5700F329158E8FE146 /* HabitSyncTests.swift */,
 				595D2E55DEF110C45E218235 /* MemoPhotoBehaviorTests.swift */,
 				AF81B58A643F38857A997A27 /* MemoSchemaMigrationTests.swift */,
+				DB5B587AC7D91BEC5B52EE9E /* MemoShareBehaviorTests.swift */,
 				FAC66624B9DD030335619A70 /* MemoStoreBehaviorTests.swift */,
 				89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */,
 				EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */,
@@ -339,6 +349,7 @@
 				11FB6B64CF0C4AF772416F83 /* MemoPhotoEncoding.swift */,
 				EF864DDA32AE3CFBF168ED59 /* MemoPhotoRecord.swift */,
 				C3833347045D0B34FCE55765 /* MemoRecord.swift */,
+				F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */,
 				76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */,
 				1088EDCCB7C23CC15B5D85FB /* MemoTaskSuggestions.swift */,
 				5AE5820CFA449D4155D9E440 /* OnDeviceLanguageModel.swift */,
@@ -553,6 +564,8 @@
 				215C9DC387654C789B960567 /* MemoPhotoRecord.swift in Sources */,
 				E939ADF5748AB73AEC4104ED /* MemoPhotos.swift in Sources */,
 				FE5FFB2D8981270EE7F1AF70 /* MemoRecord.swift in Sources */,
+				BF53B829C46FC3ADC74F8910 /* MemoShare.swift in Sources */,
+				18FBAA59E580DAA856D4BCB4 /* MemoShareSheet.swift in Sources */,
 				B8362F53A104B992F9E2ED79 /* MemoStore.swift in Sources */,
 				D53EB315F51835E216524392 /* MemoTaskSheet.swift in Sources */,
 				CE44164FC8FCF0D7BB349C12 /* MemoTaskSuggestions.swift in Sources */,
@@ -605,6 +618,8 @@
 				F6D4CF472B2CE5D5BE17A5F5 /* MemoPhotoRecord.swift in Sources */,
 				E4FD0E984E48A3BB4E3F5878 /* MemoRecord.swift in Sources */,
 				C62AC03B92213F78C1AAACE8 /* MemoSchemaMigrationTests.swift in Sources */,
+				154169D5E2BE21BEA5EAFC3D /* MemoShare.swift in Sources */,
+				C60B14F60C7CB61246D16E0C /* MemoShareBehaviorTests.swift in Sources */,
 				113664DA547499D4E4164233 /* MemoStore.swift in Sources */,
 				01B89462EB2F1A5FFED3C4FB /* MemoStoreBehaviorTests.swift in Sources */,
 				97BA2BCAB0EC2C63E861A77E /* MemoTaskBehaviorTests.swift in Sources */,
@@ -649,6 +664,7 @@
 				7AD48D52EAF15D12F371D623 /* MemoPhotoEncoding.swift in Sources */,
 				FD3CB9FB90B9A9F44BD67701 /* MemoPhotoRecord.swift in Sources */,
 				C0722D5A1471D43807BFB8F7 /* MemoRecord.swift in Sources */,
+				C4FEA02E52A7412CBEE30440 /* MemoShare.swift in Sources */,
 				1CF84E7936ED97861DAEFC4C /* MemoStore.swift in Sources */,
 				FEABAC9CAE9437FFB970DBDC /* MemoTaskSuggestions.swift in Sources */,
 				A9403D5BABEE2F8D37D9C79F /* OnDeviceLanguageModel.swift in Sources */,

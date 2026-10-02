@@ -97,6 +97,7 @@ targets:
       - Shared/MemoPhotoRecord.swift
       - Shared/MemoPhotoEncoding.swift
       - Shared/MemoStore.swift
+      - Shared/MemoShare.swift
       - Shared/AudioRecording.swift
       - Shared/VoiceTranscriber.swift
       - Shared/LiveTranscribing.swift

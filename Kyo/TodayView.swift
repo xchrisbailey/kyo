@@ -206,7 +206,9 @@ struct TodayView: View {
             // Once per launch: a recording a quit or crash cut short becomes a Voice memo.
             guard voiceRecording == nil else { return }
             let live: any LiveTranscribing = KyoModelContainer.isInMemoryRequested ? NoLiveTranscriber() : LiveSpeechTranscriber(support: .shared)
-            let session = VoiceRecordingSession(recorder: DeviceAudioRecorder(), memos: memoStore, live: live)
+            let recorder = DeviceAudioRecorder()
+            recorder.beforeDeactivation = { await live.waitUntilStopped() }
+            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live)
             session.recoverInterruptedRecordings()
             voiceRecording = session
         }
@@ -225,7 +227,7 @@ struct TodayView: View {
                 habitList.refreshForCurrentDay()
                 memoStore.refreshForCurrentDay()
                 // The speech model may have been installed while Kyo was in the background.
-                memoStore.retryUnavailableTranscriptions()
+                memoStore.retryTranscriptionsWaitingForModel()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in

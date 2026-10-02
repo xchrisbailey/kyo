@@ -14,6 +14,14 @@ protocol LiveTranscribing: AnyObject {
     /// Stops listening and lets go of the microphone input and the speech model. Safe when
     /// nothing is running, and while a `start` is still pending, which then returns `false`.
     func stop()
+    /// Returns once everything a `stop()` released is released: the capture session has stopped
+    /// reading the microphone. The recorder waits for this before it deactivates the audio
+    /// session, which can't be deactivated while input is still running.
+    func waitUntilStopped() async
+}
+
+extension LiveTranscribing {
+    func waitUntilStopped() async {}
 }
 
 /// Never transcribes live, so the recorder says "Transcript will appear after recording".

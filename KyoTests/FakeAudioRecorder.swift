@@ -144,7 +144,7 @@ final class ScriptedTranscriber: VoiceTranscriber, @unchecked Sendable {
         for await outcome in held {
             return outcome
         }
-        return .unavailable
+        return .failed
     }
 }
 

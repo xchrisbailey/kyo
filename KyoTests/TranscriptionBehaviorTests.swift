@@ -1,3 +1,4 @@
+import Combine
 import SwiftData
 import XCTest
 
@@ -19,7 +20,13 @@ final class TranscriptionBehaviorTests: XCTestCase {
         func advance(_ seconds: TimeInterval) { now = now.addingTimeInterval(seconds) }
     }
 
+    /// The device language, which a test changes by hand.
+    private final class DeviceLocale {
+        var identifier = "en_US"
+    }
+
     private struct Fixture {
+        let locale: DeviceLocale
         let container: ModelContainer
         let clock: Clock
         let recorder: FakeAudioRecorder
@@ -34,9 +41,18 @@ final class TranscriptionBehaviorTests: XCTestCase {
         let container = try KyoModelContainer.make(inMemory: true)
         let recorder = FakeAudioRecorder()
         let live = FakeLiveTranscriber()
-        let store = MemoStore(modelContainer: container, now: { clock.now }, calendar: calendar, transcriber: transcriber)
+        let locale = DeviceLocale()
+        let store = MemoStore(
+            modelContainer: container,
+            now: { clock.now },
+            calendar: calendar,
+            transcriber: transcriber,
+            deviceLocale: { locale.identifier }
+        )
         let session = VoiceRecordingSession(recorder: recorder, memos: store, live: live, now: { clock.now })
-        return Fixture(container: container, clock: clock, recorder: recorder, live: live, store: store, session: session)
+        return Fixture(
+            locale: locale, container: container, clock: clock, recorder: recorder, live: live, store: store, session: session
+        )
     }
 
     /// Records for `seconds`, stops, and returns the saved memo's id.
@@ -68,7 +84,13 @@ final class TranscriptionBehaviorTests: XCTestCase {
     }
 
     private func reopenedStore(_ f: Fixture, transcriber: any VoiceTranscriber) -> MemoStore {
-        MemoStore(modelContainer: f.container, now: { f.clock.now }, calendar: calendar, transcriber: transcriber)
+        MemoStore(
+            modelContainer: f.container,
+            now: { f.clock.now },
+            calendar: calendar,
+            transcriber: transcriber,
+            deviceLocale: { f.locale.identifier }
+        )
     }
 
     // MARK: State flow
@@ -115,10 +137,10 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(f.store.memo(id: saved.id)?.text, "Buy milk")
     }
 
-    // MARK: Failure and automatic retry
+    // MARK: Model not installed
 
-    func testAMemoThatCouldNotBeTranscribedIsNoTranscriptAndKeepsItsAudio() async throws {
-        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .unavailable))
+    func testAMemoWhoseModelIsNotInstalledIsNoTranscriptAndKeepsItsAudio() async throws {
+        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .modelNotReady))
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
 
@@ -128,14 +150,12 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(f.store.audioData(forMemoID: id), f.recorder.recordedBytes)
     }
 
-    func testAMemoRetriesByItselfWhenTheTranscriberBecomesReady() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    func testAMemoRetriesByItselfWhenTheModelFinishesInstalling() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
-        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
 
-        // The speech model finishes installing.
         transcriber.answer(with: .transcript("Now it works"))
         transcriber.becomeReady()
         await eventually("the automatic retry") { f.store.memo(id: id)?.transcriptState == .transcribed }
@@ -144,8 +164,48 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(transcriber.transcribedIDs, [id, id])
     }
 
-    func testAMemoStillUnavailableAfterAnAutomaticRetryStaysNoTranscriptUntilTheNextSignal() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    func testAnAutomaticRetryKeepsShowingNoTranscriptUntilItProducesATranscript() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        transcriber.answer(with: nil)
+
+        transcriber.becomeReady()
+        await eventually("the retry to start") { transcriber.transcribedIDs.count == 2 }
+
+        // The retry is running, and nothing on screen says so.
+        let memo = try XCTUnwrap(f.store.memo(id: id))
+        XCTAssertEqual(memo.transcriptState, .noTranscript)
+        XCTAssertEqual(memo.detail, "No transcript")
+        XCTAssertEqual(f.store.memos, [memo])
+
+        transcriber.release(.transcript("Worth the wait"))
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribed)
+        XCTAssertEqual(f.store.memo(id: id)?.text, "Worth the wait")
+    }
+
+    func testAnAutomaticRetryThatFailsAgainChangesNothingVisible() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        let before = try XCTUnwrap(f.store.memo(id: id))
+        var changes = 0
+        let subscription = f.store.$memos.dropFirst().sink { _ in changes += 1 }
+        defer { subscription.cancel() }
+
+        transcriber.becomeReady()
+        await eventually("the retry to run") { transcriber.transcribedIDs.count == 2 }
+        await f.store.transcriptionsSettled()
+
+        XCTAssertEqual(changes, 0)
+        XCTAssertEqual(f.store.memo(id: id), before)
+    }
+
+    func testAMemoStillWaitingForTheModelRetriesOnlyWhenThereIsASignal() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
@@ -153,9 +213,6 @@ final class TranscriptionBehaviorTests: XCTestCase {
         transcriber.becomeReady()
         await eventually("the first retry") { transcriber.transcribedIDs.count == 2 }
         await f.store.transcriptionsSettled()
-        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
-
-        // No signal, no more attempts.
         try await Task.sleep(for: .milliseconds(100))
         XCTAssertEqual(transcriber.transcribedIDs.count, 2)
 
@@ -164,27 +221,28 @@ final class TranscriptionBehaviorTests: XCTestCase {
         await eventually("the second retry") { f.store.memo(id: id)?.transcriptState == .transcribed }
     }
 
-    func testAMemoRetriesWhenKyoComesToTheFront() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    func testAMemoWaitingForTheModelRetriesWhenKyoComesToTheFront() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
 
         transcriber.answer(with: .transcript("Installed while away"))
-        f.store.retryUnavailableTranscriptions()
-        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribing)
+        f.store.retryTranscriptionsWaitingForModel()
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
         await f.store.transcriptionsSettled()
 
         XCTAssertEqual(f.store.memo(id: id)?.text, "Installed while away")
     }
 
-    func testAMemoRetriesOnTheNextLaunchEvenThoughTheCauseWasRecordedBeforeTheQuit() async throws {
-        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .unavailable))
+    func testAMemoWaitingForTheModelRetriesOnTheNextLaunch() async throws {
+        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .modelNotReady))
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
 
         let relaunch = ScriptedTranscriber(immediate: .transcript("After relaunch"))
         let relaunched = reopenedStore(f, transcriber: relaunch)
+        XCTAssertEqual(relaunched.memo(id: id)?.transcriptState, .noTranscript)
         await relaunched.transcriptionsSettled()
 
         XCTAssertEqual(relaunched.memo(id: id)?.text, "After relaunch")
@@ -192,7 +250,7 @@ final class TranscriptionBehaviorTests: XCTestCase {
     }
 
     func testAutomaticRetriesRunOneMemoAtATime() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         var ids: [UUID] = []
         for _ in 0..<3 { ids.append(try await recordMemo(f)) }
@@ -208,6 +266,24 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(Set(transcriber.transcribedIDs.suffix(3)), Set(ids))
     }
 
+    func testTwoSignalsInARowDoNotTranscribeTheSameMemoTwice() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        transcriber.answer(with: nil)
+
+        f.store.retryTranscriptionsWaitingForModel()
+        f.store.retryTranscriptionsWaitingForModel()
+        await eventually("the retry to start") { transcriber.transcribedIDs.count == 2 }
+        f.store.retryTranscriptionsWaitingForModel()
+        transcriber.release(.transcript("Once"))
+        await f.store.transcriptionsSettled()
+
+        XCTAssertEqual(transcriber.transcribedIDs, [id, id])
+        XCTAssertEqual(f.store.memo(id: id)?.text, "Once")
+    }
+
     func testAutomaticRetryLeavesTranscribedAndWrittenMemosAlone() async throws {
         let transcriber = ScriptedTranscriber(immediate: .transcript("Done"))
         let f = try makeFixture(transcriber: transcriber)
@@ -217,7 +293,8 @@ final class TranscriptionBehaviorTests: XCTestCase {
         _ = f.store.editMemo(id: id, text: "Edited transcript")
 
         transcriber.becomeReady()
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
+        f.store.retryTranscriptionsAfterLocaleChange()
         await f.store.transcriptionsSettled()
         try await Task.sleep(for: .milliseconds(50))
 
@@ -226,23 +303,190 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(f.store.memo(id: written.id)?.text, "Words")
     }
 
-    func testAMemoDeletedWhileUnavailableIsNotRetried() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    func testAMemoDeletedWhileWaitingForTheModelIsNotRetried() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
 
         _ = f.store.deleteMemo(id: id)
         transcriber.becomeReady()
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
         await f.store.transcriptionsSettled()
 
         XCTAssertEqual(transcriber.transcribedIDs, [id])
         XCTAssertTrue(f.store.memos.isEmpty)
     }
 
-    func testTryAgainAfterAFailureCanFailAgainWithoutLosingTheAudio() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    // MARK: Unsupported device or language
+
+    func testAnUnsupportedMemoIsNoTranscriptAndNeverRetriesOnAnyOtherSignal() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .unsupported)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
+        XCTAssertEqual(f.store.memo(id: id)?.detail, "No transcript")
+
+        transcriber.becomeReady()
+        f.store.retryTranscriptionsWaitingForModel()
+        f.store.retryTranscriptionsAfterLocaleChange()
+        await f.store.transcriptionsSettled()
+        try await Task.sleep(for: .milliseconds(100))
+        let relaunched = reopenedStore(f, transcriber: transcriber)
+        await relaunched.transcriptionsSettled()
+
+        XCTAssertEqual(transcriber.transcribedIDs, [id])
+        XCTAssertEqual(relaunched.memo(id: id)?.transcriptState, .noTranscript)
+    }
+
+    func testChangingTheDeviceLanguageRetriesAnUnsupportedMemoWithoutShowingTranscribing() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .unsupported)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        transcriber.answer(with: nil)
+
+        f.locale.identifier = "fr_FR"
+        NotificationCenter.default.post(name: NSLocale.currentLocaleDidChangeNotification, object: nil)
+        await eventually("the retry to start") { transcriber.transcribedIDs.count == 2 }
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
+
+        transcriber.release(.transcript("Bonjour"))
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(f.store.memo(id: id)?.text, "Bonjour")
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribed)
+    }
+
+    func testALocaleChangeThatDoesNotChangeTheLanguageRetriesNothing() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .unsupported)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+
+        NotificationCenter.default.post(name: NSLocale.currentLocaleDidChangeNotification, object: nil)
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(transcriber.transcribedIDs, [id])
+    }
+
+    func testAnUnsupportedMemoRetriesAtLaunchWhenTheLanguageChangedWhileKyoWasClosed() async throws {
+        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .unsupported))
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+
+        let relaunch = ScriptedTranscriber(immediate: .transcript("Hola"))
+        f.locale.identifier = "es_ES"
+        let relaunched = reopenedStore(f, transcriber: relaunch)
+        await relaunched.transcriptionsSettled()
+
+        XCTAssertEqual(relaunched.memo(id: id)?.text, "Hola")
+        XCTAssertEqual(relaunch.transcribedIDs, [id])
+    }
+
+    func testAnUnsupportedMemoRemembersTheNewLanguageAfterRetryingInIt() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .unsupported)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+
+        f.locale.identifier = "fr_FR"
+        f.store.retryTranscriptionsAfterLocaleChange()
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(transcriber.transcribedIDs, [id, id])
+
+        // Still unsupported in French, so only another change of language tries again.
+        f.store.retryTranscriptionsAfterLocaleChange()
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(transcriber.transcribedIDs, [id, id])
+        f.locale.identifier = "de_DE"
+        f.store.retryTranscriptionsAfterLocaleChange()
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(transcriber.transcribedIDs, [id, id, id])
+    }
+
+    // MARK: Analysis error
+
+    func testAnAnalysisErrorRetriesOnceAtTheNextLaunchAndNotBefore() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .failed)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
+
+        transcriber.becomeReady()
+        f.store.retryTranscriptionsWaitingForModel()
+        f.store.retryTranscriptionsAfterLocaleChange()
+        await f.store.transcriptionsSettled()
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(transcriber.transcribedIDs, [id])
+
+        let relaunch = ScriptedTranscriber(immediate: .transcript("Second try"))
+        let relaunched = reopenedStore(f, transcriber: relaunch)
+        XCTAssertEqual(relaunched.memo(id: id)?.transcriptState, .noTranscript)
+        await relaunched.transcriptionsSettled()
+        XCTAssertEqual(relaunched.memo(id: id)?.text, "Second try")
+    }
+
+    func testAnAnalysisErrorThatRepeatsOnTheLaunchRetryIsNotRetriedAgain() async throws {
+        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .failed))
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+
+        let secondLaunch = ScriptedTranscriber(immediate: .failed)
+        let second = reopenedStore(f, transcriber: secondLaunch)
+        await second.transcriptionsSettled()
+        XCTAssertEqual(secondLaunch.transcribedIDs, [id])
+        XCTAssertEqual(second.memo(id: id)?.transcriptState, .noTranscript)
+
+        let thirdLaunch = ScriptedTranscriber(immediate: .failed)
+        let third = reopenedStore(f, transcriber: thirdLaunch)
+        await third.transcriptionsSettled()
+        try await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(thirdLaunch.transcribedIDs, [])
+        XCTAssertEqual(third.memo(id: id)?.transcriptState, .noTranscript)
+    }
+
+    func testTheLaunchRetryAfterAnErrorShowsNothingUntilItSucceeds() async throws {
+        let f = try makeFixture(transcriber: ScriptedTranscriber(immediate: .failed))
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+
+        let relaunch = ScriptedTranscriber()
+        let relaunched = reopenedStore(f, transcriber: relaunch)
+        await eventually("the retry to start") { relaunch.transcribedIDs.count == 1 }
+
+        XCTAssertEqual(relaunched.memo(id: id)?.transcriptState, .noTranscript)
+        relaunch.release(.transcript("Eventually"))
+        await relaunched.transcriptionsSettled()
+        XCTAssertEqual(relaunched.memo(id: id)?.transcriptState, .transcribed)
+    }
+
+    // MARK: Try again
+
+    func testTryAgainWorksForEveryCauseAndShowsTranscribingAtOnce() async throws {
+        for outcome in [TranscriptionOutcome.modelNotReady, .unsupported, .failed, .noSpeech] {
+            let transcriber = ScriptedTranscriber(immediate: outcome)
+            let f = try makeFixture(transcriber: transcriber)
+            let id = try await recordMemo(f)
+            await f.store.transcriptionsSettled()
+            XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript, "\(outcome)")
+
+            transcriber.answer(with: nil)
+            let retried = try XCTUnwrap(f.store.retryTranscription(id: id))
+            XCTAssertEqual(retried.transcriptState, .transcribing, "\(outcome)")
+            XCTAssertEqual(retried.detail, "Transcribing…", "\(outcome)")
+            transcriber.release(.transcript("Second time lucky"))
+            await f.store.transcriptionsSettled()
+
+            XCTAssertEqual(f.store.memo(id: id)?.text, "Second time lucky", "\(outcome)")
+            XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribed, "\(outcome)")
+        }
+    }
+
+    func testTryAgainThatFailsAgainKeepsTheAudioAndStaysNoTranscript() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .failed)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
@@ -253,6 +497,29 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
         XCTAssertEqual(f.store.audioData(forMemoID: id), f.recorder.recordedBytes)
         XCTAssertEqual(transcriber.transcribedIDs, [id, id])
+    }
+
+    func testTryAgainDuringAnAutomaticRetryShowsTranscribingAndWins() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
+        let f = try makeFixture(transcriber: transcriber)
+        let id = try await recordMemo(f)
+        await f.store.transcriptionsSettled()
+        transcriber.answer(with: nil)
+
+        transcriber.becomeReady()
+        await eventually("the automatic retry to start") { transcriber.transcribedIDs.count == 2 }
+        f.store.retryTranscription(id: id)
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribing)
+
+        // The overtaken retry ends first and changes nothing; the visible one settles the memo.
+        transcriber.release(.noSpeech)
+        await eventually("the second transcription to start") { transcriber.transcribedIDs.count == 3 }
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribing)
+        transcriber.release(.transcript("Tried again"))
+        await f.store.transcriptionsSettled()
+
+        XCTAssertEqual(f.store.memo(id: id)?.text, "Tried again")
+        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribed)
     }
 
     // MARK: Silence
@@ -266,7 +533,8 @@ final class TranscriptionBehaviorTests: XCTestCase {
         XCTAssertEqual(f.store.memo(id: id)?.detail, "No transcript")
 
         transcriber.becomeReady()
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
+        f.store.retryTranscriptionsAfterLocaleChange()
         await f.store.transcriptionsSettled()
         try await Task.sleep(for: .milliseconds(100))
         let relaunched = reopenedStore(f, transcriber: transcriber)
@@ -283,38 +551,25 @@ final class TranscriptionBehaviorTests: XCTestCase {
         await f.store.transcriptionsSettled()
 
         transcriber.becomeReady()
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
         await f.store.transcriptionsSettled()
+        let relaunched = reopenedStore(f, transcriber: transcriber)
+        await relaunched.transcriptionsSettled()
 
         XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)
         XCTAssertEqual(transcriber.transcribedIDs, [id])
     }
 
-    func testTryAgainStillWorksAfterSilence() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .noSpeech)
-        let f = try makeFixture(transcriber: transcriber)
-        let id = try await recordMemo(f)
-        await f.store.transcriptionsSettled()
-
-        transcriber.answer(with: .transcript("I was quiet at first"))
-        let retried = try XCTUnwrap(f.store.retryTranscription(id: id))
-        XCTAssertEqual(retried.transcriptState, .transcribing)
-        await f.store.transcriptionsSettled()
-
-        XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .transcribed)
-        XCTAssertEqual(f.store.memo(id: id)?.text, "I was quiet at first")
-    }
-
-    func testAMemoSilentOnAutomaticRetryStopsRetrying() async throws {
-        let transcriber = ScriptedTranscriber(immediate: .unavailable)
+    func testAMemoThatTurnsOutSilentOnAnAutomaticRetryStopsRetrying() async throws {
+        let transcriber = ScriptedTranscriber(immediate: .modelNotReady)
         let f = try makeFixture(transcriber: transcriber)
         let id = try await recordMemo(f)
         await f.store.transcriptionsSettled()
 
         transcriber.answer(with: .noSpeech)
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
         await f.store.transcriptionsSettled()
-        f.store.retryUnavailableTranscriptions()
+        f.store.retryTranscriptionsWaitingForModel()
         await f.store.transcriptionsSettled()
 
         XCTAssertEqual(f.store.memo(id: id)?.transcriptState, .noTranscript)

@@ -6,11 +6,16 @@ enum TranscriptionOutcome: Equatable, Sendable {
     /// The audio was analyzed and nothing was recognized (silence). The memo is **No transcript**
     /// and doesn't retry by itself; **Try again** still works.
     case noSpeech
-    /// Transcription couldn't run: the speech model isn't installed yet, the device or language
-    /// isn't supported, or the analysis failed. The memo is **No transcript** and retries by
-    /// itself once the transcriber reports readiness (see `readinessUpdates()`), and when Kyo
-    /// next launches or comes to the front.
-    case unavailable
+    /// The speech model isn't installed yet or is still downloading. The memo is **No
+    /// transcript** and retries by itself, without showing Transcribing, once the transcriber
+    /// reports readiness (see `readinessUpdates()`), and when Kyo launches or comes to the front.
+    case modelNotReady
+    /// Neither this device nor the device's language is supported. No automatic retry, unless
+    /// the device's language or region changes.
+    case unsupported
+    /// The analysis failed. The memo is **No transcript** and retries by itself once, at the
+    /// next launch.
+    case failed
 }
 
 /// The transcriber seam: turns a **Voice memo**'s audio into its **Transcript**. The store runs
@@ -22,7 +27,7 @@ protocol VoiceTranscriber: Sendable {
 
     /// Yields each time something that kept transcription from working may have cleared, for
     /// example the speech model finishing its install or the network coming back. The store
-    /// then retries the memos that ended `.unavailable`. Read once, by the store.
+    /// then retries the memos that ended `.modelNotReady`. Read once, by the store.
     func readinessUpdates() -> AsyncStream<Void>
 }
 
@@ -36,6 +41,6 @@ extension VoiceTranscriber {
 /// Transcribes nothing: every Voice memo ends as **No transcript**, with its audio kept.
 struct NoTranscriber: VoiceTranscriber {
     func transcribe(audio: Data, memoID: UUID) async -> TranscriptionOutcome {
-        .unavailable
+        .unsupported
     }
 }

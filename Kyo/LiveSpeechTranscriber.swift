@@ -5,7 +5,9 @@ import Speech
 /// The real `LiveTranscribing`: feeds the microphone to a `SpeechAnalyzer` through
 /// `CaptureInputSequenceProvider` and reports the progressive results (words still changing
 /// plus the finalized ones). It uses its own capture session next to `DeviceAudioRecorder`, so
-/// the audio the memo keeps is untouched, and it never reconfigures the app's audio session.
+/// the audio the memo keeps is untouched. The recorder owns the app's audio session: capture
+/// never reconfigures it, starts only after the recorder has activated it, and
+/// `waitUntilStopped()` lets the recorder hold its deactivation until capture has let go.
 ///
 /// Live transcription takes the analysis gate for as long as it listens, so it only starts
 /// when no memo is being transcribed from its file; otherwise recording goes on without it.
@@ -105,11 +107,17 @@ final class LiveSpeechTranscriber: LiveTranscribing {
         let support = support
         teardown = Task {
             await previous?.value
-            running.capture.session.stopRunning()
+            // Off the main thread, as `stopRunning()` can block.
+            let capture = running.capture
+            await Task.detached { capture.session.stopRunning() }.value
             running.results.cancel()
             await running.analyzer.cancelAndFinishNow()
             await support.gate.release()
         }
+    }
+
+    func waitUntilStopped() async {
+        await teardown?.value
     }
 
     private enum LiveError: Error {

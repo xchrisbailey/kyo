@@ -4,8 +4,9 @@ import Speech
 
 /// The real `VoiceTranscriber`: transcribes a saved **Voice memo** on device with
 /// `SpeechAnalyzer`, using `SpeechTranscriber` and falling back to `DictationTranscriber` (see
-/// `SpeechSupport.resolve`). It runs on the device's language and checks availability each time,
-/// so a device or language that can't transcribe ends as `.unavailable` rather than failing.
+/// `SpeechSupport.resolve`). It runs on the device's language and checks availability each time:
+/// a model that isn't installed is `.modelNotReady`, a device or language neither module serves
+/// is `.unsupported`, and an analysis that throws is `.failed`.
 ///
 /// Transcription doesn't run in the Simulator, so this is checked on a device; the behavior
 /// around it is tested through the `VoiceTranscriber` seam.
@@ -13,7 +14,12 @@ struct SpeechVoiceTranscriber: VoiceTranscriber {
     let support: SpeechSupport
 
     func transcribe(audio: Data, memoID: UUID) async -> TranscriptionOutcome {
-        guard case .ready(let choice) = await support.resolve(.file) else { return .unavailable }
+        let choice: SpeechSupport.Choice
+        switch await support.resolve(.file) {
+        case .ready(let ready): choice = ready
+        case .notInstalled: return .modelNotReady
+        case .unsupported: return .unsupported
+        }
 
         await support.gate.acquire()
         let outcome: TranscriptionOutcome
@@ -21,7 +27,7 @@ struct SpeechVoiceTranscriber: VoiceTranscriber {
             let text = try await transcribe(audio, as: memoID, with: choice)
             outcome = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .noSpeech : .transcript(text)
         } catch {
-            outcome = .unavailable
+            outcome = .failed
         }
         await support.gate.release()
         return outcome

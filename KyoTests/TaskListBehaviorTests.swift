@@ -1,10 +1,11 @@
+import SwiftData
 import XCTest
 
 @MainActor
 final class TaskListBehaviorTests: XCTestCase {
     func testAddingTasksTrimsTextAndPreservesCreationOrder() throws {
-        let defaults = try makeDefaults()
-        let list: any TaskListBehavior = TaskListStore(userDefaults: defaults, storageKey: "tasks")
+        let container = try makeContainer()
+        let list: any TaskListBehavior = TaskListStore(modelContainer: container)
 
         let first = try XCTUnwrap(list.addTask(text: "  First task  "))
         let second = try XCTUnwrap(list.addTask(text: "Second task"))
@@ -17,7 +18,7 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testBlankInputDoesNotCreateATask() throws {
-        let list: any TaskListBehavior = TaskListStore(userDefaults: try makeDefaults(), storageKey: "tasks")
+        let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer())
 
         XCTAssertNil(list.addTask(text: " \n\t "))
         XCTAssertTrue(list.tasks.isEmpty)
@@ -25,12 +26,11 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testEditingTrimsTextAndPreservesTaskIdentityOrderAndCompletion() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let calendar = Calendar(identifier: .gregorian)
         let completedAt = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25)))
         let list = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { completedAt },
             calendar: calendar
         )
@@ -52,8 +52,7 @@ final class TaskListBehaviorTests: XCTestCase {
 
         // Reopen on the same local day so today's completed task remains visible.
         let reopened = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { completedAt },
             calendar: calendar
         )
@@ -61,7 +60,7 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testBlankOrUnknownEditDoesNotChangeTask() throws {
-        let list = TaskListStore(userDefaults: try makeDefaults(), storageKey: "tasks")
+        let list = TaskListStore(modelContainer: try makeContainer())
         let task = try XCTUnwrap(list.addTask(text: "Keep this"))
 
         XCTAssertNil(list.editTask(id: task.id, text: " \n\t "))
@@ -70,8 +69,8 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testDeletingTaskUpdatesCountsAndPersists() throws {
-        let defaults = try makeDefaults()
-        let list = TaskListStore(userDefaults: defaults, storageKey: "tasks")
+        let container = try makeContainer()
+        let list = TaskListStore(modelContainer: container)
         let first = try XCTUnwrap(list.addTask(text: "First"))
         _ = list.addTask(text: "Second")
         let completedFirst = try XCTUnwrap(list.toggleTask(id: first.id))
@@ -83,15 +82,15 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.completedCount, 0)
         XCTAssertEqual(list.incompleteCount, 1)
         XCTAssertEqual(list.tasks.map(\.text), ["Second"])
-        XCTAssertEqual(TaskListStore(userDefaults: defaults, storageKey: "tasks").tasks, list.tasks)
+        XCTAssertEqual(TaskListStore(modelContainer: container).tasks, list.tasks)
     }
 
     func testSavedTasksSurviveReopeningTheList() throws {
-        let defaults = try makeDefaults()
-        let firstList: any TaskListBehavior = TaskListStore(userDefaults: defaults, storageKey: "tasks")
+        let container = try makeContainer()
+        let firstList: any TaskListBehavior = TaskListStore(modelContainer: container)
         let saved = try XCTUnwrap(firstList.addTask(text: "Remember this"))
 
-        let reopenedList: any TaskListBehavior = TaskListStore(userDefaults: defaults, storageKey: "tasks")
+        let reopenedList: any TaskListBehavior = TaskListStore(modelContainer: container)
 
         XCTAssertEqual(reopenedList.tasks, [saved])
         XCTAssertEqual(reopenedList.taskCount, 1)
@@ -102,8 +101,7 @@ final class TaskListBehaviorTests: XCTestCase {
         let calendar = Calendar(identifier: .gregorian)
         let completionDate = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 16)))
         let list = TaskListStore(
-            userDefaults: try makeDefaults(),
-            storageKey: "tasks",
+            modelContainer: try makeContainer(),
             now: { completionDate },
             calendar: calendar
         )
@@ -136,12 +134,11 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testCompletionAndCompletionDaySurviveReopeningTheList() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let calendar = Calendar(identifier: .gregorian)
         let completionDate = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 23)))
         let firstList = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { completionDate },
             calendar: calendar
         )
@@ -149,8 +146,7 @@ final class TaskListBehaviorTests: XCTestCase {
         _ = firstList.toggleTask(id: task.id)
 
         let reopenedList = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { completionDate },
             calendar: calendar
         )
@@ -162,7 +158,7 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testTogglingUnknownTaskDoesNothing() throws {
-        let list = TaskListStore(userDefaults: try makeDefaults(), storageKey: "tasks")
+        let list = TaskListStore(modelContainer: try makeContainer())
 
         XCTAssertNil(list.toggleTask(id: UUID()))
         XCTAssertTrue(list.tasks.isEmpty)
@@ -183,12 +179,11 @@ final class TaskListBehaviorTests: XCTestCase {
     }
 
     func testMidnightRolloverCarriesIncompleteTasksAndKeepsCompletionsOnTheirDay() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let calendar = Calendar(identifier: .gregorian)
         var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 23, minute: 59)))
         let list = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { now },
             calendar: calendar
         )
@@ -211,32 +206,31 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.completedCount, 0)
         XCTAssertEqual(list.incompleteCount, 2)
 
-        let persisted = try XCTUnwrap(defaults.data(forKey: "tasks"))
-        let allSavedTasks = try JSONDecoder().decode([DailyTask].self, from: persisted)
-        let savedCompletion = try XCTUnwrap(allSavedTasks.first { $0.id == second.id })
+        // The completed task is still saved: on its own day, a reopened list shows it completed.
         let completionDate = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25)))
+        let sameDay = TaskListStore(modelContainer: container, now: { completionDate }, calendar: calendar)
+        let savedCompletion = try XCTUnwrap(sameDay.tasks.first { $0.id == second.id })
         XCTAssertEqual(savedCompletion.completedOn, TaskCompletionDay(date: completionDate, calendar: calendar))
         XCTAssertTrue(savedCompletion.isComplete)
 
         list.refreshForCurrentDay()
-        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        let reopened = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
         XCTAssertEqual(reopened.tasks.map(\.id), [first.id, third.id])
         XCTAssertEqual(reopened.taskCount, 2)
     }
 
     func testMultipleMissedDaysAreIdempotentAndNewTasksFollowCarriedTasks() throws {
-        let defaults = try makeDefaults()
+        let container = try makeContainer()
         let calendar = Calendar(identifier: .gregorian)
         var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 10)))
-        let list = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        let list = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
         let first = try XCTUnwrap(list.addTask(text: "First"))
         let second = try XCTUnwrap(list.addTask(text: "Second"))
         _ = list.toggleTask(id: first.id)
 
         now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 29, hour: 10)))
         let reopenedAfterMissedDays = TaskListStore(
-            userDefaults: defaults,
-            storageKey: "tasks",
+            modelContainer: container,
             now: { now },
             calendar: calendar
         )
@@ -253,15 +247,12 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.completedCount, 0)
         XCTAssertEqual(list.incompleteCount, 2)
 
-        let reopened = TaskListStore(userDefaults: defaults, storageKey: "tasks", now: { now }, calendar: calendar)
+        let reopened = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
         XCTAssertEqual(reopened.tasks, list.tasks)
         XCTAssertEqual(reopened.tasks.filter { !$0.isComplete }.map(\.id), [second.id, third.id])
     }
 
-    private func makeDefaults() throws -> UserDefaults {
-        let suiteName = "TaskListBehaviorTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defaults.removePersistentDomain(forName: suiteName)
-        return defaults
+    private func makeContainer() throws -> ModelContainer {
+        try KyoModelContainer.make(inMemory: true)
     }
 }

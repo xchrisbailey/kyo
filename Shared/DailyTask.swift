@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftData
 
 struct TaskCompletionDay: Codable, Equatable, Sendable {
     let era: Int?
@@ -82,7 +83,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     private var processedCommandIDs: [UUID]
 
     private let userDefaults: UserDefaults
-    private let storageKey: String
+    /// Where task content lives: SwiftData for a `.publish` or standalone store, the
+    /// `storageKey` UserDefaults entry for a `.mirror` (Watch) store.
+    private let content: any TaskContentPersistence
     private let now: () -> Date
     private let calendar: Calendar
     private let sync: TaskListSync?
@@ -100,15 +103,20 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     var completedCount: Int { tasks.filter(\.isComplete).count }
     var incompleteCount: Int { taskCount - completedCount }
 
+    /// A `.publish` or standalone (nil sync) store keeps its content in `modelContainer`, which
+    /// it requires; a `.mirror` store ignores the container and keeps UserDefaults. Revision,
+    /// tombstones and processed command ids stay in `userDefaults` under keys derived from
+    /// `storageKey` in every case; the content key itself is never read or written by a
+    /// non-mirror store.
     init(
         userDefaults: UserDefaults = .standard,
         storageKey: String = TaskListStore.storageKey,
+        modelContainer: ModelContainer? = nil,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         sync: TaskListSync? = nil
     ) {
         self.userDefaults = userDefaults
-        self.storageKey = storageKey
         self.now = now
         self.calendar = calendar
         self.sync = sync
@@ -118,21 +126,20 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         self.processedCommandIDsKey = storageKey + ".processedCommands"
         self.currentDate = calendar.startOfDay(for: now())
 
-        // The Watch's existing storage key already holds its mirrored task list; that becomes
-        // `baseTasks` under the new model. A phone or standalone store keeps using it as
-        // `savedTasks`, unchanged from before #14.
-        let storedTasks: [DailyTask]
-        if let data = userDefaults.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode([DailyTask].self, from: data) {
-            storedTasks = Self.ordered(decoded)
-        } else {
-            storedTasks = []
-        }
         if case .mirror = sync {
-            self.baseTasks = storedTasks
+            // The Watch's existing storage key holds its mirrored task list, which is
+            // `baseTasks` under the outbox model.
+            let content = UserDefaultsTaskContent(userDefaults: userDefaults, key: storageKey)
+            self.content = content
+            self.baseTasks = Self.ordered(content.load())
             self.savedTasks = []
         } else {
-            self.savedTasks = storedTasks
+            guard let modelContainer else {
+                preconditionFailure("A phone or standalone TaskListStore needs a ModelContainer")
+            }
+            let content = SwiftDataTaskContent(modelContainer: modelContainer)
+            self.content = content
+            self.savedTasks = Self.ordered(content.load())
             self.baseTasks = []
         }
 
@@ -456,9 +463,11 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             recordTombstone(taskID)
         }
 
-        recordProcessedCommand(command.id)
+        // Content is saved before the command id is recorded as processed, so a command is never
+        // marked done while its effect is missing from storage.
         refreshForCurrentDay()
         persist()
+        recordProcessedCommand(command.id)
         publishChange()
     }
 
@@ -507,13 +516,11 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     }
 
     private func persist() {
-        guard let data = try? JSONEncoder().encode(savedTasks) else { return }
-        userDefaults.set(data, forKey: storageKey)
+        content.save(savedTasks)
     }
 
     private func persistBaseTasks() {
-        guard let data = try? JSONEncoder().encode(baseTasks) else { return }
-        userDefaults.set(data, forKey: storageKey)
+        content.save(baseTasks)
     }
 
     private func persistOutbox() {

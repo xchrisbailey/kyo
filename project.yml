@@ -80,6 +80,9 @@ targets:
       - Shared/HabitSync.swift
       - Shared/TaskSync.swift
       - Shared/ApplicationContextEntries.swift
+      - Shared/KyoSchema.swift
+      - Shared/TaskRecord.swift
+      - Shared/TaskContentPersistence.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests

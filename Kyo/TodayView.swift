@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -11,15 +12,16 @@ struct TodayView: View {
     @State private var dayBoundaryRefreshToken = 0
     @FocusState private var isTaskDraftFocused: Bool
 
-    init() {
-        let env = ProcessInfo.processInfo.environment
-        let key = env["KYO_TASK_STORAGE_KEY"]
-        let storageKey = key ?? TaskListStore.storageKey
-        // Isolated UI-test stores never publish, so tests don't race real WatchConnectivity delivery.
-        let sync: TaskListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
-        _taskList = StateObject(wrappedValue: TaskListStore(storageKey: storageKey, sync: sync))
-        let habitStorageKey = key.map { $0 + ".habits" } ?? HabitListStore.storageKey
-        let habitSync: HabitListSync? = key == nil ? .publish(to: WatchConnectivityTaskTransport.shared) : nil
+    init(modelContainer: ModelContainer) {
+        // UI tests launch with an in-memory store, which also means no sync, so they don't race
+        // real WatchConnectivity delivery.
+        let isInMemory = KyoModelContainer.isInMemoryRequested
+        let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
+        _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
+        // Habits are still in UserDefaults until they move to SwiftData; an isolated launch gets
+        // its own key so UI tests don't share habits.
+        let habitStorageKey = isInMemory ? "KyoUITests.\(UUID().uuidString).habits" : HabitListStore.storageKey
+        let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _habitList = StateObject(wrappedValue: HabitListStore(storageKey: habitStorageKey, sync: habitSync))
     }
 
@@ -1024,5 +1026,7 @@ private struct MealRow: View {
 }
 
 #Preview {
-    TodayView()
+    if let container = try? KyoModelContainer.make(inMemory: true) {
+        TodayView(modelContainer: container)
+    }
 }

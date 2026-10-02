@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Behavior tests for #14 (Watch-originated adds/toggles), through the same
@@ -270,7 +271,8 @@ final class WatchOriginatedSyncTests: XCTestCase {
     func testTombstonesAndProcessedCommandIDsSurvivePhoneRestart() throws {
         let transport = ControllableTaskTransport()
         let phoneDefaults = try makeDefaults()
-        let phone = try makePhone(defaults: phoneDefaults, transport: transport)
+        let phoneContainer = try KyoModelContainer.make(inMemory: true)
+        let phone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: transport)
         let watch = try makeWatch(transport: transport)
 
         let doomed = try XCTUnwrap(watch.addTask(text: "Doomed"))
@@ -296,7 +298,7 @@ final class WatchOriginatedSyncTests: XCTestCase {
         // Restart the phone against the same UserDefaults suite (persisted savedTasks,
         // tombstones, and processed-command ids), wired to a fresh transport.
         let restartedTransport = ControllableTaskTransport()
-        let restartedPhone = try makePhone(defaults: phoneDefaults, transport: restartedTransport)
+        let restartedPhone = try makePhone(defaults: phoneDefaults, container: phoneContainer, transport: restartedTransport)
 
         restartedTransport.send(addCommand)
         XCTAssertFalse(restartedPhone.tasks.contains { $0.id == doomed.id })
@@ -358,6 +360,7 @@ final class WatchOriginatedSyncTests: XCTestCase {
 
     private func makePhone(
         defaults: UserDefaults? = nil,
+        container: ModelContainer? = nil,
         transport: any TaskSnapshotTransport,
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = Calendar(identifier: .gregorian)
@@ -365,6 +368,7 @@ final class WatchOriginatedSyncTests: XCTestCase {
         TaskListStore(
             userDefaults: try defaults ?? makeDefaults(),
             storageKey: "phone",
+            modelContainer: try container ?? KyoModelContainer.make(inMemory: true),
             now: now,
             calendar: calendar,
             sync: .publish(to: transport)

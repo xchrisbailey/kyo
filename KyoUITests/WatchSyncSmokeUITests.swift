@@ -11,7 +11,7 @@ final class WatchSyncSmokeUITests: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["KYO_WATCH_SYNC_SMOKE"] == "1")
 
         let app = XCUIApplication()
-        app.launch() // No KYO_TASK_STORAGE_KEY: uses the real, synchronized store.
+        app.launch() // No KYO_IN_MEMORY_STORE: uses the real, synchronized store.
 
         let runID = String(UUID().uuidString.prefix(8))
         let titleA = "Sync A \(runID)"
@@ -56,7 +56,7 @@ final class WatchSyncSmokeUITests: XCTestCase {
         let timeout = TimeInterval(ProcessInfo.processInfo.environment["KYO_WATCH_HABIT_TIMEOUT"] ?? "") ?? 120
 
         let app = XCUIApplication()
-        app.launch() // No KYO_TASK_STORAGE_KEY: uses the real, synchronized store.
+        app.launch() // No KYO_IN_MEMORY_STORE: uses the real, synchronized store.
 
         let name = "Sync Habit \(String(UUID().uuidString.prefix(8)))"
         app.buttons["Add an item"].tap()

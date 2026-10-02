@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Streaks seen through the habit list. September 2026: Sundays fall on the 6th, 13th, 20th
@@ -12,12 +13,13 @@ final class HabitStreakBehaviorTests: XCTestCase {
     private var now = Date()
     private var calendar = Calendar(identifier: .gregorian)
 
-    private func makeList(firstWeekday: Int = 1, defaults: UserDefaults? = nil, startingOn start: Date? = nil) throws -> HabitListStore {
+    private func makeList(firstWeekday: Int = 1, container: ModelContainer? = nil, startingOn start: Date? = nil) throws -> HabitListStore {
         calendar = Calendar(identifier: .gregorian)
         calendar.firstWeekday = firstWeekday
         if let start { now = start }
         return HabitListStore(
-            userDefaults: try defaults ?? makeDefaults(), storageKey: "habits", now: { self.now }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits",
+            modelContainer: try container ?? HabitStorage.makeContainer(), now: { self.now }, calendar: calendar
         )
     }
 
@@ -105,15 +107,15 @@ final class HabitStreakBehaviorTests: XCTestCase {
     }
 
     func testStreakStopsAtTheCreationDay() throws {
-        let defaults = try makeDefaults()
-        _ = try makeList(defaults: defaults, startingOn: sep(11))
+        let container = try HabitStorage.makeContainer()
+        _ = try makeList(container: container, startingOn: sep(11))
         let habit = Habit(
             name: "Read", order: 0,
             checkOffs: [8, 9, 10, 11].map { TaskCompletionDay(date: sep($0), calendar: calendar) },
             createdOn: TaskCompletionDay(date: sep(10), calendar: calendar)
         )
-        defaults.set(try JSONEncoder().encode([habit]), forKey: "habits")
-        let list = try makeList(defaults: defaults, startingOn: sep(11))
+        HabitStorage.seed([habit], in: container)
+        let list = try makeList(container: container, startingOn: sep(11))
 
         // The 8th and 9th predate the habit: neither hits nor misses; the streak just stops.
         XCTAssertEqual(streak(list, on: sep(11)), 2)
@@ -129,15 +131,15 @@ final class HabitStreakBehaviorTests: XCTestCase {
     }
 
     func testALongRunAndALongGap() throws {
-        let defaults = try makeDefaults()
-        _ = try makeList(defaults: defaults)
+        let container = try HabitStorage.makeContainer()
+        _ = try makeList(container: container)
         let start = date(1, 1, year: 2024)
         let days = (0..<1000).map { calendar.date(byAdding: .day, value: $0, to: start)! }
         let log = days.map { TaskCompletionDay(date: $0, calendar: calendar) }
         let running = Habit(name: "Run", order: 0, checkOffs: log, createdOn: log[0])
         let lapsed = Habit(name: "Lapsed", order: 1, checkOffs: Array(log[0..<200]), createdOn: log[0])
-        defaults.set(try JSONEncoder().encode([running, lapsed]), forKey: "habits")
-        let list = try makeList(defaults: defaults, startingOn: days[999])
+        HabitStorage.seed([running, lapsed], in: container)
+        let list = try makeList(container: container, startingOn: days[999])
 
         XCTAssertEqual(streaksByName(list), ["Run": 1000, "Lapsed": 0])
     }
@@ -222,8 +224,8 @@ final class HabitStreakBehaviorTests: XCTestCase {
     }
 
     func testALongRunOfWeeksAndALongGap() throws {
-        let defaults = try makeDefaults()
-        _ = try makeList(defaults: defaults)
+        let container = try HabitStorage.makeContainer()
+        _ = try makeList(container: container)
         let firstSunday = date(1, 7, year: 2024)
         let weeks = (0..<150).map { calendar.date(byAdding: .weekOfYear, value: $0, to: firstSunday)! }
         let log = weeks.flatMap { week in
@@ -231,8 +233,8 @@ final class HabitStreakBehaviorTests: XCTestCase {
         }
         let running = Habit(name: "Run", order: 0, schedule: .weeklyTarget(2), checkOffs: log, createdOn: log[0])
         let lapsed = Habit(name: "Lapsed", order: 1, schedule: .weeklyTarget(2), checkOffs: Array(log[0..<20]), createdOn: log[0])
-        defaults.set(try JSONEncoder().encode([running, lapsed]), forKey: "habits")
-        let list = try makeList(defaults: defaults, startingOn: weeks[149])
+        HabitStorage.seed([running, lapsed], in: container)
+        let list = try makeList(container: container, startingOn: weeks[149])
 
         XCTAssertEqual(streaksByName(list), ["Run": 150, "Lapsed": 0])
     }
@@ -246,40 +248,40 @@ final class HabitStreakBehaviorTests: XCTestCase {
     }
 
     func testOlderHabitsDecodeWithTheEarliestCheckOffAsCreationDay() throws {
-        let defaults = try makeDefaults()
+        let container = try HabitStorage.makeContainer()
         let json = """
         [{"id":"\(UUID().uuidString)","name":"Stretch","order":0,"schedule":{"everyDay":{}},
           "checkOffs":[{"era":1,"year":2026,"month":9,"day":10},{"era":1,"year":2026,"month":9,"day":8},
                        {"era":1,"year":2026,"month":9,"day":9}]}]
         """
-        defaults.set(Data(json.utf8), forKey: "habits")
-        let list = try makeList(defaults: defaults, startingOn: sep(10))
+        try HabitStorage.seed(json: json, in: container)
+        let list = try makeList(container: container, startingOn: sep(10))
 
         XCTAssertEqual(list.habits.first?.createdOn, TaskCompletionDay(date: sep(8), calendar: calendar))
         XCTAssertEqual(list.todayHabits.first?.streak, 3)
     }
 
     func testOlderHabitsWithoutCheckOffsDecodeWithTodayAsCreationDayAndItPersists() throws {
-        let defaults = try makeDefaults()
+        let container = try HabitStorage.makeContainer()
         let json = """
         [{"id":"\(UUID().uuidString)","name":"Stretch","order":0,"schedule":{"everyDay":{}},"checkOffs":[]}]
         """
-        defaults.set(Data(json.utf8), forKey: "habits")
-        let list = try makeList(defaults: defaults, startingOn: sep(10))
+        try HabitStorage.seed(json: json, in: container)
+        let list = try makeList(container: container, startingOn: sep(10))
         XCTAssertEqual(list.habits.first?.createdOn, TaskCompletionDay(date: sep(10), calendar: calendar))
 
         // A later launch keeps the day that was assigned.
         now = sep(20)
-        let reopened = try makeList(defaults: defaults)
+        let reopened = try makeList(container: container)
         XCTAssertEqual(reopened.habits.first?.createdOn, TaskCompletionDay(date: sep(10), calendar: calendar))
     }
 
     func testCreationDayPersistsAcrossReopening() throws {
-        let defaults = try makeDefaults()
-        let list = try makeList(defaults: defaults, startingOn: sep(9))
+        let container = try HabitStorage.makeContainer()
+        let list = try makeList(container: container, startingOn: sep(9))
         _ = list.addHabit(name: "Run")
         now = sep(15)
-        let reopened = try makeList(defaults: defaults)
+        let reopened = try makeList(container: container)
         XCTAssertEqual(reopened.habits.first?.createdOn, TaskCompletionDay(date: sep(9), calendar: calendar))
     }
 

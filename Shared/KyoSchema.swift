@@ -1,13 +1,13 @@
 import Foundation
 import SwiftData
 
-/// Version 1 of Kyo's SwiftData schema. Habit and memo models are added here, or in a later
-/// additive version, as they arrive. See docs/adr/0004-swiftdata-cloudkit-ready-storage.md.
+/// Version 1 of Kyo's SwiftData schema. Memo models are added here, or in a later additive
+/// version, as they arrive. See docs/adr/0004-swiftdata-cloudkit-ready-storage.md.
 enum KyoSchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        [TaskRecord.self]
+        [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self]
     }
 }
 

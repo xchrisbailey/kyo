@@ -18,11 +18,8 @@ struct TodayView: View {
         let isInMemory = KyoModelContainer.isInMemoryRequested
         let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
-        // Habits are still in UserDefaults until they move to SwiftData; an isolated launch gets
-        // its own key so UI tests don't share habits.
-        let habitStorageKey = isInMemory ? "KyoUITests.\(UUID().uuidString).habits" : HabitListStore.storageKey
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        _habitList = StateObject(wrappedValue: HabitListStore(storageKey: habitStorageKey, sync: habitSync))
+        _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
     }
 
     var body: some View {

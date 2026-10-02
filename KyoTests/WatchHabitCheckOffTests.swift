@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Watch habit check-off (#41, ADR 0003 on top of ADR 0002): a publishing phone store and a
@@ -28,9 +29,12 @@ final class WatchHabitCheckOffTests: XCTestCase {
         return defaults
     }
 
-    private func makePhone(_ transport: ControllableHabitTransport, defaults: UserDefaults? = nil) throws -> HabitListStore {
+    private func makePhone(
+        _ transport: ControllableHabitTransport, defaults: UserDefaults? = nil, container: ModelContainer? = nil
+    ) throws -> HabitListStore {
         HabitListStore(
             userDefaults: try defaults ?? makeDefaults(), storageKey: "habits",
+            modelContainer: try container ?? HabitStorage.makeContainer(),
             now: { self.phoneNow }, calendar: calendar, sync: .publish(to: transport)
         )
     }
@@ -307,16 +311,17 @@ final class WatchHabitCheckOffTests: XCTestCase {
         phoneNow = sep(7); watchNow = sep(7)
         let transport = ControllableHabitTransport()
         let phoneDefaults = try makeDefaults()
-        let phone = try makePhone(transport, defaults: phoneDefaults)
+        let phoneContainer = try HabitStorage.makeContainer()
+        let phone = try makePhone(transport, defaults: phoneDefaults, container: phoneContainer)
         let walk = try XCTUnwrap(phone.addHabit(name: "Walk"))
-        let savedWithHabit = try XCTUnwrap(phoneDefaults.data(forKey: "habits"))
+        let savedWithHabit = phone.habits
         _ = phone.deleteHabit(id: walk.id)
 
         // Simulate stale habit data coming back (e.g. restored from an old save) behind a
         // restart: the persisted tombstone still protects the deleted habit.
-        phoneDefaults.set(savedWithHabit, forKey: "habits")
+        HabitStorage.seed(savedWithHabit, in: phoneContainer)
         let restartedTransport = ControllableHabitTransport()
-        let restarted = try makePhone(restartedTransport, defaults: phoneDefaults)
+        let restarted = try makePhone(restartedTransport, defaults: phoneDefaults, container: phoneContainer)
         XCTAssertEqual(restarted.habits.map(\.id), [walk.id])
 
         let command = HabitCommand(id: UUID(), action: .setCheckOff(habitID: walk.id, day: completionDay(7), isCheckedOff: true))
@@ -446,7 +451,8 @@ final class WatchHabitCheckOffTests: XCTestCase {
         phoneNow = sep(7); watchNow = sep(7)
         let transport = ControllableHabitTransport()
         let phoneDefaults = try makeDefaults()
-        let phone = try makePhone(transport, defaults: phoneDefaults)
+        let phoneContainer = try HabitStorage.makeContainer()
+        let phone = try makePhone(transport, defaults: phoneDefaults, container: phoneContainer)
         let watch = try makeWatch(transport)
         let walk = try XCTUnwrap(phone.addHabit(name: "Walk"))
 
@@ -456,7 +462,7 @@ final class WatchHabitCheckOffTests: XCTestCase {
         let uncheck = try XCTUnwrap(transport.sentCommands.last)
 
         let restartedTransport = ControllableHabitTransport()
-        let restarted = try makePhone(restartedTransport, defaults: phoneDefaults)
+        let restarted = try makePhone(restartedTransport, defaults: phoneDefaults, container: phoneContainer)
         // Republished on creation with the acknowledgments intact.
         XCTAssertEqual(Set(try XCTUnwrap(restartedTransport.published.last).acknowledgedCommandIDs), [check.id, uncheck.id])
 

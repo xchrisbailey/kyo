@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Editing and deleting habits, seen through the habit list. September 2026 starts on a
@@ -18,10 +19,11 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
         calendar.date(from: DateComponents(year: 2026, month: 9, day: day, hour: 10))!
     }
 
-    private func makeList(on start: Int, defaults: UserDefaults? = nil) throws -> HabitListStore {
+    private func makeList(on start: Int, container: ModelContainer? = nil) throws -> HabitListStore {
         now = sep(start)
         return HabitListStore(
-            userDefaults: try defaults ?? makeDefaults(), storageKey: "habits", now: { self.now }, calendar: calendar
+            userDefaults: try makeDefaults(), storageKey: "habits",
+            modelContainer: try container ?? HabitStorage.makeContainer(), now: { self.now }, calendar: calendar
         )
     }
 
@@ -279,8 +281,8 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
     // MARK: Delete
 
     func testDeletingRemovesTheHabitAndItsLogForGood() throws {
-        let defaults = try makeDefaults()
-        let list = try makeList(on: 1, defaults: defaults)
+        let container = try HabitStorage.makeContainer()
+        let list = try makeList(on: 1, container: container)
         let doomed = try XCTUnwrap(list.addHabit(name: "Doomed"))
         let kept = try XCTUnwrap(list.addHabit(name: "Kept"))
         check(list, doomed, on: [1, 2])
@@ -297,10 +299,13 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
         XCTAssertNil(list.toggleCheckOff(id: doomed.id))
         XCTAssertNil(list.editHabit(id: doomed.id, name: "Back", schedule: .everyDay))
 
-        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.now }, calendar: calendar)
+        let reopened = try makeList(on: 2, container: container)
         XCTAssertEqual(reopened.habits.map(\.name), ["Kept"])
-        let data = try XCTUnwrap(defaults.data(forKey: "habits"))
-        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains(doomed.id.uuidString))
+        XCTAssertEqual(reopened.habits.map(\.id), [kept.id])
+        // The removed habit's check-offs and schedule entry went with it.
+        XCTAssertEqual(try HabitStorage.recordCount(HabitRecord.self, in: container), 1)
+        XCTAssertEqual(try HabitStorage.recordCount(HabitCheckOffRecord.self, in: container), 1)
+        XCTAssertEqual(try HabitStorage.recordCount(HabitScheduleRecord.self, in: container), 1)
     }
 
     func testAnAddAfterADeleteStillGoesToTheEnd() throws {
@@ -318,14 +323,14 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
     // MARK: Persistence
 
     func testScheduleHistoryAndEditsPersistAcrossReopening() throws {
-        let defaults = try makeDefaults()
-        let list = try makeList(on: 1, defaults: defaults)
+        let container = try HabitStorage.makeContainer()
+        let list = try makeList(on: 1, container: container)
         let habit = try XCTUnwrap(list.addHabit(name: "Read"))
         check(list, habit, on: [1, 2, 3])
         go(list, to: 5)
         _ = list.editHabit(id: habit.id, name: "Reading", schedule: .weekdays([monday, saturday]))
 
-        let reopened = HabitListStore(userDefaults: defaults, storageKey: "habits", now: { self.now }, calendar: calendar)
+        let reopened = try makeList(on: 5, container: container)
 
         let reloaded = try XCTUnwrap(reopened.habits.first)
         XCTAssertEqual(reloaded.name, "Reading")
@@ -337,7 +342,7 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
     }
 
     func testHabitsSavedWithASingleScheduleDecodeIntoAOneEntryHistoryFromCreation() throws {
-        let defaults = try makeDefaults()
+        let container = try HabitStorage.makeContainer()
         let id = UUID()
         let encoded = try JSONEncoder().encode(HabitSchedule.weekdays([monday, wednesday, friday]))
         let schedule = String(decoding: encoded, as: UTF8.self)
@@ -347,9 +352,9 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
           "checkOffs":[{"era":1,"year":2026,"month":9,"day":7}],
           "createdOn":{"era":1,"year":2026,"month":9,"day":1}}]
         """
-        defaults.set(Data(json.utf8), forKey: "habits")
+        try HabitStorage.seed(json: json, in: container)
 
-        let list = try makeList(on: 14, defaults: defaults)
+        let list = try makeList(on: 14, container: container)
 
         let habit = try XCTUnwrap(list.habits.first)
         XCTAssertEqual(habit.scheduleHistory.count, 1)
@@ -366,15 +371,15 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
     }
 
     func testOldHabitsWithoutACreationDayGetOneEntryStartingAtTheirBackfilledCreationDay() throws {
-        let defaults = try makeDefaults()
+        let container = try HabitStorage.makeContainer()
         let id = UUID()
         let json = """
         [{"id":"\(id.uuidString)","name":"Stretch","order":0,"schedule":{"everyDay":{}},
           "checkOffs":[{"era":1,"year":2026,"month":9,"day":3}]}]
         """
-        defaults.set(Data(json.utf8), forKey: "habits")
+        try HabitStorage.seed(json: json, in: container)
 
-        let list = try makeList(on: 10, defaults: defaults)
+        let list = try makeList(on: 10, container: container)
 
         let habit = try XCTUnwrap(list.habits.first)
         let expectedStart = TaskCompletionDay(date: sep(3), calendar: calendar)

@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 
 /// Habit sync (ADR 0003): a publishing phone store and a mirroring Watch store connected by a
@@ -25,9 +26,12 @@ final class HabitSyncTests: XCTestCase {
         return defaults
     }
 
-    private func makePhone(_ transport: ControllableHabitTransport, defaults: UserDefaults? = nil) throws -> HabitListStore {
+    private func makePhone(
+        _ transport: ControllableHabitTransport, defaults: UserDefaults? = nil, container: ModelContainer? = nil
+    ) throws -> HabitListStore {
         HabitListStore(
             userDefaults: try defaults ?? makeDefaults(), storageKey: "habits",
+            modelContainer: try container ?? HabitStorage.makeContainer(),
             now: { self.phoneNow }, calendar: calendar, sync: .publish(to: transport)
         )
     }
@@ -182,8 +186,9 @@ final class HabitSyncTests: XCTestCase {
     func testRevisionsIncreaseStrictlyAndSurviveRestart() throws {
         phoneNow = sep(7); watchNow = sep(7)
         let defaults = try makeDefaults()
+        let container = try HabitStorage.makeContainer()
         let transport = ControllableHabitTransport()
-        let phone = try makePhone(transport, defaults: defaults)
+        let phone = try makePhone(transport, defaults: defaults, container: container)
         _ = phone.addHabit(name: "Walk")
         _ = phone.addHabit(name: "Read")
         let before = transport.published.map(\.revision)
@@ -192,7 +197,7 @@ final class HabitSyncTests: XCTestCase {
 
         // Restart: republishes the persisted revision or later, never lower.
         let restarted = ControllableHabitTransport()
-        _ = try makePhone(restarted, defaults: defaults)
+        _ = try makePhone(restarted, defaults: defaults, container: container)
         XCTAssertGreaterThanOrEqual(try XCTUnwrap(restarted.published.last).revision, try XCTUnwrap(before.last))
     }
 

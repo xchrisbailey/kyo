@@ -100,7 +100,12 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        TodaySection(title: "Memos", note: memoStore.sectionSubtitle) {
+                        TodaySection(
+                            title: "Memos",
+                            note: memoStore.sectionSubtitle,
+                            linkTitle: memoStore.hasMemos ? "See all" : nil,
+                            linkAction: { activeSheet = .allMemos }
+                        ) {
                             VStack(spacing: 0) {
                                 if memoStore.memos.isEmpty {
                                     Text("Tap + to add a memo")
@@ -161,23 +166,10 @@ struct TodayView: View {
                         WrittenMemoComposeSheet(onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) })
                     case .memo(let id):
                         if let memo = memoStore.memo(id: id) {
-                            MemoCardSheet(
-                                memo: memo,
-                                onEdit: { text in memoStore.editMemo(id: id, text: text) },
-                                onRename: { title in memoStore.renameMemo(id: id, title: title) },
-                                onDelete: { memoStore.deleteMemo(id: id) },
-                                onClose: { memoStore.closeMemo(id: id) },
-                                loadAudio: { memoStore.audioData(forMemoID: id) },
-                                loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
-                                loadPhoto: { memoStore.photoData(forPhotoID: $0) },
-                                onAddPhoto: { photo in memoStore.addPhoto(photo, toMemoID: id) },
-                                onRemovePhoto: { photoID in memoStore.removePhoto(id: photoID, fromMemoID: id) },
-                                onRetryTranscription: { memoStore.retryTranscription(id: id) },
-                                makeTaskSuggestions: { text in
-                                    MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
-                                }
-                            )
+                            MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
                         }
+                    case .allMemos:
+                        MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList)
                     case .editHabit(let id):
                         if let habit = habitList.habits.first(where: { $0.id == id }) {
                             HabitFormSheet(
@@ -382,6 +374,7 @@ private enum TodayPreviewSheet: Identifiable {
     case editHabit(UUID)
     case composeMemo
     case memo(UUID)
+    case allMemos
 
     var id: String {
         switch self {
@@ -391,6 +384,7 @@ private enum TodayPreviewSheet: Identifiable {
         case .editHabit(let id): "editHabit:\(id.uuidString)"
         case .composeMemo: "composeMemo"
         case .memo(let id): "memo:\(id.uuidString)"
+        case .allMemos: "allMemos"
         }
     }
 }
@@ -595,29 +589,45 @@ private struct SummaryStat: View {
 private struct TodaySection<Content: View>: View {
     let title: String
     let note: String
+    /// A link at the right of the header, such as **See all**.
+    var linkTitle: String?
+    var linkAction: () -> Void = {}
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                HStack(spacing: 7) {
-                    Text(title)
-                        .font(.title3.weight(.semibold))
-                        .tracking(-0.4)
-                        .foregroundStyle(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    HStack(spacing: 7) {
+                        Text(title)
+                            .font(.title3.weight(.semibold))
+                            .tracking(-0.4)
+                            .foregroundStyle(.primary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                    }
+                    Spacer(minLength: 8)
+                    Text(note)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
+                        .multilineTextAlignment(.trailing)
                 }
-                Spacer(minLength: 8)
-                Text(note)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
+                .accessibilityElement(children: .combine)
+                if let linkTitle {
+                    Button(action: linkAction) {
+                        Text(linkTitle)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(KyoPalette.accent)
+                            .padding(.leading, 6)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .frame(minHeight: 51)
-            .accessibilityElement(children: .combine)
 
             content
                 .background(cardBackground)

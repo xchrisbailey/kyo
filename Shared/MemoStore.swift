@@ -11,8 +11,17 @@ protocol MemoStoreBehavior: AnyObject {
     /// "2 memos" (or "1 memo") when Today has memos, "Notes & voice" when it has none.
     var sectionSubtitle: String { get }
 
+    /// `true` when any memo exists, on any day: whether **See all** shows.
+    var hasMemos: Bool { get }
+
     /// Any memo, from any day, by id.
     func memo(id: UUID) -> Memo?
+    /// The Memos sheet's content: memos grouped by local calendar day, newest day first (Today,
+    /// then **Memo history**) and newest first within a day, up to `limit` memos. A non-empty
+    /// `query` keeps the memos whose title, written text or transcript contains it, ignoring
+    /// case and accents and matching part of a word; photos aren't searched. A match deep in
+    /// the text carries a snippet. Reads text only, never photo or audio bytes.
+    func memoGroups(matching query: String, limit: Int) -> MemoGroupsPage
     /// Saves a Written memo on Today, with up to 4 photos (any beyond that are dropped). A memo
     /// with no text and no photos is discarded: returns `nil`. With photos and no text it's a
     /// photo-only memo, titled "Photo memo".
@@ -76,6 +85,10 @@ extension MemoStoreBehavior {
 @MainActor
 final class MemoStore: ObservableObject, MemoStoreBehavior {
     @Published private(set) var memos: [Memo] = []
+    @Published private(set) var hasMemos = false
+    /// Counts every re-read of the saved memos, so a view that lists more than Today (the Memos
+    /// sheet) knows to load again after any change.
+    @Published private(set) var revision = 0
     @Published private(set) var currentDate: Date
 
     /// Held so the container, and with it the context, outlives every use of the store.
@@ -150,6 +163,53 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     func memo(id: UUID) -> Memo? {
         records(withID: id).first?.memo
+    }
+
+    func memoGroups(matching query: String, limit: Int) -> MemoGroupsPage {
+        let term = MemoSearch.term(query)
+        let sort = [
+            SortDescriptor(\MemoRecord.dayYear, order: .reverse),
+            SortDescriptor(\MemoRecord.dayMonth, order: .reverse),
+            SortDescriptor(\MemoRecord.dayDay, order: .reverse),
+            SortDescriptor(\MemoRecord.createdAt, order: .reverse),
+        ]
+        // `text` is a Written memo's text or a Voice memo's Transcript, and `title` a Voice
+        // memo's stored title. A Written memo's title is its first line, so `text` covers it, and
+        // the "Voice memo" fallback is stored as empty, so it's never matched.
+        var descriptor = term.isEmpty
+            ? FetchDescriptor<MemoRecord>(sortBy: sort)
+            : FetchDescriptor<MemoRecord>(
+                predicate: #Predicate { $0.text.localizedStandardContains(term) || $0.title.localizedStandardContains(term) },
+                sortBy: sort
+            )
+        // One more than asked for tells whether there is another page.
+        descriptor.fetchLimit = max(limit, 0) + 1
+        let fetched = (try? context.fetch(descriptor)) ?? []
+        let hasMore = fetched.count > limit
+        let memos = uniqueByID(Array(fetched.prefix(max(limit, 0)))).map(\.memo).sorted(by: Self.isNewerDayFirst)
+
+        let today = TaskCompletionDay(date: now(), calendar: calendar)
+        var groups: [MemoDayGroup] = []
+        var current: (day: TaskCompletionDay, results: [MemoSearchResult])?
+        func closeGroup() {
+            guard let current else { return }
+            groups.append(MemoDayGroup(
+                day: current.day,
+                title: MemoDayHeader.title(for: current.day, today: today, calendar: calendar),
+                results: current.results
+            ))
+        }
+        for memo in memos {
+            let result = MemoSearchResult(memo: memo, snippet: term.isEmpty ? nil : MemoSearch.snippet(for: memo, query: term))
+            if current?.day == memo.day {
+                current?.results.append(result)
+            } else {
+                closeGroup()
+                current = (memo.day, [result])
+            }
+        }
+        closeGroup()
+        return MemoGroupsPage(query: term, groups: groups, hasMore: hasMore)
     }
 
     @discardableResult
@@ -323,6 +383,8 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         )
         let fetched = ((try? context.fetch(descriptor)) ?? []).filter { $0.dayEra == today.era }
         memos = uniqueByID(fetched).map(\.memo).sorted(by: Self.isNewer)
+        revision &+= 1
+        hasMemos = ((try? context.fetchCount(FetchDescriptor<MemoRecord>())) ?? 0) > 0
     }
 
     /// Refreshes for the current day now, then again at every local midnight until cancelled.
@@ -604,6 +666,15 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             if lhs.createdAt != rhs.createdAt { return lhs.createdAt < rhs.createdAt }
             return lhs.text < rhs.text
         }
+    }
+
+    /// Later days first, then newer within a day.
+    private static func isNewerDayFirst(_ lhs: Memo, _ rhs: Memo) -> Bool {
+        let (left, right) = (lhs.day, rhs.day)
+        if left != right {
+            return (left.era ?? 0, left.year, left.month, left.day) > (right.era ?? 0, right.year, right.month, right.day)
+        }
+        return isNewer(lhs, rhs)
     }
 
     private static func isNewer(_ lhs: Memo, _ rhs: Memo) -> Bool {

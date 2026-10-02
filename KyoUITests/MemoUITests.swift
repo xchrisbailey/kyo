@@ -109,6 +109,32 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add to Today (0)"].exists)
     }
 
+    func testSeeAllOpensTheMemosSheetWithTodayAndSearch() throws {
+        let app = launchIsolatedApp()
+        XCTAssertFalse(app.buttons["See all"].exists)
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Written memo"].tap()
+        let compose = app.textFields["Memo text"]
+        XCTAssertTrue(compose.waitForExistence(timeout: 3))
+        compose.typeText("Weekend idea\nTry the trail")
+        app.buttons["Save"].tap()
+
+        let seeAll = app.buttons["See all"]
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 3))
+        seeAll.tap()
+
+        XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Today"].exists)
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")).firstMatch
+        XCTAssertTrue(row.exists)
+
+        let search = app.searchFields.firstMatch
+        search.tap()
+        search.typeText("zebra")
+        XCTAssertTrue(app.staticTexts["No memos match \u{201C}zebra\u{201D}"].waitForExistence(timeout: 3))
+    }
+
     private func launchIsolatedApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

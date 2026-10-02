@@ -1,6 +1,6 @@
 # 4. SwiftData storage, ready for CloudKit
 
-Status: accepted (not yet implemented)
+Status: accepted (tasks and habits implemented in #72, #73 and #74; memos not yet)
 
 ## Context
 

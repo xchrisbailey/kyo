@@ -51,7 +51,7 @@ final class ScheduleEventDetailUITests: XCTestCase {
         // Two all-day events, so a list comes first and no details yet.
         let birthday = app.buttons["Sam's birthday, Personal calendar"]
         XCTAssertTrue(birthday.waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["Holiday, Personal calendar"].exists)
+        XCTAssertTrue(app.buttons["Holiday, Holidays calendar"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["event-detail-title"].exists)
 
         birthday.tap()

@@ -28,15 +28,23 @@ struct ScheduleSectionContent: View {
                     .padding(.horizontal, 14)
             } else if schedule.showsEvents {
                 if let line = schedule.allDayLine, let label = schedule.allDayAccessibilityLabel {
-                    Text(line)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(label)
-                        .accessibilityIdentifier("schedule-all-day")
+                    Button {
+                        schedule.openAllDayEvents()
+                    } label: {
+                        Text(line)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(label)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Shows event details")
+                    .accessibilityIdentifier("schedule-all-day")
                     if !schedule.timedEvents.isEmpty { divider }
                 }
                 if schedule.showsNothingElseToday {
@@ -49,7 +57,7 @@ struct ScheduleSectionContent: View {
                 }
                 ForEach(Array(schedule.visibleRows.enumerated()), id: \.element.id) { index, row in
                     if index > 0 { divider }
-                    ScheduleRow(row: row)
+                    ScheduleRow(row: row, open: { schedule.open(row.event.id) })
                 }
                 if let more = schedule.moreText, let label = schedule.moreAccessibilityLabel {
                     divider
@@ -65,6 +73,20 @@ struct ScheduleSectionContent: View {
             }
         }
         .animation(.default, value: schedule.isExpanded)
+        // The details of a timed row or a lone all-day event. Opened from the all-day list, they
+        // show on top of that list instead.
+        .sheet(item: Binding(
+            get: { schedule.isChoosingAllDayEvent ? nil : schedule.presentedDetail },
+            set: { if $0 == nil { schedule.dismissDetail() } }
+        )) { detail in
+            EventDetailSheet(detail: detail)
+        }
+        .sheet(isPresented: Binding(
+            get: { schedule.isChoosingAllDayEvent },
+            set: { if !$0 { schedule.dismissAllDayChooser() } }
+        )) {
+            AllDayEventChooser(schedule: schedule)
+        }
     }
 
     private func toggleLine(
@@ -133,6 +155,7 @@ struct ScheduleSectionContent: View {
 
 private struct ScheduleRow: View {
     let row: ScheduleRowPresentation
+    let open: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The width the title and location column is given, and the width the location needs on one line.
     @State private var textWidth: CGFloat = 0
@@ -142,32 +165,38 @@ private struct ScheduleRow: View {
     private var color: ScheduleColor { row.event.calendarColor }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(Color(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: color.alpha))
-                .opacity(isPast ? 0.4 : 1)
-                .frame(width: 9, height: 9)
-            timeLabel
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.event.displayTitle)
-                    .font(.body)
-                    .foregroundStyle(isPast ? .secondary : .primary)
-                    .lineLimit(2)
-                if showsLocation, let location = row.location {
-                    Text(location)
-                        .font(.footnote)
-                        .foregroundStyle(isPast ? .tertiary : .secondary)
-                        .lineLimit(1)
+        Button(action: open) {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(color.swiftUIColor)
+                    .opacity(isPast ? 0.4 : 1)
+                    .frame(width: 9, height: 9)
+                timeLabel
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.event.displayTitle)
+                        .font(.body)
+                        .foregroundStyle(isPast ? .secondary : .primary)
+                        .lineLimit(2)
+                    if showsLocation, let location = row.location {
+                        Text(location)
+                            .font(.footnote)
+                            .foregroundStyle(isPast ? .tertiary : .secondary)
+                            .lineLimit(1)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
+                .background { locationMeasure }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
-            .background { locationMeasure }
+            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+            .padding(.horizontal, 14)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-        .padding(.horizontal, 14)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.accessibilityLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Shows event details")
     }
 
     /// An invisible copy of the location at its natural one-line width.
@@ -204,5 +233,68 @@ private struct ScheduleRow: View {
     /// accessibility sizes. Until it's measured it stays out, so a long one can't widen the row.
     private var showsLocation: Bool {
         row.location != nil && !dynamicTypeSize.isAccessibilitySize && locationWidth <= textWidth
+    }
+}
+
+private extension ScheduleColor {
+    var swiftUIColor: Color { Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha) }
+}
+
+/// Hosts the view controller that shows an event's details, with a Done button of its own.
+private struct EventDetailHost: UIViewControllerRepresentable {
+    let viewController: UIViewController
+
+    func makeUIViewController(context: Context) -> UIViewController { viewController }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+
+private struct EventDetailSheet: View {
+    let detail: PresentedEventDetail
+
+    var body: some View {
+        EventDetailHost(viewController: detail.viewController)
+            .ignoresSafeArea()
+    }
+}
+
+/// The titles of Today's all-day events, to choose which one to open. Its details show on top.
+private struct AllDayEventChooser: View {
+    @ObservedObject var schedule: ScheduleStore
+
+    var body: some View {
+        NavigationStack {
+            List(schedule.allDayEvents) { event in
+                Button {
+                    schedule.open(event.id)
+                } label: {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(event.calendarColor.swiftUIColor)
+                            .frame(width: 9, height: 9)
+                        Text(event.displayTitle)
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .accessibilityLabel("\(event.displayTitle), \(event.calendarTitle) calendar")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Shows event details")
+            }
+            .navigationTitle("All day")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { schedule.dismissAllDayChooser() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .sheet(item: Binding(
+            get: { schedule.presentedDetail },
+            set: { if $0 == nil { schedule.dismissDetail() } }
+        )) { detail in
+            EventDetailSheet(detail: detail)
+        }
     }
 }

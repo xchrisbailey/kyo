@@ -53,6 +53,11 @@ final class ScheduleStore: ObservableObject {
     /// The most in-progress or upcoming timed events the collapsed section shows.
     static let collapsedLimit = 3
 
+    /// The event whose details are on screen, if any.
+    @Published private(set) var presentedDetail: PresentedEventDetail?
+    /// Whether the list of all-day events to choose from is on screen.
+    @Published private(set) var isChoosingAllDayEvent = false
+
     private let service: any CalendarService
     private let now: () -> Date
     private let calendar: Calendar
@@ -231,6 +236,48 @@ final class ScheduleStore: ObservableObject {
     }
 
     func collapse() { isExpanded = false }
+
+
+    // MARK: Event details
+
+    /// Opens an event's details. If the occurrence can't be found any more, for example because
+    /// it was deleted since the Schedule was read, nothing is shown and the Schedule refreshes.
+    func open(_ id: ScheduleEventID) {
+        let detail = service.eventDetails.viewController(for: id) { [weak self] in
+            self?.finishDetail(of: id)
+        }
+        guard let detail else {
+            closeEventDetails()
+            Task { await refresh() }
+            return
+        }
+        presentedDetail = PresentedEventDetail(id: id, viewController: detail)
+    }
+
+    /// Taps the all-day line: one event opens directly, several open a list to choose from.
+    func openAllDayEvents() {
+        let allDay = allDayEvents
+        if allDay.count == 1, let only = allDay.first {
+            open(only.id)
+        } else if allDay.count > 1 {
+            isChoosingAllDayEvent = true
+        }
+    }
+
+    /// Closes the details, leaving the all-day list up when that is where they were opened from.
+    func dismissDetail() { presentedDetail = nil }
+
+    /// Closes the all-day list, and with it any details opened from it.
+    func dismissAllDayChooser() { closeEventDetails() }
+
+    private func closeEventDetails() {
+        presentedDetail = nil
+        isChoosingAllDayEvent = false
+    }
+
+    private func finishDetail(of id: ScheduleEventID) {
+        if presentedDetail?.id == id { presentedDetail = nil }
+    }
 
     // MARK: Reading
 

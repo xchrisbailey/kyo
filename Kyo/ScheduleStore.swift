@@ -35,6 +35,11 @@ final class ScheduleStore: ObservableObject {
     @Published private(set) var currentDate: Date
     /// The Show schedule switch, kept on this device. Off hides the section and stops reading.
     @Published private(set) var showsSchedule: Bool
+    /// The device's event calendars, empty without full access. Read with Today's events.
+    @Published private(set) var calendars: [ScheduleCalendar] = []
+    /// The calendars the user hid, by id. Kept on this device only; a calendar that isn't here is
+    /// shown, so new ones appear by default. Ids of calendars that no longer exist are ignored.
+    @Published private(set) var hiddenCalendarIDs: Set<String>
     /// How many times Open Settings has been tapped.
     @Published private(set) var settingsOpenRequests = 0
     /// Whether the Open Settings control reports a tap to accessibility. UI tests turn this on,
@@ -43,6 +48,8 @@ final class ScheduleStore: ObservableObject {
 
     /// Where the Show schedule switch is stored.
     static let showsScheduleKey = "schedule.showsSchedule"
+    /// Where the hidden calendar ids are stored, as an array of strings.
+    static let hiddenCalendarIDsKey = "schedule.hiddenCalendarIDs"
 
     /// The clock reading that presentation (Now, past, the collapsed set) is derived from. It moves
     /// on every refresh and at each event boundary, so views re-render exactly when something changes.
@@ -67,6 +74,8 @@ final class ScheduleStore: ObservableObject {
     private let openSettingsAction: @MainActor () -> Void
     /// Orders overlapping refreshes: only the latest one may apply its result.
     private var refreshGeneration = 0
+    /// Today's events before the hidden calendars are filtered out.
+    private var fetchedEvents: [ScheduleEvent] = []
 
     init(
         service: any CalendarService,
@@ -87,6 +96,7 @@ final class ScheduleStore: ObservableObject {
         self.reportsSettingsRequests = reportsSettingsRequests
         self.openSettingsAction = openSettings
         self.showsSchedule = defaults.object(forKey: Self.showsScheduleKey) as? Bool ?? true
+        self.hiddenCalendarIDs = Set(defaults.stringArray(forKey: Self.hiddenCalendarIDsKey) ?? [])
         self.currentDate = calendar.startOfDay(for: now())
         self.asOf = now()
     }
@@ -140,6 +150,46 @@ final class ScheduleStore: ObservableObject {
         return .upcoming
     }
 
+    // MARK: Calendars
+
+    /// The calendars grouped by account, accounts sorted by title and calendars by title.
+    var calendarGroups: [ScheduleCalendarGroup] {
+        Dictionary(grouping: calendars) { ScheduleCalendarGroup.Key(title: $0.accountTitle, type: $0.accountType) }
+            .map { key, members in
+                ScheduleCalendarGroup(
+                    accountTitle: key.title, accountType: key.type,
+                    calendars: members.sorted { Self.ordered($0.title, $0.id, before: $1.title, $1.id) }
+                )
+            }
+            .sorted { Self.ordered($0.accountTitle, "\($0.accountType)", before: $1.accountTitle, "\($1.accountType)") }
+    }
+
+    func isCalendarVisible(_ id: String) -> Bool { !hiddenCalendarIDs.contains(id) }
+
+    /// Shows or hides a calendar's events, remembers the choice, and refetches right away.
+    func setCalendar(_ id: String, visible: Bool) {
+        var hidden = hiddenCalendarIDs
+        if visible { hidden.remove(id) } else { hidden.insert(id) }
+        guard hidden != hiddenCalendarIDs else { return }
+        hiddenCalendarIDs = hidden
+        defaults.set(hidden.sorted(), forKey: Self.hiddenCalendarIDsKey)
+        // The list updates before the refetch lands.
+        events = Self.sorted(visibleEvents(fetchedEvents))
+        collapseIfNothingIsHidden()
+        Task { await refresh() }
+    }
+
+    func toggleCalendar(_ id: String) { setCalendar(id, visible: !isCalendarVisible(id)) }
+
+    private func visibleEvents(_ events: [ScheduleEvent]) -> [ScheduleEvent] {
+        events.filter { !hiddenCalendarIDs.contains($0.calendarID) }
+    }
+
+    private static func ordered(_ lhs: String, _ lhsTie: String, before rhs: String, _ rhsTie: String) -> Bool {
+        let order = lhs.localizedStandardCompare(rhs)
+        return order == .orderedSame ? lhsTie < rhsTie : order == .orderedAscending
+    }
+
     // MARK: Show schedule
 
     /// Turns the section on or off. Turning it on reads the current access state again.
@@ -155,6 +205,8 @@ final class ScheduleStore: ObservableObject {
             access = nil
             events = []
             isExpanded = false
+            fetchedEvents = []
+            calendars = []
         }
     }
 
@@ -291,8 +343,10 @@ final class ScheduleStore: ObservableObject {
         let today = calendar.startOfDay(for: clock)
         let status = await service.authorizationStatus()
         var fetched: [ScheduleEvent] = []
+        var fetchedCalendars: [ScheduleCalendar] = []
         if status == .fullAccess, let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) {
             fetched = await service.events(from: today, to: tomorrow)
+            fetchedCalendars = await service.calendars()
         }
         guard generation == refreshGeneration else { return }
         access = status
@@ -300,7 +354,9 @@ final class ScheduleStore: ObservableObject {
         if today != currentDate { isExpanded = false }
         currentDate = today
         asOf = clock
-        events = Self.sorted(fetched)
+        calendars = fetchedCalendars
+        fetchedEvents = fetched
+        events = Self.sorted(visibleEvents(fetched))
         collapseIfNothingIsHidden()
     }
 
@@ -378,4 +434,18 @@ final class ScheduleStore: ObservableObject {
             return lhs.id.occurrenceDate < rhs.id.occurrenceDate
         }
     }
+}
+
+/// The calendars of one account, as the Calendars screen lists them.
+struct ScheduleCalendarGroup: Identifiable, Equatable {
+    struct Key: Hashable {
+        let title: String
+        let type: ScheduleAccountType
+    }
+
+    let accountTitle: String
+    let accountType: ScheduleAccountType
+    let calendars: [ScheduleCalendar]
+
+    var id: Key { Key(title: accountTitle, type: accountType) }
 }

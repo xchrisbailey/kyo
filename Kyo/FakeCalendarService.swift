@@ -11,6 +11,7 @@ actor FakeCalendarService: CalendarService {
         get { seeded.events }
         set { seeded.events = newValue }
     }
+    private var seededCalendars: [ScheduleCalendar]
     /// What the status becomes when `requestFullAccess()` is called while undecided.
     private let accessAfterRequest: CalendarAccess
     private let changeStream: AsyncStream<Void>
@@ -22,23 +23,27 @@ actor FakeCalendarService: CalendarService {
 
     private(set) var requestCount = 0
     private(set) var fetchedRanges: [DateInterval] = []
+    private(set) var calendarListCount = 0
 
     init(
         access: CalendarAccess = .fullAccess,
         events: [ScheduleEvent] = [],
-        accessAfterRequest: CalendarAccess = .fullAccess
+        accessAfterRequest: CalendarAccess = .fullAccess,
+        calendars: [ScheduleCalendar] = []
     ) {
         self.access = access
         let seeded = SeededEvents(events)
         self.seeded = seeded
         self.fakeEventDetails = FakeEventDetailPresenter(seeded: seeded)
         self.eventDetails = fakeEventDetails
+        self.seededCalendars = calendars
         self.accessAfterRequest = accessAfterRequest
         (changeStream, changeContinuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
     func setAccess(_ access: CalendarAccess) { self.access = access }
     func setEvents(_ events: [ScheduleEvent]) { seededEvents = events }
+    func setCalendars(_ calendars: [ScheduleCalendar]) { seededCalendars = calendars }
 
     /// Simulates the event store reporting a change.
     func emitChange() { changeContinuation.yield() }
@@ -61,6 +66,11 @@ actor FakeCalendarService: CalendarService {
                     : (event.start < end && event.end > start)
             }
             .sorted { $0.start < $1.start }
+    }
+
+    func calendars() -> [ScheduleCalendar] {
+        calendarListCount += 1
+        return access == .fullAccess ? seededCalendars : []
     }
 
     func changes() -> AsyncStream<Void> { changeStream }

@@ -76,6 +76,34 @@ struct ScheduleEvent: Identifiable, Equatable, Sendable {
     }
 }
 
+/// The kind of account a calendar belongs to. Only used to tell apart accounts that share a title.
+enum ScheduleAccountType: String, Sendable, Equatable, Comparable {
+    case local, exchange, calDAV, mobileMe, subscribed, birthdays, other
+
+    static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+}
+
+/// A device calendar as plain data, for the picker in Settings.
+struct ScheduleCalendar: Identifiable, Equatable, Sendable {
+    /// The calendar's `calendarIdentifier`, which is what the hidden selection stores.
+    let id: String
+    let title: String
+    let color: ScheduleColor
+    let accountTitle: String
+    let accountType: ScheduleAccountType
+
+    init(
+        id: String, title: String, color: ScheduleColor = .gray,
+        accountTitle: String, accountType: ScheduleAccountType = .other
+    ) {
+        self.id = id
+        self.title = title
+        self.color = color
+        self.accountTitle = accountTitle
+        self.accountType = accountType
+    }
+}
+
 /// The boundary between Kyo and the device's calendars. The live implementation is the only code
 /// that imports EventKit; tests and UI tests use `FakeCalendarService`.
 protocol CalendarService: Sendable {
@@ -88,6 +116,9 @@ protocol CalendarService: Sendable {
 
     /// The events that overlap `start` ..< `end`, sorted by start, empty without full access.
     func events(from start: Date, to end: Date) async -> [ScheduleEvent]
+
+    /// The device's event calendars, empty without full access.
+    func calendars() async -> [ScheduleCalendar]
 
     /// Yields whenever the event store reports a change, which includes access changes.
     func changes() async -> AsyncStream<Void>

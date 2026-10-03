@@ -52,6 +52,19 @@ actor EventKitCalendarService: CalendarService {
             .map(Self.snapshot)
     }
 
+    func calendars() -> [ScheduleCalendar] {
+        guard authorizationStatus() == .fullAccess else { return [] }
+        return store.calendars(for: .event).map { calendar in
+            ScheduleCalendar(
+                id: calendar.calendarIdentifier,
+                title: calendar.title,
+                color: Self.color(of: calendar.cgColor) ?? .gray,
+                accountTitle: calendar.source?.title ?? "",
+                accountType: calendar.source.map { Self.accountType(from: $0.sourceType) } ?? .other
+            )
+        }
+    }
+
     func changes() -> AsyncStream<Void> {
         let store = store
         return AsyncStream { continuation in
@@ -74,6 +87,18 @@ actor EventKitCalendarService: CalendarService {
         case .restricted: .restricted
         // `.writeOnly`, the deprecated `.authorized` and anything new: Kyo can't read events.
         default: .writeOnly
+        }
+    }
+
+    private static func accountType(from type: EKSourceType) -> ScheduleAccountType {
+        switch type {
+        case .local: .local
+        case .exchange: .exchange
+        case .calDAV: .calDAV
+        case .mobileMe: .mobileMe
+        case .subscribed: .subscribed
+        case .birthdays: .birthdays
+        @unknown default: .other
         }
     }
 

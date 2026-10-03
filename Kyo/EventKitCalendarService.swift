@@ -1,17 +1,35 @@
 import EventKit
+import EventKitUI
 import UIKit
 
-/// The live calendar service and the only code that imports EventKit. It owns the app's single
-/// `EKEventStore`, created on first use so launch never touches the calendars, and turns events
-/// into `Sendable` snapshots before they leave the actor.
-actor EventKitCalendarService: CalendarService {
+/// The app's single `EKEventStore`, created on first use so launch never touches the calendars.
+/// The service reads Today's events from it off the main thread, and the event detail presenter
+/// looks up one event on the main actor, so both share this one store.
+final class EventKitStoreProvider: @unchecked Sendable {
+    private let lock = NSLock()
     private var storage: EKEventStore?
 
-    private var store: EKEventStore {
+    var store: EKEventStore {
+        lock.lock()
+        defer { lock.unlock() }
         if let storage { return storage }
         let created = EKEventStore()
         storage = created
         return created
+    }
+}
+
+/// The live calendar service and the only code that imports EventKit. It reads the app's single
+/// `EKEventStore` and turns events into `Sendable` snapshots before they leave the actor.
+actor EventKitCalendarService: CalendarService {
+    private let provider: EventKitStoreProvider
+    nonisolated let eventDetails: any EventDetailPresenter
+
+    private var store: EKEventStore { provider.store }
+
+    init(provider: EventKitStoreProvider = EventKitStoreProvider()) {
+        self.provider = provider
+        self.eventDetails = EventKitEventDetailPresenter(provider: provider)
     }
 
     func authorizationStatus() -> CalendarAccess {
@@ -87,4 +105,63 @@ actor EventKitCalendarService: CalendarService {
 private final class ObserverToken: @unchecked Sendable {
     let token: NSObjectProtocol
     init(_ token: NSObjectProtocol) { self.token = token }
+}
+
+/// Shows an event with the system's event detail. It resolves the occurrence from its day's
+/// events, because `event(withIdentifier:)` returns the first occurrence of a recurring event.
+@MainActor
+final class EventKitEventDetailPresenter: EventDetailPresenter {
+    private let provider: EventKitStoreProvider
+    private let calendar: Calendar
+
+    nonisolated init(provider: EventKitStoreProvider, calendar: Calendar = .current) {
+        self.provider = provider
+        self.calendar = calendar
+    }
+
+    func viewController(for id: ScheduleEventID, onDone: @escaping @MainActor () -> Void) -> UIViewController? {
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess, let event = occurrence(id) else { return nil }
+        return EventDetailNavigationController(event: event, onDone: onDone)
+    }
+
+    /// The occurrence on `id.occurrenceDate`'s day with that event id and occurrence date, else
+    /// the event itself, which is the first occurrence when the event recurs.
+    private func occurrence(_ id: ScheduleEventID) -> EKEvent? {
+        let store = provider.store
+        let day = calendar.startOfDay(for: id.occurrenceDate)
+        if let next = calendar.date(byAdding: .day, value: 1, to: day) {
+            let predicate = store.predicateForEvents(withStart: day, end: next, calendars: nil)
+            let match = store.events(matching: predicate).first { event in
+                (event.eventIdentifier ?? event.calendarItemIdentifier) == id.eventID
+                    && (event.occurrenceDate ?? event.startDate) == id.occurrenceDate
+            }
+            if let match { return match }
+        }
+        return store.event(withIdentifier: id.eventID)
+    }
+}
+
+/// The system event detail inside a navigation controller, which carries its Done button. It is
+/// its own delegate: `EKEventViewController` holds its delegate weakly, and this controller
+/// outlives it.
+@MainActor
+private final class EventDetailNavigationController: UINavigationController, EKEventViewDelegate {
+    private let onDone: @MainActor () -> Void
+
+    init(event: EKEvent, onDone: @escaping @MainActor () -> Void) {
+        self.onDone = onDone
+        let detail = EKEventViewController()
+        detail.event = event
+        // Kyo never writes to the calendar. Invitation replies still work in the system sheet.
+        detail.allowsEditing = false
+        super.init(rootViewController: detail)
+        detail.delegate = self
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    nonisolated func eventViewController(_ controller: EKEventViewController, didCompleteWith action: EKEventViewAction) {
+        MainActor.assumeIsolated { onDone() }
+    }
 }

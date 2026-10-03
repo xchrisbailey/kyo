@@ -165,6 +165,7 @@ targets:
       - Shared/QuickCaptureRouter.swift
       - Shared/UserDefaultsImport.swift
       - Kyo/CalendarService.swift
+      - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift
       - Kyo/FakeCalendarService.swift
     settings:

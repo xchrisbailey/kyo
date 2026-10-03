@@ -91,4 +91,8 @@ protocol CalendarService: Sendable {
 
     /// Yields whenever the event store reports a change, which includes access changes.
     func changes() async -> AsyncStream<Void>
+
+    /// Opens an event's details. Its screen is built on the main actor, so it sits beside the
+    /// service rather than on it, and it shares the service's event store.
+    nonisolated var eventDetails: any EventDetailPresenter { get }
 }

@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The Settings sheet: grouped entries. Habits is the only one for now.
+/// The Settings sheet: grouped entries. Habits, then the Schedule group.
 struct SettingsSheet: View {
     @ObservedObject var habitList: HabitListStore
+    @ObservedObject var schedule: ScheduleStore
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -15,6 +16,13 @@ struct SettingsSheet: View {
                         Text("Habits")
                     }
                     .accessibilityHint("Add, edit, reorder and delete habits")
+                }
+                Section("Schedule") {
+                    Toggle("Show schedule", isOn: Binding(
+                        get: { schedule.showsSchedule },
+                        set: { schedule.setShowsSchedule($0) }
+                    ))
+                    .accessibilityHint("Shows today's calendar events on Today")
                 }
             }
             .listStyle(.insetGrouped)

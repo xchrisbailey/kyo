@@ -19,6 +19,20 @@ enum CalendarServiceSelection {
         return EventKitCalendarService()
     }
 
+    /// The Schedule model for this launch. UI tests, which run on a fake service, get a throwaway
+    /// Show schedule setting, and an Open Settings that records the tap instead of leaving Kyo.
+    @MainActor
+    static func makeScheduleStore() -> ScheduleStore {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment[fakeEnvironmentKey] != nil || KyoModelContainer.isInMemoryRequested else {
+            return ScheduleStore(service: make())
+        }
+        let suite = "kyo.schedule.ui-tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite) ?? .standard
+        defaults.removePersistentDomain(forName: suite)
+        return ScheduleStore(service: make(), defaults: defaults, reportsSettingsRequests: true, openSettings: {})
+    }
+
     private static func fake(named name: String, calendar: Calendar = .current, now: Date = .now) -> FakeCalendarService {
         switch name {
         case "notDetermined": FakeCalendarService(access: .notDetermined, events: seededDay(calendar: calendar, now: now))

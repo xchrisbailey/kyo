@@ -124,6 +124,6 @@ Make Habits a real feature within the existing layout. A user adds a habit from 
 
 ## Further Notes
 
-- Decisions trace to the Wayfinder map "Wayfinder: Habits" (#23) and its tickets #24–#31. The habit-management prototype is preserved on branch `prototype/habit-management`.
+- Decisions trace to the Wayfinder map "Wayfinder: Habits" (#23) and its tickets #24–#31.
 - Execution policy for future implementation: **Opus 5.5** (`claude-opus-5-5`) runs orchestration and owns review; the coder assignment is **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`).
 - No implementation agents should be launched by this spec-writing request. The `ready-for-agent` label describes specification readiness; it doesn't authorize implementation.

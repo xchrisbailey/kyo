@@ -242,7 +242,7 @@ These close gaps found while writing this spec, confirmed by the user. (#62)
 ## Further Notes
 
 - Decisions trace to the Wayfinder map "Wayfinder: Memos" (#51) and its tickets #52–#61, #63, #64, and #66, and to ADR 0004 (`docs/adr/0004-swiftdata-cloudkit-ready-storage.md`) and ADR 0005 (`docs/adr/0005-watch-memo-sync.md`).
-- API names and constraints come from the research on branches `research/memo-transcription-and-ai`, `research/memo-quick-capture`, and `research/memo-storage-and-watch-transfer`. The capture UI the user picked (variant A capture with B's photo button while recording, variant C open-memo card, shared rows) is preserved on branch `prototype/memo-capture`.
+- API names and constraints come from the research in `docs/research/memo-transcription-and-ai.md`, `docs/research/memo-quick-capture.md`, and `docs/research/memo-storage-and-watch-transfer.md`. The capture UI the user picked came from a prototype: variant A capture with B's photo button while recording, variant C open-memo card, shared rows.
 - Build order: the SwiftData storage spec (#65, `docs/specs/swiftdata-storage.md`) is implemented and merged first. Memos build on that store.
 - Execution policy for future implementation: **Opus 5.5** (`claude-opus-5-5`) runs orchestration and owns review; the coder assignment is **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`), through the `coder` agent, per `AGENTS.md`.
 - No implementation agents should be launched by this spec-writing request. The `ready-for-agent` label describes specification readiness; it doesn't authorize implementation.

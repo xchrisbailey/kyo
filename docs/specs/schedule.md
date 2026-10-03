@@ -95,7 +95,7 @@ Add a compact **Schedule** section to the top of Today on iPhone and iPad, below
 
 ## Further Notes
 
-- EventKit facts and sources are on branch `research/eventkit-schedule` (`docs/research/eventkit-schedule.md`). It targets the iOS 27 SDK.
+- EventKit facts and sources are in `docs/research/eventkit-schedule.md`. It targets the iOS 27 SDK.
 - Decisions were made in one grilling session after ADR 0006 freed the top of Today. No Wayfinder map was charted.
 - Execution policy for future implementation: **Opus 5.5** (`claude-opus-5-5`) runs orchestration and owns review; the coder assignment is **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`).
 - No implementation agents should be launched by this spec-writing request. The `ready-for-agent` label describes specification readiness; it doesn't authorize implementation.

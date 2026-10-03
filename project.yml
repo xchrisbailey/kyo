@@ -47,6 +47,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Kyo records your voice memos with the microphone.
         INFOPLIST_KEY_NSCameraUsageDescription: Kyo takes photos you attach to your memos.
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: Kyo shows today's events from your calendars on Today. It never changes them.
         # UIBackgroundModes isn't an INFOPLIST_KEY_ setting, so the audio background mode (recording
         # keeps going when Kyo is left or the screen locks) comes from this partial plist, which
         # Xcode merges with the generated Info.plist.
@@ -163,6 +164,9 @@ targets:
       - Shared/VoiceRecordingSession.swift
       - Shared/QuickCaptureRouter.swift
       - Shared/UserDefaultsImport.swift
+      - Kyo/CalendarService.swift
+      - Kyo/ScheduleStore.swift
+      - Kyo/FakeCalendarService.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests

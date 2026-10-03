@@ -47,7 +47,7 @@ struct TodayView: View {
             )
         )
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
-        _schedule = StateObject(wrappedValue: ScheduleStore(service: CalendarServiceSelection.make()))
+        _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
         self.languageModel = languageModel
     }
 
@@ -167,7 +167,7 @@ struct TodayView: View {
                     case .calendar:
                         CalendarPreviewSheet()
                     case .settings:
-                        SettingsSheet(habitList: habitList)
+                        SettingsSheet(habitList: habitList, schedule: schedule)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:

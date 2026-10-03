@@ -2,7 +2,7 @@ import XCTest
 
 @MainActor
 final class HabitManagerUITests: XCTestCase {
-    func testGearOpensSettingsWithOnlyHabitsAndTheManagerListsEveryHabit() throws {
+    func testGearOpensSettingsWithHabitsAndTheScheduleGroupAndTheManagerListsEveryHabit() throws {
         let app = launchIsolatedApp()
         let calendar = Calendar.current
         let todayIndex = calendar.component(.weekday, from: .now) - 1
@@ -20,7 +20,8 @@ final class HabitManagerUITests: XCTestCase {
 
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
-        XCTAssertEqual(app.cells.count, 1, "Habits is Settings' only entry")
+        XCTAssertTrue(app.buttons["Habits"].exists)
+        XCTAssertTrue(app.switches["Show schedule"].exists, "Settings' other entry is the Schedule group's switch")
         app.buttons["Habits"].tap()
         XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 3))
 

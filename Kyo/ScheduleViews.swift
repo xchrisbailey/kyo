@@ -1,14 +1,25 @@
 import SwiftUI
 
-/// The Schedule section's card content: the Connect line while access is undecided, then Today's
-/// events once it's granted. The other authorization states render nothing yet.
+/// The Schedule section's card content: a prompt line while Kyo can't read the calendars (Connect,
+/// access off, access unavailable), and Today's events once access is granted.
 struct ScheduleSectionContent: View {
     @ObservedObject var schedule: ScheduleStore
 
     var body: some View {
         VStack(spacing: 0) {
             if schedule.showsConnectPrompt {
-                connectLine
+                promptLine(
+                    "See today's events", button: "Connect", buttonID: "schedule-connect",
+                    action: { Task { await schedule.connect() } }
+                )
+            } else if schedule.showsAccessOffLine {
+                promptLine(
+                    "Calendar access is off", button: "Open Settings", buttonID: "schedule-open-settings",
+                    buttonValue: schedule.reportsSettingsRequests && schedule.settingsOpenRequests > 0 ? "Requested" : nil,
+                    action: { schedule.openSettings() }
+                )
+            } else if schedule.showsUnavailableLine {
+                promptLine("Calendar access isn't available")
             } else if schedule.showsNothingScheduled {
                 Text("Nothing scheduled")
                     .font(.body)
@@ -40,23 +51,41 @@ struct ScheduleSectionContent: View {
         }
     }
 
-    private var connectLine: some View {
+    /// A muted line with an optional button and the dismiss control, which turns Show schedule off.
+    private func promptLine(
+        _ text: String, button: String? = nil, buttonID: String = "", buttonValue: String? = nil,
+        action: @escaping () -> Void = {}
+    ) -> some View {
         HStack(spacing: 12) {
-            Text("See today's events")
+            Text(text)
                 .font(.body)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
+            if let button {
+                Button(action: action) {
+                    Text(button)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(KyoPalette.accent)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(buttonValue ?? "")
+                .accessibilityIdentifier(buttonID)
+            }
             Button {
-                Task { await schedule.connect() }
+                schedule.dismissSchedule()
             } label: {
-                Text("Connect")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(KyoPalette.accent)
-                    .frame(minHeight: 44)
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("schedule-connect")
+            .accessibilityLabel("Hide schedule")
+            .accessibilityHint("Turns off Show schedule in Settings")
+            .accessibilityIdentifier("schedule-dismiss")
         }
         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
         .padding(.horizontal, 14)

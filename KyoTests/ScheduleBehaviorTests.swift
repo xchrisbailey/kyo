@@ -81,7 +81,7 @@ final class ScheduleBehaviorTests: XCTestCase {
         XCTAssertEqual(store.timedEvents.map(\.title), ["Standup"])
     }
 
-    func testDecliningTheSystemPromptHidesTheSection() async {
+    func testDecliningTheSystemPromptShowsTheAccessOffLine() async {
         let service = FakeCalendarService(access: .notDetermined, accessAfterRequest: .denied)
         let store = makeStore(service, now: { self.date(8) })
         await store.refresh()
@@ -89,7 +89,8 @@ final class ScheduleBehaviorTests: XCTestCase {
         await store.connect()
 
         XCTAssertEqual(store.access, .denied)
-        XCTAssertFalse(store.showsSection)
+        XCTAssertTrue(store.showsAccessOffLine)
+        XCTAssertFalse(store.showsConnectPrompt)
     }
 
     func testConnectOnlyRequestsWhileUndecided() async {
@@ -103,7 +104,7 @@ final class ScheduleBehaviorTests: XCTestCase {
         XCTAssertEqual(requests, 0)
     }
 
-    func testStatesWithoutReadAccessRenderNothingAndFetchNothing() async {
+    func testStatesWithoutReadAccessShowNoEventsAndFetchNothing() async {
         for access in [CalendarAccess.denied, .restricted, .writeOnly] {
             let service = FakeCalendarService(access: access, events: [timed("Standup", date(9), until: date(10))])
             let store = makeStore(service, now: { self.date(8) })
@@ -111,8 +112,11 @@ final class ScheduleBehaviorTests: XCTestCase {
             await store.refresh()
 
             XCTAssertEqual(store.access, access)
-            XCTAssertFalse(store.showsSection, "\(access)")
+            XCTAssertTrue(store.showsSection, "\(access)")
+            XCTAssertFalse(store.showsEvents, "\(access)")
             XCTAssertTrue(store.events.isEmpty, "\(access)")
+            let fetched = await service.fetchedRanges
+            XCTAssertTrue(fetched.isEmpty, "\(access)")
         }
     }
 
@@ -287,7 +291,7 @@ final class ScheduleBehaviorTests: XCTestCase {
         let service = FakeCalendarService(access: .denied, events: [timed("Standup", date(9), until: date(10))])
         let store = makeStore(service, now: { self.date(8) })
         await store.refresh()
-        XCTAssertFalse(store.showsSection)
+        XCTAssertTrue(store.showsAccessOffLine)
 
         await service.setAccess(.fullAccess)
         await store.refresh()

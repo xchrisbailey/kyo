@@ -23,6 +23,13 @@ struct SettingsSheet: View {
                         set: { schedule.setShowsSchedule($0) }
                     ))
                     .accessibilityHint("Shows today's calendar events on Today")
+                    NavigationLink {
+                        ScheduleCalendarsView(schedule: schedule)
+                    } label: {
+                        Text("Calendars")
+                    }
+                    .disabled(!schedule.showsSchedule)
+                    .accessibilityHint("Chooses which calendars the schedule shows")
                 }
             }
             .listStyle(.insetGrouped)

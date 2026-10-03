@@ -44,14 +44,26 @@ enum CalendarServiceSelection {
 
     private static func fake(named name: String, calendar: Calendar = .current, now: Date = .now) -> FakeCalendarService {
         switch name {
-        case "notDetermined": FakeCalendarService(access: .notDetermined, events: seededDay(calendar: calendar, now: now))
-        case "empty": FakeCalendarService(access: .fullAccess)
+        case "notDetermined":
+            FakeCalendarService(access: .notDetermined, events: seededDay(calendar: calendar, now: now), calendars: seededCalendars)
+        case "empty": FakeCalendarService(access: .fullAccess, calendars: seededCalendars)
         case "denied": FakeCalendarService(access: .denied)
         case "restricted": FakeCalendarService(access: .restricted)
         case "writeOnly": FakeCalendarService(access: .writeOnly)
-        default: FakeCalendarService(access: .fullAccess, events: seededDay(calendar: calendar, now: now))
+        default: FakeCalendarService(access: .fullAccess, events: seededDay(calendar: calendar, now: now), calendars: seededCalendars)
         }
     }
+
+    private static let workColor = ScheduleColor(red: 0.2, green: 0.4, blue: 0.9)
+    private static let personalColor = ScheduleColor(red: 0.9, green: 0.4, blue: 0.2)
+    private static let holidaysColor = ScheduleColor(red: 0.3, green: 0.7, blue: 0.4)
+
+    /// Two accounts and three calendars: iCloud has Work and Personal, Subscribed has Holidays.
+    private static let seededCalendars = [
+        ScheduleCalendar(id: "work", title: "Work", color: workColor, accountTitle: "iCloud", accountType: .calDAV),
+        ScheduleCalendar(id: "personal", title: "Personal", color: personalColor, accountTitle: "iCloud", accountType: .calDAV),
+        ScheduleCalendar(id: "holidays", title: "Holidays", color: holidaysColor, accountTitle: "Subscribed", accountType: .subscribed),
+    ]
 
     /// Two all-day events and three timed ones, given out of order. Two have a location, one short and one long.
     private static func seededDay(calendar: Calendar, now: Date) -> [ScheduleEvent] {
@@ -60,26 +72,25 @@ enum CalendarServiceSelection {
             calendar.date(bySettingHour: hour, minute: minute, second: 0, of: today) ?? today
         }
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
-        let work = ScheduleColor(red: 0.2, green: 0.4, blue: 0.9)
-        let personal = ScheduleColor(red: 0.9, green: 0.4, blue: 0.2)
-        func timed(_ id: String, _ title: String, _ start: Date, hours: Double, calendarTitle: String, color: ScheduleColor, location: String? = nil) -> ScheduleEvent {
+        func timed(_ id: String, _ title: String, _ start: Date, hours: Double, in calendar: ScheduleCalendar, location: String? = nil) -> ScheduleEvent {
             ScheduleEvent(
                 id: ScheduleEventID(eventID: id, occurrenceDate: start), title: title, start: start,
-                end: start.addingTimeInterval(hours * 3600), location: location, calendarID: calendarTitle, calendarTitle: calendarTitle, calendarColor: color
+                end: start.addingTimeInterval(hours * 3600), location: location, calendarID: calendar.id, calendarTitle: calendar.title, calendarColor: calendar.color
             )
         }
-        func allDay(_ id: String, _ title: String) -> ScheduleEvent {
+        func allDay(_ id: String, _ title: String, in calendar: ScheduleCalendar) -> ScheduleEvent {
             ScheduleEvent(
                 id: ScheduleEventID(eventID: id, occurrenceDate: today), title: title, start: today, end: tomorrow,
-                isAllDay: true, calendarID: "Personal", calendarTitle: "Personal", calendarColor: personal
+                isAllDay: true, calendarID: calendar.id, calendarTitle: calendar.title, calendarColor: calendar.color
             )
         }
+        let work = seededCalendars[0], personal = seededCalendars[1], holidays = seededCalendars[2]
         return [
-            timed("lunch", "Lunch", at(12, 30), hours: 1, calendarTitle: "Personal", color: personal, location: "The Corner Cafe, 1200 Long Street Name, Springfield"),
-            allDay("birthday", "Sam's birthday"),
-            timed("review", "Design review", at(10, 0), hours: 1, calendarTitle: "Work", color: work, location: "Room 4"),
-            allDay("holiday", "Holiday"),
-            timed("standup", "Standup", at(9, 30), hours: 0.5, calendarTitle: "Work", color: work),
+            timed("lunch", "Lunch", at(12, 30), hours: 1, in: personal, location: "The Corner Cafe, 1200 Long Street Name, Springfield"),
+            allDay("birthday", "Sam's birthday", in: personal),
+            timed("review", "Design review", at(10, 0), hours: 1, in: work, location: "Room 4"),
+            allDay("holiday", "Holiday", in: holidays),
+            timed("standup", "Standup", at(9, 30), hours: 0.5, in: work),
         ]
     }
 }

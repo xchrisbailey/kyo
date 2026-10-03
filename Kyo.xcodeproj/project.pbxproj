@@ -176,6 +176,7 @@
 		EC41327604FF061FE6EF4C08 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
 		ECFB965AB8B9F854BC22FD9A /* HabitRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAB1FDED2BAFF17283C62172 /* HabitRecord.swift */; };
 		EE836408D030FD492F793072 /* CalendarServiceSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB3F251061AAF830B62563CB /* CalendarServiceSelection.swift */; };
+		EF07848764688B6D9D991405 /* ScheduleAccessBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD08500C13211E7C50D1772 /* ScheduleAccessBehaviorTests.swift */; };
 		EFA580C3E01F24D6A7A28CFB /* VoiceRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */; };
 		EFDF8E4D72CDCBFB1F625A18 /* ScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C2F379BCB2D2C17CB252E8D /* ScheduleStore.swift */; };
 		F166EB5B26B363A2DDDA64F6 /* HabitStreakBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39FCF9C14C37844038380111 /* HabitStreakBehaviorTests.swift */; };
@@ -317,6 +318,7 @@
 		83017F1F6E304A53AB78724B /* AudioRecording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecording.swift; sourceTree = "<group>"; };
 		870CD63ACC9AA3D03D28FC85 /* WatchQuickCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchQuickCapture.swift; sourceTree = "<group>"; };
 		89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoTaskBehaviorTests.swift; sourceTree = "<group>"; };
+		8AD08500C13211E7C50D1772 /* ScheduleAccessBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAccessBehaviorTests.swift; sourceTree = "<group>"; };
 		8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoWatchWidgetsBundle.swift; sourceTree = "<group>"; };
 		8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoSync.swift; sourceTree = "<group>"; };
 		92C13E02E17713E5BC746D47 /* VoiceTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceTranscriber.swift; sourceTree = "<group>"; };
@@ -452,6 +454,7 @@
 				47F5D89897EBF988BF4209DD /* MemoSyncTests.swift */,
 				89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */,
 				9CFCA122DF0277FDE6E428F9 /* QuickCaptureRoutingTests.swift */,
+				8AD08500C13211E7C50D1772 /* ScheduleAccessBehaviorTests.swift */,
 				E6974F2DE46F616F1A9B0F0F /* ScheduleBehaviorTests.swift */,
 				EF7A22E1B36EAB24DFB8F5E8 /* TaskListBehaviorTests.swift */,
 				F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */,
@@ -892,6 +895,7 @@
 				0F5397CEF6471032CBA0A5CE /* OnDeviceLanguageModel.swift in Sources */,
 				8B7690850F12797030A39752 /* QuickCaptureRouter.swift in Sources */,
 				FB4C7C1B43DBD1238B2142FF /* QuickCaptureRoutingTests.swift in Sources */,
+				EF07848764688B6D9D991405 /* ScheduleAccessBehaviorTests.swift in Sources */,
 				3D9AFA010B06B76B8FC3A447 /* ScheduleBehaviorTests.swift in Sources */,
 				BDEB723D8ED0F854C9429C19 /* ScheduleStore.swift in Sources */,
 				03F1B39C5A19187A8DF4CA16 /* TaskContentPersistence.swift in Sources */,

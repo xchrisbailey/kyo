@@ -19,15 +19,14 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(allDay.exists)
         XCTAssertEqual(allDay.label, "All day: Holiday, Sam's birthday")
 
-        // In time order, each as one element: "<time>, <title>, <calendar> calendar".
-        let rows = ["Standup, Work calendar", "Design review, Work calendar", "Lunch, Personal calendar"]
-        let labels = rows.map { suffix in
-            app.descendants(matching: .any).matching(NSPredicate(format: "label ENDSWITH %@", suffix)).firstMatch
-        }
-        for row in labels { XCTAssertTrue(row.exists) }
-        XCTAssertLessThan(labels[0].frame.minY, labels[1].frame.minY)
-        XCTAssertLessThan(labels[1].frame.minY, labels[2].frame.minY)
-        XCTAssertTrue(labels[1].label.contains("10:00"), labels[1].label)
+        // The fake calendar pins the clock to 10:30: Standup has ended, Design review is running.
+        let nowRow = row(app, endingWith: "Design review, Work calendar")
+        let lunch = row(app, endingWith: "Lunch, Personal calendar")
+        XCTAssertTrue(nowRow.exists)
+        XCTAssertTrue(nowRow.label.hasPrefix("Now, "), nowRow.label)
+        XCTAssertTrue(lunch.exists)
+        XCTAssertLessThan(nowRow.frame.minY, lunch.frame.minY)
+        XCTAssertFalse(row(app, endingWith: "Standup, Work calendar, ended").exists)
     }
 
     func testSeededEventsShowWithoutConnecting() throws {
@@ -36,6 +35,47 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["Connect"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["schedule-all-day"].exists)
+    }
+
+    func testExpandingShowsTheEndedEventAndShowLessCollapsesAgain() throws {
+        let app = launchApp(calendar: "full")
+        let more = app.buttons["schedule-more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 3))
+        XCTAssertEqual(more.label, "1 more event")
+        XCTAssertFalse(app.buttons["schedule-show-less"].exists)
+
+        more.tap()
+
+        let standup = row(app, endingWith: "Standup, Work calendar, ended")
+        XCTAssertTrue(standup.waitForExistence(timeout: 3))
+        XCTAssertTrue(standup.label.contains("9:30"), standup.label)
+        XCTAssertTrue(row(app, endingWith: "Design review, Work calendar").exists)
+        XCTAssertTrue(row(app, endingWith: "Lunch, Personal calendar").exists)
+        XCTAssertFalse(more.exists)
+        let showLess = app.buttons["schedule-show-less"]
+        XCTAssertTrue(showLess.exists)
+        // In time order.
+        XCTAssertLessThan(standup.frame.minY, row(app, endingWith: "Design review, Work calendar").frame.minY)
+
+        showLess.tap()
+
+        XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 3))
+        XCTAssertFalse(row(app, endingWith: "Standup, Work calendar, ended").exists)
+        XCTAssertFalse(app.buttons["schedule-show-less"].exists)
+    }
+
+    func testTheExpandedStateIsNotRememberedAcrossLaunches() throws {
+        let app = launchApp(calendar: "full")
+        let more = app.buttons["schedule-more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 3))
+        more.tap()
+        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 3))
+        app.terminate()
+
+        app.launch()
+
+        XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["schedule-show-less"].exists)
     }
 
     func testAnEmptyDayShowsNothingScheduled() throws {
@@ -130,6 +170,10 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Tasks"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.staticTexts["5 events"].exists)
         XCTAssertFalse(app.staticTexts["Schedule"].exists)
+    }
+
+    private func row(_ app: XCUIApplication, endingWith suffix: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label ENDSWITH %@", suffix)).firstMatch
     }
 
     private func launchApp(calendar: String) -> XCUIApplication {

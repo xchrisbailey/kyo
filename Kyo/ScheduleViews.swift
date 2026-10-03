@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The Schedule section's card content: a prompt line while Kyo can't read the calendars (Connect,
-/// access off, access unavailable), and Today's events once access is granted.
+/// access off, access unavailable), and Today's events once access is granted, compact until expanded.
 struct ScheduleSectionContent: View {
     @ObservedObject var schedule: ScheduleStore
 
@@ -39,16 +39,48 @@ struct ScheduleSectionContent: View {
                         .accessibilityIdentifier("schedule-all-day")
                     if !schedule.timedEvents.isEmpty { divider }
                 }
-                ForEach(Array(schedule.timedEvents.enumerated()), id: \.element.id) { index, event in
+                if schedule.showsNothingElseToday {
+                    Text("Nothing else today")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .accessibilityIdentifier("schedule-nothing-else")
+                }
+                ForEach(Array(schedule.visibleRows.enumerated()), id: \.element.id) { index, row in
                     if index > 0 { divider }
-                    ScheduleRow(
-                        event: event,
-                        timeText: schedule.timeText(for: event),
-                        accessibilityLabel: schedule.accessibilityLabel(for: event)
-                    )
+                    ScheduleRow(row: row)
+                }
+                if let more = schedule.moreText, let label = schedule.moreAccessibilityLabel {
+                    divider
+                    toggleLine(more, accessibilityLabel: label, identifier: "schedule-more") {
+                        schedule.expand()
+                    }
+                } else if schedule.showsShowLess {
+                    divider
+                    toggleLine("Show less", accessibilityLabel: "Show less", identifier: "schedule-show-less") {
+                        schedule.collapse()
+                    }
                 }
             }
         }
+        .animation(.default, value: schedule.isExpanded)
+    }
+
+    private func toggleLine(
+        _ title: String, accessibilityLabel: String, identifier: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KyoPalette.accent)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(.horizontal, 14)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(identifier)
     }
 
     /// A muted line with an optional button and the dismiss control, which turns Show schedule off.
@@ -100,29 +132,77 @@ struct ScheduleSectionContent: View {
 }
 
 private struct ScheduleRow: View {
-    let event: ScheduleEvent
-    let timeText: String
-    let accessibilityLabel: String
+    let row: ScheduleRowPresentation
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The width the title and location column is given, and the width the location needs on one line.
+    @State private var textWidth: CGFloat = 0
+    @State private var locationWidth: CGFloat = .infinity
+
+    private var isPast: Bool { row.state == .past }
+    private var color: ScheduleColor { row.event.calendarColor }
 
     var body: some View {
         HStack(spacing: 10) {
             Circle()
-                .fill(Color(.sRGB, red: event.calendarColor.red, green: event.calendarColor.green, blue: event.calendarColor.blue, opacity: event.calendarColor.alpha))
+                .fill(Color(.sRGB, red: color.red, green: color.green, blue: color.blue, opacity: color.alpha))
+                .opacity(isPast ? 0.4 : 1)
                 .frame(width: 9, height: 9)
-            Text(timeText)
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .fixedSize()
-            Text(event.displayTitle)
-                .font(.body)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-            Spacer(minLength: 0)
+            timeLabel
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.event.displayTitle)
+                    .font(.body)
+                    .foregroundStyle(isPast ? .secondary : .primary)
+                    .lineLimit(2)
+                if showsLocation, let location = row.location {
+                    Text(location)
+                        .font(.footnote)
+                        .foregroundStyle(isPast ? .tertiary : .secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
+            .background { locationMeasure }
         }
         .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
         .padding(.horizontal, 14)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(row.accessibilityLabel)
+    }
+
+    /// An invisible copy of the location at its natural one-line width.
+    @ViewBuilder
+    private var locationMeasure: some View {
+        if let location = row.location {
+            Text(location)
+                .font(.footnote)
+                .lineLimit(1)
+                .fixedSize()
+                .hidden()
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { locationWidth = $0 }
+        }
+    }
+
+    @ViewBuilder
+    private var timeLabel: some View {
+        if row.state == .inProgress {
+            Text(row.timeText)
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(KyoPalette.accent)
+                .lineLimit(1)
+                .fixedSize()
+        } else {
+            Text(row.timeText)
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(isPast ? .tertiary : .secondary)
+                .lineLimit(1)
+                .fixedSize()
+        }
+    }
+
+    /// Whether the location is shown: only once measured to fit on one line, and never at
+    /// accessibility sizes. Until it's measured it stays out, so a long one can't widen the row.
+    private var showsLocation: Bool {
+        row.location != nil && !dynamicTypeSize.isAccessibilitySize && locationWidth <= textWidth
     }
 }

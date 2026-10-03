@@ -2,6 +2,26 @@ import Combine
 import Foundation
 import UIKit
 
+/// Where a timed event stands against the clock: it has ended, is running, or is still to come.
+enum ScheduleEventState: Equatable, Sendable {
+    case past
+    case inProgress
+    case upcoming
+}
+
+/// One timed row as the section shows it, derived from the clock so views don't compute any of it.
+struct ScheduleRowPresentation: Identifiable, Equatable {
+    let event: ScheduleEvent
+    let state: ScheduleEventState
+    /// "Now", "Until 9:00 AM", or the start time.
+    let timeText: String
+    let accessibilityLabel: String
+    /// The trimmed location, when there is one. Views decide whether it fits.
+    let location: String?
+
+    var id: ScheduleEventID { event.id }
+}
+
 /// Today's events as the Schedule section shows them. It reads through a `CalendarService`, never
 /// stores events, and keeps the rows as plain data so presentation can be derived from a clock.
 @MainActor
@@ -23,6 +43,15 @@ final class ScheduleStore: ObservableObject {
 
     /// Where the Show schedule switch is stored.
     static let showsScheduleKey = "schedule.showsSchedule"
+
+    /// The clock reading that presentation (Now, past, the collapsed set) is derived from. It moves
+    /// on every refresh and at each event boundary, so views re-render exactly when something changes.
+    @Published private(set) var asOf: Date
+    /// Whether the section shows every event. In memory only: it resets on relaunch and at midnight.
+    @Published private(set) var isExpanded = false
+
+    /// The most in-progress or upcoming timed events the collapsed section shows.
+    static let collapsedLimit = 3
 
     private let service: any CalendarService
     private let now: () -> Date
@@ -54,6 +83,7 @@ final class ScheduleStore: ObservableObject {
         self.openSettingsAction = openSettings
         self.showsSchedule = defaults.object(forKey: Self.showsScheduleKey) as? Bool ?? true
         self.currentDate = calendar.startOfDay(for: now())
+        self.asOf = now()
     }
 
     // MARK: What the section shows
@@ -91,16 +121,18 @@ final class ScheduleStore: ObservableObject {
         }
     }
 
-    /// The event's start time in the device's locale format.
-    func timeText(for event: ScheduleEvent) -> String {
-        event.start.formatted(
+    /// A time of day in the device's locale format.
+    private func formatted(_ date: Date) -> String {
+        date.formatted(
             Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: calendar, timeZone: calendar.timeZone)
         )
     }
 
-    /// "10:00 AM, Design review, Work calendar".
-    func accessibilityLabel(for event: ScheduleEvent) -> String {
-        "\(timeText(for: event)), \(event.displayTitle), \(event.calendarTitle) calendar"
+    /// In progress when it has started and not yet ended, past once it has ended, upcoming otherwise.
+    func state(of event: ScheduleEvent) -> ScheduleEventState {
+        if event.end <= asOf { return .past }
+        if event.start <= asOf { return .inProgress }
+        return .upcoming
     }
 
     // MARK: Show schedule
@@ -117,6 +149,7 @@ final class ScheduleStore: ObservableObject {
             refreshGeneration += 1
             access = nil
             events = []
+            isExpanded = false
         }
     }
 
@@ -134,6 +167,71 @@ final class ScheduleStore: ObservableObject {
         UIApplication.shared.open(url)
     }
 
+    /// "Now" while running, "Until 9:00 AM" for an event that started before Today and has ended,
+    /// otherwise the start time. No countdowns.
+    func timeText(for event: ScheduleEvent) -> String {
+        switch state(of: event) {
+        case .inProgress: "Now"
+        case .past where event.start < currentDate: "Until \(formatted(event.end))"
+        case .past, .upcoming: formatted(event.start)
+        }
+    }
+
+    /// "10:00 AM, Design review, Work calendar", "Now, Design review, Work calendar", and for an
+    /// event that has ended, "9:00 AM, Design review, Work calendar, ended".
+    func accessibilityLabel(for event: ScheduleEvent) -> String {
+        let label = "\(timeText(for: event)), \(event.displayTitle), \(event.calendarTitle) calendar"
+        return state(of: event) == .past ? label + ", ended" : label
+    }
+
+    func presentation(of event: ScheduleEvent) -> ScheduleRowPresentation {
+        let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ScheduleRowPresentation(
+            event: event, state: state(of: event), timeText: timeText(for: event),
+            accessibilityLabel: accessibilityLabel(for: event),
+            location: location?.isEmpty == false ? location : nil
+        )
+    }
+
+    // MARK: Compact and expanded
+
+    /// Every timed event in time order, past ones included.
+    var allTimedRows: [ScheduleRowPresentation] { timedEvents.map(presentation(of:)) }
+
+    /// Up to three timed events that are in progress or still to come, in time order.
+    var collapsedRows: [ScheduleRowPresentation] {
+        Array(allTimedRows.filter { $0.state != .past }.prefix(Self.collapsedLimit))
+    }
+
+    /// The timed rows on screen: the collapsed set, or all of them once expanded.
+    var visibleRows: [ScheduleRowPresentation] { isExpanded ? allTimedRows : collapsedRows }
+
+    /// Timed events the collapsed section leaves out, upcoming and past. The all-day line isn't counted.
+    var hiddenCount: Int { timedEvents.count - collapsedRows.count }
+
+    /// "+3 more" while collapsed with anything hidden, otherwise `nil`.
+    var moreText: String? { !isExpanded && hiddenCount > 0 ? "+\(hiddenCount) more" : nil }
+
+    /// "3 more events" for VoiceOver, since "+3" reads poorly.
+    var moreAccessibilityLabel: String? {
+        guard moreText != nil else { return nil }
+        return hiddenCount == 1 ? "1 more event" : "\(hiddenCount) more events"
+    }
+
+    var showsShowLess: Bool { isExpanded }
+
+    /// Collapsed, with timed events that have all ended: "Nothing else today".
+    var showsNothingElseToday: Bool {
+        showsEvents && !isExpanded && !timedEvents.isEmpty && collapsedRows.isEmpty
+    }
+
+    func expand() {
+        guard hiddenCount > 0 else { return }
+        isExpanded = true
+    }
+
+    func collapse() { isExpanded = false }
+
     // MARK: Reading
 
     /// Re-reads the authorization status and, with full access, Today's events. Does nothing
@@ -142,7 +240,8 @@ final class ScheduleStore: ObservableObject {
         guard showsSchedule else { return }
         refreshGeneration += 1
         let generation = refreshGeneration
-        let today = calendar.startOfDay(for: now())
+        let clock = now()
+        let today = calendar.startOfDay(for: clock)
         let status = await service.authorizationStatus()
         var fetched: [ScheduleEvent] = []
         if status == .fullAccess, let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) {
@@ -150,8 +249,12 @@ final class ScheduleStore: ObservableObject {
         }
         guard generation == refreshGeneration else { return }
         access = status
+        // A new day starts collapsed.
+        if today != currentDate { isExpanded = false }
         currentDate = today
+        asOf = clock
         events = Self.sorted(fetched)
+        collapseIfNothingIsHidden()
     }
 
     /// Asks for full access, which shows the system prompt only while it's undecided.
@@ -181,6 +284,41 @@ final class ScheduleStore: ObservableObject {
                 return
             }
         }
+    }
+
+    /// Moves presentation forward at every event start and end while Today is on screen, until
+    /// cancelled. It ignores boundaries after Today; the day-boundary loop covers midnight.
+    func advanceAtEventBoundaries() async {
+        while !Task.isCancelled {
+            updateClock()
+            guard let next = nextEventBoundary else { return }
+            do {
+                try await sleep(max(1, next.timeIntervalSince(now())))
+            } catch {
+                return
+            }
+        }
+    }
+
+    /// Re-reads the clock for presentation without re-reading events.
+    func updateClock() {
+        let clock = now()
+        if clock != asOf { asOf = clock }
+        collapseIfNothingIsHidden()
+    }
+
+    /// The next time a timed event starts or ends after `asOf`, within Today.
+    var nextEventBoundary: Date? {
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: currentDate) else { return nil }
+        return timedEvents
+            .flatMap { [$0.start, $0.end] }
+            .filter { $0 > asOf && $0 < tomorrow }
+            .min()
+    }
+
+    /// With nothing hidden there's no "Show less" row to leave, so don't stay expanded.
+    private func collapseIfNothingIsHidden() {
+        if isExpanded && hiddenCount == 0 { isExpanded = false }
     }
 
     private static func sorted(_ events: [ScheduleEvent]) -> [ScheduleEvent] {

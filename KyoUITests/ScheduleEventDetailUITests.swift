@@ -19,6 +19,28 @@ final class ScheduleEventDetailUITests: XCTestCase {
         XCTAssertTrue(row.exists)
     }
 
+    func testTappingAnEndedRowAfterExpandingOpensItsDetails() throws {
+        // The fake calendar's clock is 10:30, so Standup has ended and only shows once expanded.
+        let app = launchApp()
+        let more = app.buttons["schedule-more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Standup")).firstMatch.exists)
+        more.tap()
+
+        let row = app.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Standup, Work calendar, ended")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        row.tap()
+
+        let title = app.descendants(matching: .any)["event-detail-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 3))
+        XCTAssertEqual(title.label, "Standup")
+        XCTAssertTrue(app.descendants(matching: .any)["event-detail-time"].label.contains("9:30"))
+
+        app.buttons["event-detail-done"].tap()
+        XCTAssertTrue(waitForDisappearance(of: title))
+        XCTAssertTrue(app.buttons["schedule-show-less"].exists, "the section stays expanded")
+    }
+
     func testTappingTheAllDayLineListsTheEventsAndChoosingOneShowsItsDetails() throws {
         let app = launchApp()
 

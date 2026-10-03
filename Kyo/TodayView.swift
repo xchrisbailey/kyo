@@ -253,6 +253,10 @@ struct TodayView: View {
         .task {
             await schedule.observeChanges()
         }
+        // Now and the collapsed set move at each event's start and end; a changed event list reschedules.
+        .task(id: schedule.events) {
+            await schedule.advanceAtEventBoundaries()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()

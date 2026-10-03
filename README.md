@@ -39,3 +39,15 @@ applied and acknowledged.
 To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a
 paired device), install both apps, launch the Watch app, then run the `KyoUITests` target with
 `KYO_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).
+
+## TestFlight
+
+Every push to `main` runs `.github/workflows/testflight.yml`, which archives the `Kyo` scheme (with the Watch app and widgets), signs it with Xcode automatic signing, and uploads it to TestFlight. It can also be started by hand from the Actions tab (`workflow_dispatch`). The build number is the workflow run number; the marketing version comes from `project.yml`.
+
+Signing uses an App Store Connect API key, so no certificates or provisioning profiles are stored. Add these repository secrets to turn it on:
+
+- `ASC_KEY_ID`: the key's ID.
+- `ASC_ISSUER_ID`: the issuer ID shown above the keys list in App Store Connect.
+- `ASC_KEY_P8`: the full contents of the downloaded `.p8` file.
+
+Until all three exist, the job skips itself with a notice and the push stays green. The app record for `computer.srcery.kyo` must already exist in App Store Connect. If a run fails, the `xcodebuild-logs` artifact holds the archive and export logs.

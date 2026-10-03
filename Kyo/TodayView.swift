@@ -6,6 +6,7 @@ struct TodayView: View {
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
+    @StateObject private var schedule: ScheduleStore
     private let languageModel: any OnDeviceLanguageModel
     /// Where **Record memo** and **Write memo** (controls, Siri, Shortcuts) land.
     @ObservedObject private var quickCapture: QuickCaptureRouter
@@ -45,6 +46,8 @@ struct TodayView: View {
                 watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
             )
         )
+        // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
+        _schedule = StateObject(wrappedValue: ScheduleStore(service: CalendarServiceSelection.make()))
         self.languageModel = languageModel
     }
 
@@ -55,6 +58,11 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         header
                         summaryStats
+                        if schedule.showsSection {
+                            TodaySection(title: "Schedule", note: schedule.sectionNote) {
+                                ScheduleSectionContent(schedule: schedule)
+                            }
+                        }
                         TodaySection(title: "Tasks", note: "For today") {
                             VStack(spacing: 0) {
                                 if taskList.tasks.isEmpty && !isShowingTaskDraft {
@@ -238,11 +246,19 @@ struct TodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await memoStore.refreshAtEachDayBoundary()
         }
+        // Also covers a day rollover, a time zone change and a clock change, which bump the token.
+        .task(id: dayBoundaryRefreshToken) {
+            await schedule.refreshAtEachDayBoundary()
+        }
+        .task {
+            await schedule.observeChanges()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
                 memoStore.refreshForCurrentDay()
+                Task { await schedule.refresh() }
                 // The speech model may have been installed while Kyo was in the background.
                 memoStore.retryTranscriptionsWaitingForModel()
             }
@@ -632,7 +648,7 @@ private struct SummaryStat: View {
     }
 }
 
-private struct TodaySection<Content: View>: View {
+struct TodaySection<Content: View>: View {
     let title: String
     let note: String
     /// A link at the right of the header, such as **See all**.

@@ -63,3 +63,11 @@ _Avoid_: Archive, past memos
 **Suggested task**:
 A task the on-device AI proposes from a memo; it isn't a task until the user adds it to Today.
 _Avoid_: Action item, AI task
+
+**Event**:
+Something on the user's calendars that falls on Today; Kyo reads it from the device's calendars and never stores or changes it.
+_Avoid_: Appointment, meeting, calendar item
+
+**Schedule**:
+Today's events as Kyo shows them, in a compact section at the top of Today.
+_Avoid_: Agenda, events list, calendar

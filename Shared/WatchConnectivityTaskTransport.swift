@@ -20,7 +20,7 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     nonisolated static let habitCommandKey = "kyo.habitCommand"
 
     private let session: WCSession?
-    private let logger = Logger(subsystem: "com.example.kyo", category: "watch-sync")
+    private let logger = Logger(subsystem: "computer.srcery.kyo", category: "watch-sync")
     /// Latest encoded payload per context key. `updateApplicationContext` replaces the whole
     /// dictionary, so all keys are always written together.
     private var outgoingContext = ApplicationContextEntries()

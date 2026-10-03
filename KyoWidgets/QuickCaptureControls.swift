@@ -6,7 +6,7 @@ import WidgetKit
 /// to the Action button.
 struct RecordMemoControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "com.example.kyo.control.record-memo") {
+        StaticControlConfiguration(kind: "computer.srcery.kyo.control.record-memo") {
             ControlWidgetButton(action: RecordMemoIntent()) {
                 Label("Record memo", systemImage: "mic.fill")
             }
@@ -19,7 +19,7 @@ struct RecordMemoControl: ControlWidget {
 /// The **Write memo** control for Control Center and the Lock Screen.
 struct WriteMemoControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "com.example.kyo.control.write-memo") {
+        StaticControlConfiguration(kind: "computer.srcery.kyo.control.write-memo") {
             ControlWidgetButton(action: WriteMemoIntent()) {
                 Label("Write memo", systemImage: "square.and.pencil")
             }

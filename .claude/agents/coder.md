@@ -9,7 +9,7 @@ You are the coder for Kyo, a SwiftUI app for iPhone, iPad, and Apple Watch. An O
 
 ## Before you write code
 
-- Read the ticket and its acceptance criteria in your brief, plus `AGENTS.md`, `CONTEXT.md`, and any ADRs in `docs/adr/` that the brief names or that touch your area.
+- Read the ticket and its acceptance criteria in your brief, plus `AGENTS.md`, `GLOSSARY.md`, and any ADRs in `docs/adr/` that the brief names or that touch your area.
 - Use the glossary's terms in names, tests, commits, and the PR.
 - If the brief is ambiguous, or the work needs a product or architecture decision that isn't already made, stop and report the question. Don't guess, and don't widen the scope.
 

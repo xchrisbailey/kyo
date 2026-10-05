@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The Schedule section's card content: a prompt line while Kyo can't read the calendars (Connect,
-/// access off, access unavailable), and Today's events once access is granted, compact until expanded.
+/// access off, access unavailable), and Today's events once access is granted, compact until the user shows more.
 struct ScheduleSectionContent: View {
     @ObservedObject var schedule: ScheduleStore
 
@@ -62,17 +62,17 @@ struct ScheduleSectionContent: View {
                 if let more = schedule.moreText, let label = schedule.moreAccessibilityLabel {
                     divider
                     toggleLine(more, accessibilityLabel: label, identifier: "schedule-more") {
-                        schedule.expand()
+                        schedule.showMore()
                     }
                 } else if schedule.showsShowLess {
                     divider
                     toggleLine("Show less", accessibilityLabel: "Show less", identifier: "schedule-show-less") {
-                        schedule.collapse()
+                        schedule.showLess()
                     }
                 }
             }
         }
-        .animation(.default, value: schedule.isExpanded)
+        .animation(.default, value: schedule.isShowingMore)
         // The details of a timed row or a lone all-day event. Opened from the all-day list, they
         // show on top of that list instead.
         .sheet(item: Binding(

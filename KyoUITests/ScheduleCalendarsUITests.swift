@@ -6,7 +6,7 @@ final class ScheduleCalendarsUITests: XCTestCase {
         let app = launchApp(calendar: "full")
         XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
         let workRows = NSPredicate(format: "label ENDSWITH %@", "Work calendar")
-        // With the clock pinned to 10:30 the collapsed list leaves out the ended Standup.
+        // With the clock pinned to 10:30 the compact list leaves out the ended Standup.
         XCTAssertEqual(app.descendants(matching: .any).matching(workRows).count, 1)
 
         openCalendars(in: app)

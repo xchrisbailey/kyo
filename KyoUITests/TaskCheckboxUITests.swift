@@ -102,12 +102,20 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertTrue(delete.exists)
         XCTAssertLessThan(share.frame.minY, delete.frame.minY)
 
-        // Share opens the system share sheet; cancelling it leaves the Task unchanged.
+        // Share opens the system share sheet; cancelling it leaves the Task unchanged. The sheet is
+        // system UI with no public accessibility identifier, so "ActivityListView" is its internal
+        // one. It is closed with its close button on iPhone; the iPad popover has none, so the test taps
+        // the popover's dismiss region, again an internal identifier.
+        // What the sheet receives is covered by TaskShareBehaviorTests.
         share.tap()
         let sheet = app.otherElements["ActivityListView"]
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts[title].exists || app.otherElements[title].exists)
-        app.otherElements["PopoverDismissRegion"].tap()
+        let close = app.buttons.matching(NSPredicate(format: "label ==[c] %@", "close")).firstMatch
+        if close.waitForExistence(timeout: 3) {
+            close.tap()
+        } else {
+            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
+        }
         let dismissal = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)
         XCTAssertEqual(XCTWaiter.wait(for: [dismissal], timeout: 5), .completed)
         assertCheckboxValue(app.buttons[title], equals: "Completed")

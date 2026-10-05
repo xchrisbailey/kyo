@@ -957,7 +957,7 @@ private struct TaskRow: View {
     @State private var isEditing = false
     @State private var draft = ""
     @State private var isDeleteRevealed = false
-    @State private var sharePayload: TaskSharePayload?
+    @State private var shareItems: ShareItems?
     @FocusState private var isEditorFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
 
@@ -997,10 +997,15 @@ private struct TaskRow: View {
             }
         }
         .clipped()
-        .background(TaskShareAnchor(payload: $sharePayload))
         .contextMenu {
             Button("Share", systemImage: "square.and.arrow.up", action: share)
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+        }
+        // A popover anchored to the row on iPad; a sheet on iPhone.
+        .popover(item: $shareItems) { items in
+            ShareSheet(items: items) { shareItems = nil }
+                .presentationDetents([.medium, .large])
+                .presentationCompactAdaptation(.sheet)
         }
         .onChange(of: isEditing) { _, editing in
             if editing {
@@ -1090,7 +1095,7 @@ private struct TaskRow: View {
 
     /// Opens the share sheet with the Task's saved text, leaving any inline edit as it is.
     private func share() {
-        sharePayload = TaskSharePayload.make(for: task)
+        shareItems = ShareItems(TaskSharePayload.make(for: task))
     }
 }
 

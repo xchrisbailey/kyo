@@ -6,7 +6,7 @@ final class MemoUITests: XCTestCase {
         let app = launchIsolatedApp()
 
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Notes & voice"].exists)
+        XCTAssertTrue(app.buttons["Memos, Notes & voice"].exists)
 
         app.buttons["Add an item"].tap()
         XCTAssertTrue(app.buttons["Written memo"].waitForExistence(timeout: 3))
@@ -27,7 +27,7 @@ final class MemoUITests: XCTestCase {
 
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["1 memo"].exists)
+        XCTAssertTrue(app.buttons["Memos, 1 memo"].exists)
         XCTAssertFalse(app.staticTexts["Tap + to add a memo"].exists)
 
         row.tap()
@@ -44,7 +44,7 @@ final class MemoUITests: XCTestCase {
         edited.press(forDuration: 1)
         app.buttons["Delete"].tap()
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Notes & voice"].exists)
+        XCTAssertTrue(app.buttons["Memos, Notes & voice"].exists)
     }
 
     func testSavingAnEmptyMemoDiscardsItAndEmptyingAnOpenMemoDiscardsItOnClose() throws {

@@ -4,7 +4,7 @@ import XCTest
 final class ScheduleCalendarsUITests: XCTestCase {
     func testUncheckingACalendarHidesItsEventsFromToday() throws {
         let app = launchApp(calendar: "full")
-        XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
         let workRows = NSPredicate(format: "label ENDSWITH %@", "Work calendar")
         // With the clock pinned to 10:30 the compact list leaves out the ended Standup.
         XCTAssertEqual(app.descendants(matching: .any).matching(workRows).count, 1)
@@ -27,7 +27,7 @@ final class ScheduleCalendarsUITests: XCTestCase {
         app.navigationBars.buttons["Settings"].tap()
         app.buttons["Done"].tap()
 
-        XCTAssertTrue(app.staticTexts["3 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 3 events"].waitForExistence(timeout: 3))
         XCTAssertEqual(app.descendants(matching: .any).matching(workRows).count, 0)
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label ENDSWITH %@", "Personal calendar")).firstMatch.exists)
     }
@@ -43,13 +43,13 @@ final class ScheduleCalendarsUITests: XCTestCase {
         app.navigationBars.buttons["Settings"].tap()
         app.buttons["Done"].tap()
 
-        XCTAssertTrue(app.staticTexts["4 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 4 events"].waitForExistence(timeout: 3))
         XCTAssertEqual(allDay.label, "All day: Sam's birthday")
     }
 
     func testTheCalendarsRowIsDisabledWhileShowScheduleIsOff() throws {
         let app = launchApp(calendar: "full")
-        XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
         app.buttons["Settings"].tap()
         let showSchedule = app.switches["Show schedule"]
         XCTAssertTrue(showSchedule.waitForExistence(timeout: 3))

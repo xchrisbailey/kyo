@@ -123,7 +123,7 @@ targets:
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Kyo records your voice memos with the microphone.
-        # WKBackgroundModes isn't an INFOPLIST_KEY_ setting, so the audio background mode (recording
+        # UIBackgroundModes isn't an INFOPLIST_KEY_ setting, so the audio background mode (recording
         # keeps going when the wrist is lowered) comes from this partial plist, which Xcode merges
         # with the generated Info.plist.
         INFOPLIST_FILE: Config/KyoWatch-Info.plist

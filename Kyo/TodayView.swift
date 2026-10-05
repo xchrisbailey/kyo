@@ -7,6 +7,8 @@ struct TodayView: View {
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
     @StateObject private var schedule: ScheduleStore
+    /// Which sections are collapsed, kept on this device.
+    @StateObject private var sections: CollapsedSections
     private let languageModel: any OnDeviceLanguageModel
     /// Where **Record memo** and **Write memo** (controls, Siri, Shortcuts) land.
     @ObservedObject private var quickCapture: QuickCaptureRouter
@@ -48,6 +50,7 @@ struct TodayView: View {
         )
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
+        _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
         self.languageModel = languageModel
     }
 
@@ -59,11 +62,11 @@ struct TodayView: View {
                         header
                         summaryStats
                         if schedule.showsSection {
-                            TodaySection(title: "Schedule", note: schedule.sectionNote) {
+                            TodaySection(title: "Schedule", note: schedule.sectionNote, section: .schedule, sections: sections) {
                                 ScheduleSectionContent(schedule: schedule)
                             }
                         }
-                        TodaySection(title: "Tasks", note: "For today") {
+                        TodaySection(title: "Tasks", note: "For today", section: .tasks, sections: sections) {
                             VStack(spacing: 0) {
                                 if taskList.tasks.isEmpty && !isShowingTaskDraft {
                                     Text("No tasks yet")
@@ -88,7 +91,7 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        TodaySection(title: "Habits", note: "Small steps, daily") {
+                        TodaySection(title: "Habits", note: "Small steps, daily", section: .habits, sections: sections) {
                             VStack(spacing: 0) {
                                 if habitList.habits.isEmpty {
                                     VStack(alignment: .leading, spacing: 3) {
@@ -122,6 +125,8 @@ struct TodayView: View {
                         TodaySection(
                             title: "Memos",
                             note: memoStore.sectionSubtitle,
+                            section: .memos,
+                            sections: sections,
                             linkTitle: memoStore.hasMemos ? "See all" : nil,
                             linkAction: { activeSheet = .allMemos }
                         ) {
@@ -405,6 +410,7 @@ struct TodayView: View {
     }
 
     private func beginTaskDraft() {
+        sections.startTaskDraft()
         if !isShowingTaskDraft {
             taskDraft = ""
             isShowingTaskDraft = true
@@ -655,32 +661,47 @@ private struct SummaryStat: View {
 struct TodaySection<Content: View>: View {
     let title: String
     let note: String
-    /// A link at the right of the header, such as **See all**.
+    let section: TodaySectionID
+    @ObservedObject var sections: CollapsedSections
+    /// A link at the right of the header, such as **See all**. It stays when the section is collapsed.
     var linkTitle: String?
     var linkAction: () -> Void = {}
     @ViewBuilder let content: Content
 
+    private var isCollapsed: Bool { sections.isCollapsed(section) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    HStack(spacing: 7) {
-                        Text(title)
-                            .font(.title3.weight(.semibold))
-                            .tracking(-0.4)
-                            .foregroundStyle(.primary)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
+                Button {
+                    withAnimation { sections.toggle(section) }
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        HStack(spacing: 7) {
+                            Text(title)
+                                .font(.title3.weight(.semibold))
+                                .tracking(-0.4)
+                                .foregroundStyle(.primary)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                        }
+                        Spacer(minLength: 8)
+                        Text(note)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
+                            .multilineTextAlignment(.trailing)
                     }
-                    Spacer(minLength: 8)
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: .infinity, minHeight: 51)
+                    .contentShape(Rectangle())
                 }
-                .accessibilityElement(children: .combine)
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(title), \(note)")
+                .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("section-header-\(title)")
                 if let linkTitle {
                     Button(action: linkAction) {
                         Text(linkTitle)
@@ -695,10 +716,12 @@ struct TodaySection<Content: View>: View {
             }
             .frame(minHeight: 51)
 
-            content
-                .background(cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .accessibilityElement(children: .contain)
+            if !isCollapsed {
+                content
+                    .background(cardBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .accessibilityElement(children: .contain)
+            }
         }
     }
 

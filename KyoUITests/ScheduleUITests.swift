@@ -6,12 +6,12 @@ final class ScheduleUITests: XCTestCase {
         let app = launchApp(calendar: "notDetermined")
 
         XCTAssertTrue(app.staticTexts["See today's events"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Calendar"].exists)
+        XCTAssertTrue(app.buttons["Schedule, Calendar"].exists)
         let connect = app.buttons["Connect"]
         XCTAssertTrue(connect.exists)
         connect.tap()
 
-        XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.staticTexts["See today's events"].exists)
         XCTAssertFalse(app.buttons["Connect"].exists)
 
@@ -32,7 +32,7 @@ final class ScheduleUITests: XCTestCase {
     func testSeededEventsShowWithoutConnecting() throws {
         let app = launchApp(calendar: "full")
 
-        XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["Connect"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["schedule-all-day"].exists)
     }
@@ -82,7 +82,7 @@ final class ScheduleUITests: XCTestCase {
         let app = launchApp(calendar: "empty")
 
         XCTAssertTrue(app.staticTexts["Nothing scheduled"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Calendar"].exists)
+        XCTAssertTrue(app.buttons["Schedule, Calendar"].exists)
         // The summary stats are unchanged.
         XCTAssertTrue(app.descendants(matching: .any)["task-count-summary"].exists)
     }
@@ -157,7 +157,7 @@ final class ScheduleUITests: XCTestCase {
 
     func testShowScheduleIsOnByDefaultAndTurningItOffFromSettingsHidesTheSection() throws {
         let app = launchApp(calendar: "full")
-        XCTAssertTrue(app.staticTexts["5 events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
 
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
@@ -168,7 +168,7 @@ final class ScheduleUITests: XCTestCase {
         app.buttons["Done"].tap()
 
         XCTAssertTrue(app.staticTexts["Tasks"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.staticTexts["5 events"].exists)
+        XCTAssertFalse(app.buttons["Schedule, 5 events"].exists)
         XCTAssertFalse(app.staticTexts["Schedule"].exists)
     }
 

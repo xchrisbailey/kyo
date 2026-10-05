@@ -957,6 +957,7 @@ private struct TaskRow: View {
     @State private var isEditing = false
     @State private var draft = ""
     @State private var isDeleteRevealed = false
+    @State private var sharePayload: TaskSharePayload?
     @FocusState private var isEditorFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
 
@@ -996,6 +997,11 @@ private struct TaskRow: View {
             }
         }
         .clipped()
+        .background(TaskShareAnchor(payload: $sharePayload))
+        .contextMenu {
+            Button("Share", systemImage: "square.and.arrow.up", action: share)
+            Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+        }
         .onChange(of: isEditing) { _, editing in
             if editing {
                 draft = task.text
@@ -1020,6 +1026,7 @@ private struct TaskRow: View {
             .accessibilityLabel(task.text)
             .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
             .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
+            .accessibilityAction(named: "Share", share)
 
             if isEditing {
                 TextField("Edit task", text: $draft)
@@ -1030,6 +1037,7 @@ private struct TaskRow: View {
                     .onSubmit(saveEdit)
                     .accessibilityLabel("Edit task")
                     .accessibilityIdentifier("task-editor:\(task.text)")
+                    .accessibilityAction(named: "Share", share)
             } else {
                 Button {
                     isEditing = true
@@ -1045,6 +1053,7 @@ private struct TaskRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Edit task: \(task.text)")
                 .accessibilityHint("Edits this task")
+                .accessibilityAction(named: "Share", share)
             }
         }
         .padding(.vertical, 12)
@@ -1077,6 +1086,11 @@ private struct TaskRow: View {
     private func saveEdit() {
         guard onEdit(draft) else { return }
         isEditing = false
+    }
+
+    /// Opens the share sheet with the Task's saved text, leaving any inline edit as it is.
+    private func share() {
+        sharePayload = TaskSharePayload.make(for: task)
     }
 }
 

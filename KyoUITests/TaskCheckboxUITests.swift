@@ -85,6 +85,34 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [deletionExpectation], timeout: 3), .completed)
     }
 
+    func testLongPressingATaskRowOffersShareThenDeleteAndShareLeavesTheTaskAsItWas() throws {
+        let app = XCUIApplication()
+        launchIsolatedApp(app)
+
+        let title = "Shareable task \(String(UUID().uuidString.prefix(8)))"
+        addTask(title, to: app)
+        app.buttons[title].tap()
+        assertCheckboxValue(app.buttons[title], equals: "Completed")
+
+        // A completed Task gets the same menu: Share, then Delete.
+        app.buttons["Edit task: \(title)"].press(forDuration: 1.0)
+        let share = app.buttons["Share"]
+        let delete = app.buttons["Delete"]
+        XCTAssertTrue(share.waitForExistence(timeout: 3))
+        XCTAssertTrue(delete.exists)
+        XCTAssertLessThan(share.frame.minY, delete.frame.minY)
+
+        // Share opens the system share sheet; cancelling it leaves the Task unchanged.
+        share.tap()
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[title].exists || app.otherElements[title].exists)
+        app.otherElements["PopoverDismissRegion"].tap()
+        let dismissal = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: sheet)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissal], timeout: 5), .completed)
+        assertCheckboxValue(app.buttons[title], equals: "Completed")
+    }
+
     func testAddingAndCheckingOffAHabit() throws {
         let app = XCUIApplication()
         launchIsolatedApp(app)

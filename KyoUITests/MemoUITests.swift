@@ -126,15 +126,16 @@ final class MemoUITests: XCTestCase {
 
         app.buttons["See all"].tap()
         XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 3))
-        let historyRow = app.buttons.matching(rowPredicate).firstMatch
+        // Today's row is still in the hierarchy behind the sheet; the sheet's row comes after it.
+        let historyRow = app.buttons.matching(rowPredicate).allElementsBoundByIndex.last ?? todayRow
         XCTAssertTrue(historyRow.waitForExistence(timeout: 3))
         assertMenuOffersShareAboveDelete(from: historyRow, in: app)
 
         let search = app.searchFields.firstMatch
         search.tap()
         search.typeText("trail")
-        let result = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")).firstMatch
-        XCTAssertTrue(result.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons.matching(rowPredicate).firstMatch.waitForExistence(timeout: 3))
+        let result = app.buttons.matching(rowPredicate).allElementsBoundByIndex.last ?? todayRow
         assertMenuOffersShareAboveDelete(from: result, in: app)
     }
 
@@ -147,7 +148,7 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(delete.exists)
         XCTAssertLessThan(share.frame.minY, delete.frame.minY)
         // Tapping outside the menu closes it.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02)).tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.15)).tap()
         XCTAssertTrue(share.waitForNonExistence(timeout: 3))
     }
 

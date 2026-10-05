@@ -52,6 +52,9 @@ protocol TaskListBehavior: AnyObject {
     var taskCount: Int { get }
     var completedCount: Int { get }
     var incompleteCount: Int { get }
+    /// What a collapsed Tasks header shows: "2 of 5 done" for Today's tasks (carried-forward
+    /// ones included), "No tasks" when Today has none.
+    var collapsedSummary: String { get }
     @discardableResult func addTask(text: String) -> DailyTask?
     @discardableResult func editTask(id: UUID, text: String) -> DailyTask?
     @discardableResult func deleteTask(id: UUID) -> DailyTask?
@@ -102,6 +105,10 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     var taskCount: Int { tasks.count }
     var completedCount: Int { tasks.filter(\.isComplete).count }
     var incompleteCount: Int { taskCount - completedCount }
+
+    var collapsedSummary: String {
+        taskCount == 0 ? "No tasks" : "\(completedCount) of \(taskCount) done"
+    }
 
     /// A `.publish` or standalone (nil sync) store keeps its content in `modelContainer`, which
     /// it requires; a `.mirror` store ignores the container and keeps UserDefaults. Revision,

@@ -368,6 +368,9 @@ protocol HabitListBehavior: AnyObject {
     var todayCount: Int { get }
     /// Habits in the done group (the numerator of the "Habits done" summary).
     var doneCount: Int { get }
+    /// What a collapsed Habits header shows: "1 of 3 done" for the habits on Today's list,
+    /// "No habits" when none exist, "Nothing due today" when none are due.
+    var collapsedSummary: String { get }
     /// Adds a habit at the end of the manager's order. Returns `nil` for a blank name or an
     /// invalid schedule (no weekdays, or a weekly target outside 1...6).
     @discardableResult func addHabit(name: String, schedule: HabitSchedule) -> Habit?
@@ -431,6 +434,12 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
 
     var todayCount: Int { todayHabits.count }
     var doneCount: Int { todayHabits.filter(\.isDone).count }
+
+    var collapsedSummary: String {
+        if habits.isEmpty { return "No habits" }
+        if todayHabits.isEmpty { return "Nothing due today" }
+        return "\(doneCount) of \(todayCount) done"
+    }
 
     /// Whether this store has habits to show. Always true unless it mirrors the phone (Watch)
     /// and no habit snapshot was ever applied.

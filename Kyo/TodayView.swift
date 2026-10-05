@@ -66,7 +66,13 @@ struct TodayView: View {
                                 ScheduleSectionContent(schedule: schedule)
                             }
                         }
-                        TodaySection(title: "Tasks", note: "For today", section: .tasks, sections: sections) {
+                        TodaySection(
+                            title: "Tasks",
+                            note: "For today",
+                            collapsedNote: taskList.collapsedSummary,
+                            section: .tasks,
+                            sections: sections
+                        ) {
                             VStack(spacing: 0) {
                                 if taskList.tasks.isEmpty && !isShowingTaskDraft {
                                     Text("No tasks yet")
@@ -91,7 +97,13 @@ struct TodayView: View {
                                 }
                             }
                         }
-                        TodaySection(title: "Habits", note: "Small steps, daily", section: .habits, sections: sections) {
+                        TodaySection(
+                            title: "Habits",
+                            note: "Small steps, daily",
+                            collapsedNote: habitList.collapsedSummary,
+                            section: .habits,
+                            sections: sections
+                        ) {
                             VStack(spacing: 0) {
                                 if habitList.habits.isEmpty {
                                     VStack(alignment: .leading, spacing: 3) {
@@ -661,6 +673,8 @@ private struct SummaryStat: View {
 struct TodaySection<Content: View>: View {
     let title: String
     let note: String
+    /// Shown in place of `note` while the section is collapsed, such as "2 of 5 done".
+    var collapsedNote: String?
     let section: TodaySectionID
     @ObservedObject var sections: CollapsedSections
     /// A link at the right of the header, such as **See all**. It stays when the section is collapsed.
@@ -669,6 +683,7 @@ struct TodaySection<Content: View>: View {
     @ViewBuilder let content: Content
 
     private var isCollapsed: Bool { sections.isCollapsed(section) }
+    private var shownNote: String { isCollapsed ? (collapsedNote ?? note) : note }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -688,7 +703,7 @@ struct TodaySection<Content: View>: View {
                                 .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                         }
                         Spacer(minLength: 8)
-                        Text(note)
+                        Text(shownNote)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.trailing)
@@ -698,7 +713,7 @@ struct TodaySection<Content: View>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(title), \(note)")
+                .accessibilityLabel("\(title), \(shownNote)")
                 .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
                 .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("section-header-\(title)")

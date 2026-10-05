@@ -51,14 +51,14 @@ final class ScheduleStore: ObservableObject {
     /// Where the hidden calendar ids are stored, as an array of strings.
     static let hiddenCalendarIDsKey = "schedule.hiddenCalendarIDs"
 
-    /// The clock reading that presentation (Now, past, the collapsed set) is derived from. It moves
+    /// The clock reading that presentation (Now, past, the compact set) is derived from. It moves
     /// on every refresh and at each event boundary, so views re-render exactly when something changes.
     @Published private(set) var asOf: Date
     /// Whether the section shows every event. In memory only: it resets on relaunch and at midnight.
-    @Published private(set) var isExpanded = false
+    @Published private(set) var isShowingMore = false
 
-    /// The most in-progress or upcoming timed events the collapsed section shows.
-    static let collapsedLimit = 3
+    /// The most in-progress or upcoming timed events the compact section shows.
+    static let compactLimit = 3
 
     /// The event whose details are on screen, if any.
     @Published private(set) var presentedDetail: PresentedEventDetail?
@@ -175,7 +175,7 @@ final class ScheduleStore: ObservableObject {
         defaults.set(hidden.sorted(), forKey: Self.hiddenCalendarIDsKey)
         // The list updates before the refetch lands.
         events = Self.sorted(visibleEvents(fetchedEvents))
-        collapseIfNothingIsHidden()
+        showLessIfNothingIsHidden()
         Task { await refresh() }
     }
 
@@ -204,7 +204,7 @@ final class ScheduleStore: ObservableObject {
             refreshGeneration += 1
             access = nil
             events = []
-            isExpanded = false
+            isShowingMore = false
             fetchedEvents = []
             calendars = []
         }
@@ -250,24 +250,24 @@ final class ScheduleStore: ObservableObject {
         )
     }
 
-    // MARK: Compact and expanded
+    // MARK: Compact and showing more
 
     /// Every timed event in time order, past ones included.
     var allTimedRows: [ScheduleRowPresentation] { timedEvents.map(presentation(of:)) }
 
     /// Up to three timed events that are in progress or still to come, in time order.
-    var collapsedRows: [ScheduleRowPresentation] {
-        Array(allTimedRows.filter { $0.state != .past }.prefix(Self.collapsedLimit))
+    var compactRows: [ScheduleRowPresentation] {
+        Array(allTimedRows.filter { $0.state != .past }.prefix(Self.compactLimit))
     }
 
-    /// The timed rows on screen: the collapsed set, or all of them once expanded.
-    var visibleRows: [ScheduleRowPresentation] { isExpanded ? allTimedRows : collapsedRows }
+    /// The timed rows on screen: the compact set, or all of them once showing more.
+    var visibleRows: [ScheduleRowPresentation] { isShowingMore ? allTimedRows : compactRows }
 
-    /// Timed events the collapsed section leaves out, upcoming and past. The all-day line isn't counted.
-    var hiddenCount: Int { timedEvents.count - collapsedRows.count }
+    /// Timed events the compact section leaves out, upcoming and past. The all-day line isn't counted.
+    var hiddenCount: Int { timedEvents.count - compactRows.count }
 
-    /// "+3 more" while collapsed with anything hidden, otherwise `nil`.
-    var moreText: String? { !isExpanded && hiddenCount > 0 ? "+\(hiddenCount) more" : nil }
+    /// "+3 more" while compact with anything hidden, otherwise `nil`.
+    var moreText: String? { !isShowingMore && hiddenCount > 0 ? "+\(hiddenCount) more" : nil }
 
     /// "3 more events" for VoiceOver, since "+3" reads poorly.
     var moreAccessibilityLabel: String? {
@@ -275,19 +275,19 @@ final class ScheduleStore: ObservableObject {
         return hiddenCount == 1 ? "1 more event" : "\(hiddenCount) more events"
     }
 
-    var showsShowLess: Bool { isExpanded }
+    var showsShowLess: Bool { isShowingMore }
 
-    /// Collapsed, with timed events that have all ended: "Nothing else today".
+    /// Compact, with timed events that have all ended: "Nothing else today".
     var showsNothingElseToday: Bool {
-        showsEvents && !isExpanded && !timedEvents.isEmpty && collapsedRows.isEmpty
+        showsEvents && !isShowingMore && !timedEvents.isEmpty && compactRows.isEmpty
     }
 
-    func expand() {
+    func showMore() {
         guard hiddenCount > 0 else { return }
-        isExpanded = true
+        isShowingMore = true
     }
 
-    func collapse() { isExpanded = false }
+    func showLess() { isShowingMore = false }
 
 
     // MARK: Event details
@@ -350,14 +350,14 @@ final class ScheduleStore: ObservableObject {
         }
         guard generation == refreshGeneration else { return }
         access = status
-        // A new day starts collapsed.
-        if today != currentDate { isExpanded = false }
+        // A new day starts compact.
+        if today != currentDate { isShowingMore = false }
         currentDate = today
         asOf = clock
         calendars = fetchedCalendars
         fetchedEvents = fetched
         events = Self.sorted(visibleEvents(fetched))
-        collapseIfNothingIsHidden()
+        showLessIfNothingIsHidden()
     }
 
     /// Asks for full access, which shows the system prompt only while it's undecided.
@@ -407,7 +407,7 @@ final class ScheduleStore: ObservableObject {
     func updateClock() {
         let clock = now()
         if clock != asOf { asOf = clock }
-        collapseIfNothingIsHidden()
+        showLessIfNothingIsHidden()
     }
 
     /// The next time a timed event starts or ends after `asOf`, within Today.
@@ -419,9 +419,9 @@ final class ScheduleStore: ObservableObject {
             .min()
     }
 
-    /// With nothing hidden there's no "Show less" row to leave, so don't stay expanded.
-    private func collapseIfNothingIsHidden() {
-        if isExpanded && hiddenCount == 0 { isExpanded = false }
+    /// With nothing hidden there's no "Show less" row to leave, so don't keep showing more.
+    private func showLessIfNothingIsHidden() {
+        if isShowingMore && hiddenCount == 0 { isShowingMore = false }
     }
 
     private static func sorted(_ events: [ScheduleEvent]) -> [ScheduleEvent] {

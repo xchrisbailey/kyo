@@ -1,6 +1,6 @@
 import XCTest
 
-/// The compact Schedule: the collapsed set, "+N more", expanding, Now / Until, past dimming and the
+/// The compact Schedule: the compact set, "+N more", show more / show less, Now / Until, past dimming and the
 /// empty states, all driven by a controllable clock through `ScheduleStore`.
 @MainActor
 final class ScheduleCompactBehaviorTests: XCTestCase {
@@ -59,9 +59,9 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
         }
     }
 
-    // MARK: The collapsed set and "+N more"
+    // MARK: The compact set and "+N more"
 
-    func testCollapsedShowsTheFirstThreeUpcomingEventsAndCountsTheRest() async {
+    func testCompactShowsTheFirstThreeUpcomingEventsAndCountsTheRest() async {
         let store = await makeStore(sixEvents, now: { self.date(8) })
 
         XCTAssertEqual(titles(store.visibleRows), ["Event 1", "Event 2", "Event 3"])
@@ -69,7 +69,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
         XCTAssertEqual(store.moreText, "+3 more")
     }
 
-    func testCollapsedSkipsEndedEventsButCountsThemInMore() async {
+    func testCompactSkipsEndedEventsButCountsThemInMore() async {
         // 11:30: events 1 and 2 have ended, 3 is in progress, 4 to 6 are still to come.
         let store = await makeStore(sixEvents, now: { self.date(11, 30) })
 
@@ -107,7 +107,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
         XCTAssertEqual(store.moreAccessibilityLabel, "3 more events")
         XCTAssertEqual(store.allDayLine, "All day · Holiday, Sam's birthday")
 
-        store.expand()
+        store.showMore()
         XCTAssertEqual(store.visibleRows.count, 6)
         XCTAssertEqual(store.allDayLine, "All day · Holiday, Sam's birthday")
     }
@@ -121,78 +121,78 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
         XCTAssertFalse(store.showsNothingScheduled)
     }
 
-    // MARK: Expand and collapse
+    // MARK: Show more and show less
 
-    func testExpandingShowsEveryEventInTimeOrderWithEndedOnesMarkedPast() async {
+    func testShowingMoreShowsEveryEventInTimeOrderWithEndedOnesMarkedPast() async {
         let store = await makeStore(sixEvents, now: { self.date(11, 30) })
 
-        store.expand()
+        store.showMore()
 
-        XCTAssertTrue(store.isExpanded)
+        XCTAssertTrue(store.isShowingMore)
         XCTAssertEqual(titles(store.visibleRows), (1...6).map { "Event \($0)" })
         XCTAssertEqual(store.visibleRows.map(\.state), [.past, .past, .inProgress, .upcoming, .upcoming, .upcoming])
         XCTAssertNil(store.moreText)
         XCTAssertTrue(store.showsShowLess)
     }
 
-    func testCollapsingReturnsToTheCompactSet() async {
+    func testShowingLessReturnsToTheCompactSet() async {
         let store = await makeStore(sixEvents, now: { self.date(8) })
-        store.expand()
+        store.showMore()
 
-        store.collapse()
+        store.showLess()
 
-        XCTAssertFalse(store.isExpanded)
+        XCTAssertFalse(store.isShowingMore)
         XCTAssertEqual(titles(store.visibleRows), ["Event 1", "Event 2", "Event 3"])
         XCTAssertEqual(store.moreText, "+3 more")
         XCTAssertFalse(store.showsShowLess)
     }
 
-    func testAFreshStoreStartsCollapsed() async {
+    func testAFreshStoreStartsCompact() async {
         let store = await makeStore(sixEvents, now: { self.date(8) })
 
-        XCTAssertFalse(store.isExpanded)
+        XCTAssertFalse(store.isShowingMore)
     }
 
-    func testExpandingDoesNothingWhenNothingIsHidden() async {
+    func testShowingMoreDoesNothingWhenNothingIsHidden() async {
         let store = await makeStore(Array(sixEvents.prefix(2)), now: { self.date(8) })
 
-        store.expand()
+        store.showMore()
 
-        XCTAssertFalse(store.isExpanded)
+        XCTAssertFalse(store.isShowingMore)
         XCTAssertFalse(store.showsShowLess)
     }
 
-    func testStaysExpandedAcrossARefreshOnTheSameDay() async {
+    func testKeepsShowingMoreAcrossARefreshOnTheSameDay() async {
         let store = await makeStore(sixEvents, now: { self.date(8) })
-        store.expand()
+        store.showMore()
 
         await store.refresh()
 
-        XCTAssertTrue(store.isExpanded)
+        XCTAssertTrue(store.isShowingMore)
     }
 
-    func testExpandedStateResetsWhenTodayRollsOver() async {
+    func testShowingMoreResetsWhenTodayRollsOver() async {
         var clock = date(23, 30)
         let store = await makeStore(sixEvents, now: { clock })
-        store.expand()
-        XCTAssertTrue(store.isExpanded)
+        store.showMore()
+        XCTAssertTrue(store.isShowingMore)
 
         clock = date(0, 5, day: 3)
         await store.refresh()
 
-        XCTAssertFalse(store.isExpanded)
+        XCTAssertFalse(store.isShowingMore)
     }
 
-    func testItCollapsesOnItsOwnWhenNothingIsLeftToHide() async {
+    func testItReturnsToCompactOnItsOwnWhenNothingIsLeftToHide() async {
         let service = FakeCalendarService(events: sixEvents)
         let store = ScheduleStore(service: service, now: { self.date(8) }, calendar: calendar, locale: locale)
         await store.refresh()
-        store.expand()
+        store.showMore()
 
         await service.setEvents(Array(sixEvents.prefix(2)))
         await store.refresh()
 
-        XCTAssertFalse(store.isExpanded)
+        XCTAssertFalse(store.isShowingMore)
         XCTAssertFalse(store.showsShowLess)
         XCTAssertEqual(store.visibleRows.count, 2)
     }
@@ -213,7 +213,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
             [timed("Starting", date(10), until: date(11)), timed("Ending", date(9), until: date(10))],
             now: { self.date(10) }
         )
-        store.expand()
+        store.showMore()
 
         let states = Dictionary(uniqueKeysWithValues: store.visibleRows.map { ($0.event.title, $0.state) })
 
@@ -226,7 +226,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
             [timed("Standup", date(9), until: date(10)), timed("Lunch", date(12, 30), until: date(13, 30))],
             now: { self.date(11) }
         )
-        store.expand()
+        store.showMore()
 
         XCTAssertEqual(store.visibleRows.map { plain($0.timeText) }, ["9:00 AM", "12:30 PM"])
     }
@@ -234,7 +234,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
     func testAnEventThatStartedBeforeTodayShowsUntilItsEndOnceEnded() async throws {
         let overnight = timed("Overnight deploy", date(23, 0, day: 1), until: date(1, 30))
         let store = await makeStore([overnight], now: { self.date(8) })
-        store.expand()
+        store.showMore()
 
         let row = try XCTUnwrap(store.allTimedRows.first)
 
@@ -297,10 +297,10 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
         XCTAssertEqual(store.moreText, "+2 more", "the all-day line isn't counted")
     }
 
-    func testExpandingAfterEverythingEndedShowsThePastEvents() async {
+    func testShowingMoreAfterEverythingEndedShowsThePastEvents() async {
         let store = await makeStore(Array(sixEvents.prefix(2)), now: { self.date(20) })
 
-        store.expand()
+        store.showMore()
 
         XCTAssertFalse(store.showsNothingElseToday)
         XCTAssertEqual(titles(store.visibleRows), ["Event 1", "Event 2"])
@@ -317,7 +317,7 @@ final class ScheduleCompactBehaviorTests: XCTestCase {
 
     func testRowsReadNowOrEndedForVoiceOver() async {
         let store = await makeStore(sixEvents, now: { self.date(10, 30) })
-        store.expand()
+        store.showMore()
 
         let labels = store.visibleRows.map { plain($0.accessibilityLabel) }
 

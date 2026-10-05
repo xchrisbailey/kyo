@@ -37,7 +37,7 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["schedule-all-day"].exists)
     }
 
-    func testExpandingShowsTheEndedEventAndShowLessCollapsesAgain() throws {
+    func testShowingMoreShowsTheEndedEventAndShowLessReturnsToCompact() throws {
         let app = launchApp(calendar: "full")
         let more = app.buttons["schedule-more"]
         XCTAssertTrue(more.waitForExistence(timeout: 3))
@@ -64,7 +64,7 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertFalse(app.buttons["schedule-show-less"].exists)
     }
 
-    func testTheExpandedStateIsNotRememberedAcrossLaunches() throws {
+    func testShowingMoreIsNotRememberedAcrossLaunches() throws {
         let app = launchApp(calendar: "full")
         let more = app.buttons["schedule-more"]
         XCTAssertTrue(more.waitForExistence(timeout: 3))

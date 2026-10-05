@@ -8,7 +8,7 @@ Kyo presents one day at a time, but Today shows nothing of what's already on the
 
 ## Solution
 
-Add a compact **Schedule** section to the top of Today on iPhone and iPad, below the summary stats and above Tasks. It reads Today's **events** from the device's calendars through EventKit and never stores or changes them. Access is requested only when the user taps the section's prompt. The section shows all-day events on one line, then up to three upcoming timed events, with "+N more" to expand. Tapping an event opens the system event detail as a sheet. A new Schedule group in Settings turns the section off and picks which calendars it reads. Terms follow `GLOSSARY.md`: **Today**, **Event**, **Schedule**.
+Add a compact **Schedule** section to the top of Today on iPhone and iPad, below the summary stats and above Tasks. It reads Today's **events** from the device's calendars through EventKit and never stores or changes them. Access is requested only when the user taps the section's prompt. The section shows all-day events on one line, then up to three upcoming timed events, with "+N more" to show the rest. Tapping an event opens the system event detail as a sheet. A new Schedule group in Settings turns the section off and picks which calendars it reads. Terms follow `GLOSSARY.md`: **Today**, **Event**, **Schedule**.
 
 ## User Stories
 
@@ -19,7 +19,7 @@ Add a compact **Schedule** section to the top of Today on iPhone and iPad, below
 5. As a Kyo user, I want the section to stay compact, so that Tasks remain near the top.
 6. As a Kyo user, I want all-day events on one line, so that birthdays and holidays don't crowd out timed events.
 7. As a Kyo user, I want only upcoming events in the compact view, so that finished meetings don't fill the section by afternoon.
-8. As a Kyo user, I want to expand the section to see everything today, including what's already over.
+8. As a Kyo user, I want to show more of the section to see everything today, including what's already over.
 9. As a Kyo user, I want an event in progress marked "Now", so that I can see where I am in the day.
 10. As a Kyo user, I want each event's calendar color, so that I can tell work from personal at a glance.
 11. As a Kyo user, I want to tap an event to see its details, so that I can find the location, notes, or attendees without leaving Kyo.
@@ -53,14 +53,14 @@ Add a compact **Schedule** section to the top of Today on iPhone and iPad, below
 - Timed rows show a small dot in the calendar's color, the start time in the device's locale format, and the title. If there's a location, it goes on a second line only when it fits on one line; otherwise it's left out. Rows don't show the end time or duration.
 - An in-progress event shows **Now**, in the accent color, in place of its start time. There are no countdowns or live timers.
 - An event that started before Today shows "Until <end time>" if it has already ended, and "Now" if it's still running.
-- Collapsed view: up to **3** events that are in progress or still to come, then a "+N more" row when more remain (upcoming or past). Tapping it expands the section in place to show all of Today's events in time order, with past events dimmed. A "Show less" row collapses it again. The expanded state isn't remembered across launches.
-- Empty states (one muted line, section still shown): "Nothing scheduled" when Today has no events, and "Nothing else today" when every event has ended. Expanding still shows the past events.
+- Compact view: up to **3** events that are in progress or still to come, then a "+N more" row when more remain (upcoming or past). Tapping it shows more in place: all of Today's events in time order, with past events dimmed. A "Show less" row returns to the compact view. Showing more isn't remembered across launches.
+- Empty states (one muted line, section still shown): "Nothing scheduled" when Today has no events, and "Nothing else today" when every event has ended. Showing more still shows the past events.
 - Tapping a timed row or the all-day line opens the system event detail (`EKEventViewController` with `allowsEditing = false`) in a sheet, wrapped with `UIViewControllerRepresentable`. Pass Today's occurrence, not `event(withIdentifier:)`. The all-day line opens the first event when there's one, and a list to choose from when there are several. Whatever the system sheet itself offers, such as invitation replies (Accept / Maybe / Decline) and Delete Event on a writable calendar, is allowed; Kyo itself never writes. Don't use the undocumented `calshow:` URL.
 
 ### Refreshing
 
 - Refetch when the event store reports a change (`EKEventStore.EventStoreChanged` / `EKEventStoreChangedNotification`, which also fires on access changes). Also refetch when Today rolls over (the existing `significantTimeChangeNotification` path), when the app returns to the foreground, and when the Settings selection changes.
-- The "Now" marker and the collapsed upcoming set are recomputed at each event's start and end time while Today is on screen, for example with a `TimelineView` or a scheduled refresh.
+- The "Now" marker and the compact upcoming set are recomputed at each event's start and end time while Today is on screen, for example with a `TimelineView` or a scheduled refresh.
 
 ### Settings
 
@@ -78,7 +78,7 @@ Add a compact **Schedule** section to the top of Today on iPhone and iPad, below
 ## Testing Decisions
 
 - Put a `CalendarService` protocol between the app and EventKit, covering authorization status, requesting access, fetching Today's event snapshots, listing calendars, change notifications, and producing the value used to open an event. The live actor is the only code that imports EventKit.
-- Test the Schedule's behavior through the shared Schedule model that the view consumes, with a fake service and a controllable clock and calendar. Cover each authorization state; all-day grouping; the collapsed set of three upcoming events and the "+N more" count; expand and collapse; past dimming; "Now" and "Until"; events spanning midnight; recurring occurrences as distinct rows; hidden calendars filtered out and unknown hidden ids ignored; refresh on a store change, on day rollover, and on a Settings change; and both empty states. Assert observable rows and states, not view structure.
+- Test the Schedule's behavior through the shared Schedule model that the view consumes, with a fake service and a controllable clock and calendar. Cover each authorization state; all-day grouping; the compact set of three upcoming events and the "+N more" count; show more and show less; past dimming; "Now" and "Until"; events spanning midnight; recurring occurrences as distinct rows; hidden calendars filtered out and unknown hidden ids ignored; refresh on a store change, on day rollover, and on a Settings change; and both empty states. Assert observable rows and states, not view structure.
 - UI tests select the fake service through a launch variable, like `KYO_IN_MEMORY_STORE`, to drive each permission state and a seeded day. Use `resetAuthorizationStatus(for: .calendar)` only where the real system prompt is under test.
 - Check by hand on a real device: an event that started yesterday, the event detail sheet for an invitation, and whether the sheet triggers a Contacts prompt.
 - Build both app schemes.

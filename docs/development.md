@@ -1,0 +1,62 @@
+# Development
+
+Kyo is a SwiftUI app for iPhone, iPad, and Apple Watch. It requires Xcode 27 or later with the iOS and watchOS SDKs; deployment targets are iOS 27 and watchOS 27. It uses Swift 6 without third-party dependencies.
+
+## Run
+
+Open `Kyo.xcodeproj` in Xcode. Select the **Kyo** scheme and an iPhone or iPad simulator, or the **KyoWatch** scheme and an Apple Watch simulator. Install missing simulator runtimes through Xcode Settings → Components.
+
+For physical devices, Kyo signs automatically with the development team set in `project.yml`. If you build with a different team, change `DEVELOPMENT_TEAM` and the `computer.srcery.kyo` bundle identifiers there, including `INFOPLIST_KEY_WKCompanionAppBundleIdentifier`, then regenerate the project.
+
+## Structure
+
+- `Kyo/`: iPhone and iPad app.
+- `KyoWatch/`: companion Watch app. It can launch independently of the iPhone app.
+- `KyoWidgets/` and `KyoWatchWidgets/`: quick-capture controls and Watch complications.
+- `Shared/`: models, stores, and sync code compiled into both apps.
+- `KyoTests/` and `KyoUITests/`: unit and UI tests.
+- `project.yml`: XcodeGen project definition. The generated Xcode project is checked in so XcodeGen is only needed when changing project configuration.
+
+Run `xcodegen generate` after changing `project.yml`. Make lasting build-setting and target changes in that file, since regeneration replaces the Xcode project configuration.
+
+## Build checks
+
+```sh
+xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
+
+- builds the **Kyo** and **KyoWatch** schemes with the commands above;
+- runs the **KyoTests** scheme on the iPhone 17 simulator (`KyoUITests` is not run);
+- regenerates `Kyo.xcodeproj` with XcodeGen and fails if it differs from the checked-in project.
+
+The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the project check fails, install that version, run `xcodegen generate`, and commit the result. A newer push to the same ref cancels the run in progress.
+
+## Storage and sync
+
+On iPhone and iPad, tasks, habits, and memos live in one SwiftData store. Its models follow CloudKit's rules, with sync switched off (`docs/adr/0004-swiftdata-cloudkit-ready-storage.md`). The Watch keeps its own caches in UserDefaults.
+
+The paired iPhone and Watch stay in sync over WatchConnectivity. The phone is the single writer: it publishes a snapshot of the current day's tasks, habits, and memos after every change, and the Watch mirrors it. Changes made on the Watch become commands sent back to the phone, and Watch voice recordings travel to the phone as files. The ADRs record the rules:
+
+- `docs/adr/0001-phone-authoritative-task-snapshots.md`: snapshot reconciliation.
+- `docs/adr/0002-watch-commands-and-phone-reconciliation.md`: how Watch-originated commands are applied and acknowledged.
+- `docs/adr/0003-habit-sync.md`: the habit snapshot and its trimmed log.
+- `docs/adr/0005-watch-memo-sync.md`: the memo snapshot and the recording outbox.
+
+To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a paired device), install both apps, launch the Watch app, then run the `KyoUITests` target with `KYO_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).
+
+## TestFlight
+
+Every push to `main` runs `.github/workflows/testflight.yml`, which archives the `Kyo` scheme (with the Watch app and widgets) unsigned, then signs it with Xcode automatic signing on export and uploads it to TestFlight. It can also be started by hand from the Actions tab (`workflow_dispatch`). The build number is the workflow run number; the marketing version comes from `project.yml`.
+
+Signing uses an App Store Connect API key, so no certificates or provisioning profiles are stored. Add these repository secrets to turn it on:
+
+- `ASC_KEY_ID`: the key's ID.
+- `ASC_ISSUER_ID`: the issuer ID shown above the keys list in App Store Connect.
+- `ASC_KEY_P8`: the full contents of the downloaded `.p8` file.
+
+Until all three exist, the job skips itself with a notice and the push stays green. The app record for `computer.srcery.kyo` must already exist in App Store Connect. If a run fails, the `xcodebuild-logs` artifact holds the archive and export logs.

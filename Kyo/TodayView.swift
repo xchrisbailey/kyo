@@ -24,6 +24,9 @@ struct TodayView: View {
     @State private var voiceMemoPendingDelete: UUID?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
+    /// Set when + → Task brings back a draft that was hidden by collapsing Tasks, so the row scrolls
+    /// into view and takes focus once it's on screen again.
+    @State private var revealTaskDraftWhenShown = false
     @State private var dayBoundaryRefreshToken = 0
     @FocusState private var isTaskDraftFocused: Bool
 
@@ -69,7 +72,7 @@ struct TodayView: View {
                         TodaySection(
                             title: "Tasks",
                             note: "For today",
-                            collapsedNote: taskList.collapsedSummary,
+                            collapsedSummary: taskList.collapsedSummary,
                             section: .tasks,
                             sections: sections
                         ) {
@@ -94,13 +97,19 @@ struct TodayView: View {
                                     if !taskList.tasks.isEmpty { rowDivider }
                                     TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
                                         .id("task-draft")
+                                        .onAppear {
+                                            guard revealTaskDraftWhenShown else { return }
+                                            revealTaskDraftWhenShown = false
+                                            isTaskDraftFocused = true
+                                            withAnimation { scrollProxy.scrollTo("task-draft", anchor: .center) }
+                                        }
                                 }
                             }
                         }
                         TodaySection(
                             title: "Habits",
                             note: "Small steps, daily",
-                            collapsedNote: habitList.collapsedSummary,
+                            collapsedSummary: habitList.collapsedSummary,
                             section: .habits,
                             sections: sections
                         ) {
@@ -229,6 +238,10 @@ struct TodayView: View {
                     Text("Its audio and transcript are removed. This can't be undone.")
                 }
                 .onDisappear(perform: abandonTaskDraft)
+                .onChange(of: sections.isCollapsed(.tasks)) { _, isCollapsed in
+                    // A hidden field mustn't keep the keyboard up. The draft text stays.
+                    if isCollapsed { isTaskDraftFocused = false }
+                }
                 .onChange(of: isShowingTaskDraft) { _, isShowing in
                     if isShowing {
                         withAnimation {
@@ -422,10 +435,13 @@ struct TodayView: View {
     }
 
     private func beginTaskDraft() {
+        let draftWasHidden = isShowingTaskDraft && sections.isCollapsed(.tasks)
         sections.startTaskDraft()
         if !isShowingTaskDraft {
             taskDraft = ""
             isShowingTaskDraft = true
+        } else if draftWasHidden {
+            revealTaskDraftWhenShown = true
         }
         isTaskDraftFocused = true
     }
@@ -447,6 +463,7 @@ struct TodayView: View {
     private func abandonTaskDraft() {
         isTaskDraftFocused = false
         isShowingTaskDraft = false
+        revealTaskDraftWhenShown = false
         taskDraft = ""
     }
 }
@@ -674,7 +691,7 @@ struct TodaySection<Content: View>: View {
     let title: String
     let note: String
     /// Shown in place of `note` while the section is collapsed, such as "2 of 5 done".
-    var collapsedNote: String?
+    var collapsedSummary: String?
     let section: TodaySectionID
     @ObservedObject var sections: CollapsedSections
     /// A link at the right of the header, such as **See all**. It stays when the section is collapsed.
@@ -683,7 +700,7 @@ struct TodaySection<Content: View>: View {
     @ViewBuilder let content: Content
 
     private var isCollapsed: Bool { sections.isCollapsed(section) }
-    private var shownNote: String { isCollapsed ? (collapsedNote ?? note) : note }
+    private var shownNote: String { isCollapsed ? (collapsedSummary ?? note) : note }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -716,7 +733,7 @@ struct TodaySection<Content: View>: View {
                 .accessibilityLabel("\(title), \(shownNote)")
                 .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
                 .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("section-header-\(title)")
+                .accessibilityIdentifier("section-header-\(section.rawValue)")
                 if let linkTitle {
                     Button(action: linkAction) {
                         Text(linkTitle)

@@ -3,12 +3,15 @@ import UIKit
 
 /// A row in Today's Memos section: the kind icon, the title, a detail line, up to 4 photo
 /// thumbnails and the creation time on the right (with the duration under it for a Voice memo).
-/// Tapping opens the memo;
-/// swiping or long-pressing deletes it. The caller confirms before deleting a Voice memo.
+/// Tapping opens the memo; swiping or long-pressing deletes it. The long-press menu also has
+/// **Share** (above Delete) when the memo has something to share, so a memo can be shared
+/// without opening it. The caller confirms before deleting a Voice memo.
 struct MemoRow: View {
     let memo: Memo
     /// A photo's small thumbnail, by photo id.
     let loadThumbnail: (UUID) -> Data?
+    /// A photo's stored bytes, read only when the user chooses Share.
+    let loadPhoto: (UUID) -> Data?
     let onOpen: () -> Void
     let onDelete: () -> Void
     /// The search the row is a result of: its matches in the title and detail are highlighted.
@@ -17,6 +20,7 @@ struct MemoRow: View {
     var snippet: MemoSnippet?
 
     @State private var isDeleteRevealed = false
+    @State private var shareItems: MemoShareItems?
 
     private let deleteWidth: CGFloat = 84
 
@@ -54,8 +58,25 @@ struct MemoRow: View {
         }
         .clipped()
         .contextMenu {
+            if canShare {
+                Button("Share", systemImage: "square.and.arrow.up", action: share)
+            }
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
         }
+        // A popover anchored to the row on iPad; a sheet on iPhone.
+        .popover(item: $shareItems) { items in
+            MemoShareSheet(items: items) { shareItems = nil }
+                .presentationDetents([.medium, .large])
+                .presentationCompactAdaptation(.sheet)
+        }
+    }
+
+    private var canShare: Bool { MemoSharePayload.canShare(memo) }
+
+    /// Reads the photo bytes only now, when the user chooses Share, and opens the share sheet. The
+    /// memo is shared as saved, and sharing changes nothing about it.
+    private func share() {
+        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: memo.text, loadPhoto: loadPhoto))
     }
 
     private var rowContents: some View {
@@ -117,7 +138,12 @@ struct MemoRow: View {
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Opens this memo")
-        .accessibilityAction(named: "Delete", onDelete)
+        .accessibilityActions {
+            if canShare {
+                Button("Share", action: share)
+            }
+            Button("Delete", action: onDelete)
+        }
     }
 
     /// Kind, title and time, then the duration (Voice memo), the detail line when there is one,
@@ -462,8 +488,7 @@ struct MemoCardSheet: View {
 
     /// Reads the photo bytes only now, when the user shares, and opens the share sheet.
     private func share() {
-        let photos = memo.photoIDs.compactMap(loadPhoto)
-        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: text, photos: photos))
+        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: text, loadPhoto: loadPhoto))
     }
 
     private var editor: some View {

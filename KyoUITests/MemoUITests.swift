@@ -109,6 +109,48 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add to Today (0)"].exists)
     }
 
+    func testLongPressingAMemoRowOffersShareAboveDeleteOnTodayAndInMemoHistory() throws {
+        let app = launchIsolatedApp()
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Written memo"].tap()
+        let compose = app.textFields["Memo text"]
+        XCTAssertTrue(compose.waitForExistence(timeout: 3))
+        compose.typeText("Weekend idea\nTry the trail")
+        app.buttons["Save"].tap()
+
+        let rowPredicate = NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")
+        let todayRow = app.buttons.matching(rowPredicate).firstMatch
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 3))
+        assertMenuOffersShareAboveDelete(from: todayRow, in: app)
+
+        app.buttons["See all"].tap()
+        XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 3))
+        let historyRow = app.buttons.matching(rowPredicate).firstMatch
+        XCTAssertTrue(historyRow.waitForExistence(timeout: 3))
+        assertMenuOffersShareAboveDelete(from: historyRow, in: app)
+
+        let search = app.searchFields.firstMatch
+        search.tap()
+        search.typeText("trail")
+        let result = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")).firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 3))
+        assertMenuOffersShareAboveDelete(from: result, in: app)
+    }
+
+    /// Long-presses `row`, checks the menu has Share above Delete, then closes the menu.
+    private func assertMenuOffersShareAboveDelete(from row: XCUIElement, in app: XCUIApplication) {
+        row.press(forDuration: 1)
+        let share = app.buttons["Share"]
+        let delete = app.buttons["Delete"]
+        XCTAssertTrue(share.waitForExistence(timeout: 3))
+        XCTAssertTrue(delete.exists)
+        XCTAssertLessThan(share.frame.minY, delete.frame.minY)
+        // Tapping outside the menu closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02)).tap()
+        XCTAssertTrue(share.waitForNonExistence(timeout: 3))
+    }
+
     func testSeeAllOpensTheMemosSheetWithTodayAndSearch() throws {
         let app = launchIsolatedApp()
         XCTAssertFalse(app.buttons["See all"].exists)

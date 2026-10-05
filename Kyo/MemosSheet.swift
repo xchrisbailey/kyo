@@ -118,6 +118,7 @@ struct MemosSheet: View {
                     MemoRow(
                         memo: result.memo,
                         loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
+                        loadPhoto: { memoStore.photoData(forPhotoID: $0) },
                         onOpen: { openMemo = OpenMemo(id: result.memo.id) },
                         onDelete: { requestDelete(of: result.memo) },
                         highlight: page.query,

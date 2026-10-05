@@ -252,6 +252,41 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(reopened.tasks.filter { !$0.isComplete }.map(\.id), [second.id, third.id])
     }
 
+    func testCollapsedSummaryCountsDoneTasksAndSaysWhenThereAreNone() throws {
+        let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer())
+        XCTAssertEqual(list.collapsedSummary, "No tasks")
+
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        for text in ["Second", "Third", "Fourth", "Fifth"] { _ = list.addTask(text: text) }
+        XCTAssertEqual(list.collapsedSummary, "0 of 5 done")
+
+        _ = list.toggleTask(id: first.id)
+        let second = try XCTUnwrap(list.tasks.first { $0.text == "Second" })
+        _ = list.toggleTask(id: second.id)
+        XCTAssertEqual(list.collapsedSummary, "2 of 5 done")
+
+        _ = list.deleteTask(id: first.id)
+        XCTAssertEqual(list.collapsedSummary, "1 of 4 done")
+    }
+
+    func testCollapsedSummaryCountsCarriedForwardTasksAndDropsYesterdaysCompletedOnes() throws {
+        let container = try makeContainer()
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 25, hour: 10)))
+        let list = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
+        let done = try XCTUnwrap(list.addTask(text: "Done yesterday"))
+        _ = list.addTask(text: "Carried")
+        _ = list.toggleTask(id: done.id)
+        XCTAssertEqual(list.collapsedSummary, "1 of 2 done")
+
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 26, hour: 10)))
+        list.refreshForCurrentDay()
+        XCTAssertEqual(list.collapsedSummary, "0 of 1 done")
+
+        _ = list.addTask(text: "New today")
+        XCTAssertEqual(list.collapsedSummary, "0 of 2 done")
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try KyoModelContainer.make(inMemory: true)
     }

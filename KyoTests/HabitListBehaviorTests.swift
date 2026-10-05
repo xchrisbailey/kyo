@@ -168,6 +168,38 @@ final class HabitListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.doneCount, 0)
     }
 
+    func testCollapsedSummaryCountsDoneHabitsOnTodaysList() throws {
+        let list: any HabitListBehavior = HabitListStore(
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
+        )
+        XCTAssertEqual(list.collapsedSummary, "No habits")
+
+        let read = try XCTUnwrap(list.addHabit(name: "Read"))
+        _ = list.addHabit(name: "Walk")
+        _ = list.addHabit(name: "Stretch")
+        _ = list.addHabit(name: "Monday only", schedule: .weekdays([monday])) // 2026-09-29 is a Tuesday
+        XCTAssertEqual(list.collapsedSummary, "0 of 3 done")
+
+        _ = list.toggleCheckOff(id: read.id)
+        XCTAssertEqual(list.collapsedSummary, "1 of 3 done")
+
+        _ = list.toggleCheckOff(id: read.id)
+        XCTAssertEqual(list.collapsedSummary, "0 of 3 done")
+    }
+
+    func testCollapsedSummaryDistinguishesNoHabitsFromNothingDueToday() throws {
+        let list: any HabitListBehavior = HabitListStore(
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
+        )
+        XCTAssertEqual(list.collapsedSummary, "No habits")
+
+        let mondayOnly = try XCTUnwrap(list.addHabit(name: "Monday only", schedule: .weekdays([monday])))
+        XCTAssertEqual(list.collapsedSummary, "Nothing due today")
+
+        _ = list.deleteHabit(id: mondayOnly.id)
+        XCTAssertEqual(list.collapsedSummary, "No habits")
+    }
+
     func testInvalidSchedulesAreRejected() throws {
         let list: any HabitListBehavior = HabitListStore(userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer())
 

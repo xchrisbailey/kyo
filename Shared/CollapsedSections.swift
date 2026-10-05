@@ -14,14 +14,14 @@ enum TodaySectionID: String, CaseIterable, Sendable {
 /// It isn't synced and isn't tied to a day. Every section is expanded until the user collapses it.
 @MainActor
 final class CollapsedSections: ObservableObject {
-    private static let defaultsKey = "kyo.collapsedSections"
+    static let storageKey = "kyo.collapsedSections"
 
     @Published private(set) var collapsed: Set<TodaySectionID>
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        let stored = defaults.stringArray(forKey: Self.defaultsKey) ?? []
+        let stored = defaults.stringArray(forKey: Self.storageKey) ?? []
         collapsed = Set(stored.compactMap(TodaySectionID.init(rawValue:)))
     }
 
@@ -48,6 +48,6 @@ final class CollapsedSections: ObservableObject {
     }
 
     private func persist() {
-        defaults.set(collapsed.map(\.rawValue).sorted(), forKey: Self.defaultsKey)
+        defaults.set(collapsed.map(\.rawValue).sorted(), forKey: Self.storageKey)
     }
 }

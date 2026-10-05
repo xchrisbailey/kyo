@@ -92,7 +92,7 @@ final class ScheduleUITests: XCTestCase {
             let app = launchApp(calendar: state)
 
             XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 3), state)
-            XCTAssertTrue(app.staticTexts["Schedule"].exists, state)
+            XCTAssertTrue(app.buttons["section-header-schedule"].exists, state)
             XCTAssertFalse(app.buttons["Connect"].exists, state)
             XCTAssertFalse(app.staticTexts["Nothing scheduled"].exists, state)
             XCTAssertTrue(app.buttons["Hide schedule"].exists, state)
@@ -130,8 +130,8 @@ final class ScheduleUITests: XCTestCase {
             app.buttons["Hide schedule"].tap()
 
             XCTAssertFalse(app.staticTexts[line].exists, state)
-            XCTAssertFalse(app.staticTexts["Schedule"].exists, state)
-            XCTAssertTrue(app.staticTexts["Tasks"].exists, state)
+            XCTAssertFalse(app.buttons["section-header-schedule"].exists, state)
+            XCTAssertTrue(app.buttons["section-header-tasks"].exists, state)
             app.terminate()
         }
     }
@@ -152,7 +152,7 @@ final class ScheduleUITests: XCTestCase {
         app.buttons["Done"].tap()
 
         XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Schedule"].exists)
+        XCTAssertTrue(app.buttons["section-header-schedule"].exists)
     }
 
     func testShowScheduleIsOnByDefaultAndTurningItOffFromSettingsHidesTheSection() throws {
@@ -167,9 +167,9 @@ final class ScheduleUITests: XCTestCase {
         showSchedule.switches.firstMatch.tap()
         app.buttons["Done"].tap()
 
-        XCTAssertTrue(app.staticTexts["Tasks"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["section-header-tasks"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["Schedule, 5 events"].exists)
-        XCTAssertFalse(app.staticTexts["Schedule"].exists)
+        XCTAssertFalse(app.buttons["section-header-schedule"].exists)
     }
 
     private func row(_ app: XCUIApplication, endingWith suffix: String) -> XCUIElement {

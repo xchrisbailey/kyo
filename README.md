@@ -1,62 +1,114 @@
-# Kyo
+<p align="center">
+  <img src="Kyo/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" height="128" alt="Kyo app icon">
+</p>
 
-SwiftUI starter for iPhone, iPad, and Apple Watch. Requires Xcode 27 or later with the iOS and watchOS SDKs; deployment targets are iOS 27 and watchOS 27. Uses Swift 6 without third-party dependencies.
+<h1 align="center">Kyo</h1>
 
-## Run
+<p align="center">
+  A daily planner for iPhone, iPad, and Apple Watch that shows one day at a time.
+</p>
 
-Open `Kyo.xcodeproj` in Xcode. Select the **Kyo** scheme and an iPhone or iPad simulator, or the **KyoWatch** scheme and an Apple Watch simulator. Install missing simulator runtimes through Xcode Settings → Components.
+<p align="center">
+  <a href="#download">Download</a> ·
+  <a href="#what-kyo-does">Features</a> ·
+  <a href="#build-from-source">Build from source</a> ·
+  <a href="https://github.com/xchrisbailey/kyo/issues">Issues</a>
+</p>
 
-For physical devices, Kyo signs automatically with the development team set in `project.yml`. If you build with a different team, change `DEVELOPMENT_TEAM` and the `computer.srcery.kyo` bundle identifiers there, including `INFOPLIST_KEY_WKCompanionAppBundleIdentifier`, then regenerate the project.
+<p align="center">
+  <a href="https://github.com/xchrisbailey/kyo/actions/workflows/ci.yml"><img src="https://github.com/xchrisbailey/kyo/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/iOS%20%C2%B7%20iPadOS-27%2B-black" alt="iOS and iPadOS 27 or later">
+  <img src="https://img.shields.io/badge/watchOS-27%2B-black" alt="watchOS 27 or later">
+  <img src="https://img.shields.io/badge/Swift-6-orange" alt="Swift 6">
+</p>
 
-## Structure
+Kyo (今日, "today") has no calendar grid, no backlog, and no projects. It opens on Today and stays there: what's on your calendar, what you mean to get done, the habits that are due, and the thoughts you captured along the way. Tomorrow starts fresh, with yesterday's unfinished tasks carried over.
 
-- `Kyo/`: iPhone and iPad app entry point.
-- `KyoWatch/`: companion Watch app entry point. It can launch independently of the iPhone app.
-- `Shared/`: SwiftUI views and future shared models, compiled into both apps.
-- `project.yml`: XcodeGen project definition. The generated Xcode project is checked in so XcodeGen is only needed when changing project configuration.
+## Download
 
-Run `xcodegen generate` after changing `project.yml`. Make lasting build-setting and target changes in that file, since regeneration replaces the Xcode project configuration.
+Kyo is in beta on TestFlight. The beta isn't open to the public yet, so there's no install link to share. Until there is one:
 
-## Build checks
+- [Build it from source](#build-from-source) with Xcode. It takes a few minutes and needs no third-party dependencies.
+- [Watch the repository](https://github.com/xchrisbailey/kyo/subscription) to hear when a public build is out.
+
+Kyo needs iOS 27, iPadOS 27, or watchOS 27.
+
+## What Kyo does
+
+### Schedule
+
+Today's events from the calendars already on your device, in a compact section at the top: all-day events on one line, then the next three timed events, with the rest a tap away. Tap an event to see its details. You choose which calendars appear, or turn the section off. Kyo only reads your calendars; it never changes them and never stores your events.
+
+### Tasks
+
+A plain list of things to do today. Type a task, press Return, and check it off when it's done. Finished tasks drop to the bottom. Whatever you don't finish carries forward to tomorrow on its own.
+
+### Habits
+
+Define a habit once and give it a schedule: every day, specific weekdays, or a number of times per week. Each day Kyo lists only the habits that are due. Rows show your streak, or your progress through the week (such as 2/3) for weekly targets. A missed habit never piles up on the next day.
+
+### Memos
+
+Capture a thought by typing it or saying it.
+
+- **Voice memos** keep their audio and get a transcript as you speak. You can edit the transcript without touching the recording.
+- **Photos**: attach up to four to any memo.
+- **Memo → Task**: Kyo suggests tasks from what you wrote or said, and you pick which ones to add to Today.
+- **History**: Today shows today's memos. Older ones are in a searchable history.
+
+Transcription, memo titles, and suggested tasks all run on your device. Titles and suggested tasks need Apple Intelligence.
+
+### Quick capture
+
+Start a memo without opening the app first:
+
+- a Control Center or Lock Screen control;
+- the Action button;
+- Siri and Shortcuts ("Record memo" and "Write memo");
+- a complication on Apple Watch.
+
+### Apple Watch
+
+The Watch app shows Today's tasks, habits, and memos. You can add, edit, check off, and delete tasks, check off habits, and record voice memos from your wrist. Recordings are sent to your iPhone, which transcribes them, even if the phone was out of reach when you recorded.
+
+## Privacy
+
+Kyo has no account, no server, and no analytics. Your tasks, habits, and memos are stored on your devices, and your iPhone and Apple Watch sync directly with each other. Speech and AI features run on device.
+
+Kyo asks for the microphone to record voice memos, the camera to take memo photos, and your calendars to show the Schedule. It asks for each one only when you first use that feature.
+
+## Good to know
+
+- iCloud sync isn't built yet, so an iPhone and an iPad each keep their own data. The storage is designed for it ([ADR 0004](docs/adr/0004-swiftdata-cloudkit-ready-storage.md)).
+- The Schedule is on iPhone and iPad only.
+- Kyo doesn't track food or nutrition, by design ([ADR 0006](docs/adr/0006-nutrition-out-of-scope.md)).
+
+Planned work is in [Issues](https://github.com/xchrisbailey/kyo/issues). Next up is [collapsible sections](docs/specs/collapsible-sections.md).
+
+## Build from source
+
+You need Xcode 27 or later with the iOS and watchOS SDKs. Kyo is written in Swift 6 and has no third-party dependencies.
 
 ```sh
-xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
+git clone https://github.com/xchrisbailey/kyo.git
+cd kyo
+open Kyo.xcodeproj
 ```
 
-## CI
+Pick the **Kyo** scheme with an iPhone or iPad simulator, or the **KyoWatch** scheme with an Apple Watch simulator, and run.
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
+To run on your own devices, set your development team and bundle identifiers first. [docs/development.md](docs/development.md) covers that, along with the project layout, tests, CI, and TestFlight releases.
 
-- builds the **Kyo** and **KyoWatch** schemes with the commands above;
-- runs the **KyoTests** scheme on the iPhone 17 simulator (`KyoUITests` is not run);
-- regenerates `Kyo.xcodeproj` with XcodeGen and fails if it differs from the checked-in project.
+## Documentation
 
-The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the project check fails, install that version, run `xcodegen generate`, and commit the result. A newer push to the same ref cancels the run in progress.
+| | |
+| --- | --- |
+| [GLOSSARY.md](GLOSSARY.md) | The words Kyo uses, and what each one means. |
+| [docs/specs](docs/specs) | How each feature is meant to behave. |
+| [docs/adr](docs/adr) | Architecture decisions and the reasons behind them. |
+| [docs/development.md](docs/development.md) | Building, testing, CI, and releasing. |
+| [AGENTS.md](AGENTS.md) | How work is planned, delegated, and reviewed in this repository. |
 
-## Sync
+## Feedback
 
-Tasks are saved to UserDefaults on each device (`Shared/DailyTask.swift`) and kept in sync
-between the paired iPhone and Watch over WatchConnectivity: the phone publishes a full snapshot
-of the current day's tasks after every change, and the Watch mirrors it. The Watch can also add,
-toggle, edit, and delete tasks from its own UI; those become commands sent back to the phone,
-which stays the single writer of the synchronized list. See
-`docs/adr/0001-phone-authoritative-task-snapshots.md` for the snapshot reconciliation rule and
-`docs/adr/0002-watch-commands-and-phone-reconciliation.md` for how Watch-originated commands are
-applied and acknowledged.
-
-To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a
-paired device), install both apps, launch the Watch app, then run the `KyoUITests` target with
-`KYO_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).
-
-## TestFlight
-
-Every push to `main` runs `.github/workflows/testflight.yml`, which archives the `Kyo` scheme (with the Watch app and widgets) unsigned, then signs it with Xcode automatic signing on export and uploads it to TestFlight. It can also be started by hand from the Actions tab (`workflow_dispatch`). The build number is the workflow run number; the marketing version comes from `project.yml`.
-
-Signing uses an App Store Connect API key, so no certificates or provisioning profiles are stored. Add these repository secrets to turn it on:
-
-- `ASC_KEY_ID`: the key's ID.
-- `ASC_ISSUER_ID`: the issuer ID shown above the keys list in App Store Connect.
-- `ASC_KEY_P8`: the full contents of the downloaded `.p8` file.
-
-Until all three exist, the job skips itself with a notice and the push stays green. The app record for `computer.srcery.kyo` must already exist in App Store Connect. If a run fails, the `xcodebuild-logs` artifact holds the archive and export logs.
+Found a bug or have an idea? [Open an issue](https://github.com/xchrisbailey/kyo/issues/new).

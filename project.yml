@@ -167,6 +167,7 @@ targets:
       - Shared/VoiceRecordingSession.swift
       - Shared/QuickCaptureRouter.swift
       - Shared/UserDefaultsImport.swift
+      - Shared/CollapsedSections.swift
       - Kyo/CalendarService.swift
       - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift

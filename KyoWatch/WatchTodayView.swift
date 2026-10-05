@@ -140,43 +140,43 @@ struct WatchTodayView: View {
         )
         .listRow(top: 8, bottom: 5)
 
-        if sections.isCollapsed(.tasks) {
-            EmptyView()
-        } else if taskList.tasks.isEmpty {
-            Text("No tasks yet")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                WatchCheckRow(
-                    title: task.text,
-                    completed: task.isComplete,
-                    task: true,
-                    onToggle: { taskList.toggleTask(id: task.id) },
-                    onEdit: { activeSheet = .edit(task) },
-                    onDelete: { taskList.deleteTask(id: task.id) }
-                )
-                .padding(.horizontal, 9)
-                .overlay(alignment: .top) {
-                    if index > 0 { rowDivider.padding(.horizontal, 9) }
-                }
-                .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        taskList.deleteTask(id: task.id)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+        if !sections.isCollapsed(.tasks) {
+            if taskList.tasks.isEmpty {
+                Text("No tasks yet")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                    WatchCheckRow(
+                        title: task.text,
+                        completed: task.isComplete,
+                        task: true,
+                        onToggle: { taskList.toggleTask(id: task.id) },
+                        onEdit: { activeSheet = .edit(task) },
+                        onDelete: { taskList.deleteTask(id: task.id) }
+                    )
+                    .padding(.horizontal, 9)
+                    .overlay(alignment: .top) {
+                        if index > 0 { rowDivider.padding(.horizontal, 9) }
                     }
-                    Button {
-                        activeSheet = .edit(task)
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
+                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            taskList.deleteTask(id: task.id)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        Button {
+                            activeSheet = .edit(task)
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
                     }
-                    .tint(.blue)
                 }
             }
         }
@@ -194,24 +194,24 @@ struct WatchTodayView: View {
         )
         .listRow(top: 8, bottom: 5)
 
-        if sections.isCollapsed(.habits) {
-            EmptyView()
-        } else if habitList.todayHabits.isEmpty {
-            Text(habitEmptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
-                WatchHabitRow(entry: entry, onToggle: { toggleHabit(entry) })
+        if !sections.isCollapsed(.habits) {
+            if habitList.todayHabits.isEmpty {
+                Text(habitEmptyMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
                     .padding(.horizontal, 9)
-                    .overlay(alignment: .top) {
-                        if index > 0 { rowDivider.padding(.horizontal, 9) }
-                    }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
+                    WatchHabitRow(entry: entry, onToggle: { toggleHabit(entry) })
+                        .padding(.horizontal, 9)
+                        .overlay(alignment: .top) {
+                            if index > 0 { rowDivider.padding(.horizontal, 9) }
+                        }
+                        .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
+                }
             }
         }
     }
@@ -266,45 +266,43 @@ struct WatchTodayView: View {
         .listRow(top: 8, bottom: 5)
 
         if !sections.isCollapsed(.memos) {
-            Button {
-                isRecording = true
-            } label: {
-                Label("Record", systemImage: "mic.fill")
-                    .font(.footnote.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .disabled(recordingSession == nil)
-            .accessibilityHint("Records a voice memo")
-            .listRow(top: 0, bottom: 5)
-        }
+                Button {
+                    isRecording = true
+                } label: {
+                    Label("Record", systemImage: "mic.fill")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .disabled(recordingSession == nil)
+                .accessibilityHint("Records a voice memo")
+                .listRow(top: 0, bottom: 5)
 
-        if sections.isCollapsed(.memos) {
-            EmptyView()
-        } else if memoList.listedMemos.isEmpty {
-            Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(memoList.listedMemos.enumerated()), id: \.element.id) { index, memo in
-                WatchMemoRow(memo: memo)
-                    .padding(.horizontal, 9)
-                    .overlay(alignment: .top) {
-                        if index > 0 { rowDivider.padding(.horizontal, 9) }
-                    }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.listedMemos.count)))
-            }
-            if !memoList.hasSynced {
-                Text("Open Kyo on iPhone to sync memos")
-                    .font(.caption2)
+            if memoList.listedMemos.isEmpty {
+                Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRow(top: 5, bottom: 0)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(memoList.listedMemos.enumerated()), id: \.element.id) { index, memo in
+                    WatchMemoRow(memo: memo)
+                        .padding(.horizontal, 9)
+                        .overlay(alignment: .top) {
+                            if index > 0 { rowDivider.padding(.horizontal, 9) }
+                        }
+                        .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.listedMemos.count)))
+                }
+                if !memoList.hasSynced {
+                    Text("Open Kyo on iPhone to sync memos")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRow(top: 5, bottom: 0)
+                }
             }
         }
     }
@@ -499,7 +497,7 @@ private struct WatchSectionHeader: View {
         .accessibilityLabel(shownCount.map { "\(title), \($0.spoken)" } ?? title)
         .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
         .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("section-header-\(title)")
+        .accessibilityIdentifier("section-header-\(section.rawValue)")
     }
 }
 

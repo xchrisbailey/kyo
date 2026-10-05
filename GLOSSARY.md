@@ -8,6 +8,14 @@ A personal daily planner for iPhone, iPad, and Apple Watch that presents one day
 The current day as the user's device clock sees it; the only day Kyo presents.
 _Avoid_: Current date, day view
 
+**Section**:
+One of the titled groups Today is divided into: Schedule, Tasks, Habits, and Memos.
+_Avoid_: Group, card, list
+
+**Collapsed section**:
+A section the user has closed down to its header; it stays collapsed until the user expands it. The Schedule showing only its next few events is not this.
+_Avoid_: Folded, hidden, minimized
+
 **Task**:
 A one-off text entry for a day that the user checks off; unfinished tasks carry forward to the next day.
 _Avoid_: Todo, item

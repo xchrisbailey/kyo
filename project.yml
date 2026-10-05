@@ -201,14 +201,9 @@ schemes:
       config: Debug
     archive:
       config: Release
-  KyoWatch:
-    build:
-      targets:
-        KyoWatch: all
-    run:
-      config: Debug
-    archive:
-      config: Release
+  # KyoWatch has no entry here on purpose. Xcode re-saves a shared scheme whose runnable is a watch
+  # app in its own format, which XcodeGen can't reproduce, so a generated KyoWatch.xcscheme never
+  # stays clean. Xcode and xcodebuild auto-create the KyoWatch scheme instead.
   KyoTests:
     build:
       targets:

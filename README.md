@@ -24,6 +24,15 @@ xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 
 xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
+
+- builds the **Kyo** and **KyoWatch** schemes with the commands above;
+- runs the **KyoTests** scheme on the iPhone 17 simulator (`KyoUITests` is not run);
+- regenerates `Kyo.xcodeproj` with XcodeGen and fails if it differs from the checked-in project.
+
+The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the project check fails, install that version, run `xcodegen generate`, and commit the result. A newer push to the same ref cancels the run in progress.
 
 ## Sync
 

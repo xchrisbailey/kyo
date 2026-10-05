@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The xcode-27 image does not ship XcodeGen, so the project check installs this exact release.
+  XCODEGEN_VERSION: 2.44.1
+  XCODEGEN_SHA256: a2e905fb68446e9bb4008cdfe2e13e3f176d0cbcca828b71770f8e53fca91b73
+
+jobs:
+  project:
+    name: Xcode project is up to date
+    runs-on: xcode-27
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install XcodeGen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Regenerate Kyo.xcodeproj
+        run: |
+          xcodegen --version
+          xcodegen generate
+
+      - name: Fail if Kyo.xcodeproj differs from project.yml
+        run: |
+          git status --short
+          git diff --exit-code || {
+            echo "::error::Kyo.xcodeproj is out of date with project.yml. Run 'xcodegen generate' (version ${XCODEGEN_VERSION}) and commit the result."
+            exit 1
+          }
+
+  build:
+    name: Build ${{ matrix.scheme }}
+    runs-on: xcode-27
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: Kyo
+            sdk: iphonesimulator
+            destination: generic/platform=iOS Simulator
+          - scheme: KyoWatch
+            sdk: watchsimulator
+            destination: generic/platform=watchOS Simulator
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme "${{ matrix.scheme }}" \
+            -sdk "${{ matrix.sdk }}" -destination "${{ matrix.destination }}" \
+            CODE_SIGNING_ALLOWED=NO build
+
+  test:
+    name: Test KyoTests
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # KyoUITests is not run in CI.
+      - name: Test
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme KyoTests \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
+            CODE_SIGNING_ALLOWED=NO test

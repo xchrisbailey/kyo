@@ -1,13 +1,14 @@
 name: Kyo
 options:
   settingPresets: none
-  bundleIdPrefix: com.example
+  bundleIdPrefix: computer.srcery
   deploymentTarget:
     iOS: "27.0"
     watchOS: "27.0"
 settings:
   base:
     PRODUCT_NAME: $(TARGET_NAME)
+    DEVELOPMENT_TEAM: 5U2B7W5F39
     CLANG_ENABLE_MODULES: YES
     SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "1.0"
@@ -35,7 +36,7 @@ targets:
       - Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
@@ -45,6 +46,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Kyo
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Kyo records your voice memos with the microphone.
         INFOPLIST_KEY_NSCameraUsageDescription: Kyo takes photos you attach to your memos.
         INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: Kyo shows today's events from your calendars on Today. It never changes them.
@@ -71,7 +73,7 @@ targets:
       - Shared/QuickCaptureRouter.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.widgets
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -91,7 +93,7 @@ targets:
       - Shared/QuickCaptureRouter.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.watchkitapp.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.watchkitapp.widgets
         SDKROOT: watchos
         SUPPORTED_PLATFORMS: watchos watchsimulator
         TARGETED_DEVICE_FAMILY: "4"
@@ -111,7 +113,7 @@ targets:
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.watchkitapp
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SDKROOT: watchos
         SUPPORTED_PLATFORMS: watchos watchsimulator
@@ -119,12 +121,13 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Kyo
         INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Kyo records your voice memos with the microphone.
         # WKBackgroundModes isn't an INFOPLIST_KEY_ setting, so the audio background mode (recording
         # keeps going when the wrist is lowered) comes from this partial plist, which Xcode merges
         # with the generated Info.plist.
         INFOPLIST_FILE: Config/KyoWatch-Info.plist
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.example.kyo
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: computer.srcery.kyo
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         SKIP_INSTALL: YES
   KyoTests:
@@ -170,7 +173,7 @@ targets:
       - Kyo/FakeCalendarService.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.tests
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.tests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -184,7 +187,7 @@ targets:
       - target: Kyo
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.kyo.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.uitests
         SDKROOT: iphoneos
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"

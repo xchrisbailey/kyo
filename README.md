@@ -6,7 +6,7 @@ SwiftUI starter for iPhone, iPad, and Apple Watch. Requires Xcode 27 or later wi
 
 Open `Kyo.xcodeproj` in Xcode. Select the **Kyo** scheme and an iPhone or iPad simulator, or the **KyoWatch** scheme and an Apple Watch simulator. Install missing simulator runtimes through Xcode Settings → Components.
 
-For physical devices, select your development team under Signing & Capabilities for both targets. Replace the placeholder `com.example.kyo` bundle identifiers in `project.yml`, including `WKCompanionAppBundleIdentifier`, then regenerate the project.
+For physical devices, Kyo signs automatically with the development team set in `project.yml`. If you build with a different team, change `DEVELOPMENT_TEAM` and the `computer.srcery.kyo` bundle identifiers there, including `INFOPLIST_KEY_WKCompanionAppBundleIdentifier`, then regenerate the project.
 
 ## Structure
 

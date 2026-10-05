@@ -716,22 +716,28 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					08494E8107BF6D142AC1E5B1 = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 					};
 					09BDB7A870010BC479ADF9D8 = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 					};
 					32CA15D0E135FE98536E42DA = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 					};
 					82CBFC1F4555981498E5FA3E = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 32CA15D0E135FE98536E42DA;
 					};
 					915382471BACF8AB1E7CE703 = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 					};
 					E4CC3A9BEB45EB99CEE8A33E = {
+						DevelopmentTeam = 5U2B7W5F39;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -1043,7 +1049,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatchWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.watchkitapp.widgets;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
@@ -1055,7 +1061,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.uitests;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1067,7 +1073,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.uitests;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1082,6 +1088,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5U2B7W5F39;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0;
@@ -1100,11 +1107,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kyo records your voice memos with the microphone.";
 				INFOPLIST_KEY_WKApplication = YES;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.example.kyo;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = computer.srcery.kyo;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
@@ -1116,7 +1124,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.tests;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1130,11 +1138,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kyo records your voice memos with the microphone.";
 				INFOPLIST_KEY_WKApplication = YES;
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.example.kyo;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = computer.srcery.kyo;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
@@ -1149,6 +1158,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 5U2B7W5F39;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -1170,6 +1180,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Kyo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Kyo shows today's events from your calendars on Today. It never changes them.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kyo takes photos you attach to your memos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kyo records your voice memos with the microphone.";
@@ -1177,7 +1188,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1192,7 +1203,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatchWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.watchkitapp.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.watchkitapp.widgets;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
@@ -1206,7 +1217,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1220,7 +1231,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWidgets-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.widgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1232,7 +1243,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_INFOPLIST_FILE = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo.tests;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1246,6 +1257,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Kyo-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Kyo shows today's events from your calendars on Today. It never changes them.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Kyo takes photos you attach to your memos.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Kyo records your voice memos with the microphone.";
@@ -1253,7 +1265,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.kyo;
+				PRODUCT_BUNDLE_IDENTIFIER = computer.srcery.kyo;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

@@ -7,7 +7,7 @@ import WidgetKit
 /// appear on the Watch.
 struct WatchRecordMemoControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "com.example.kyo.watch.control.record-memo") {
+        StaticControlConfiguration(kind: "computer.srcery.kyo.watch.control.record-memo") {
             ControlWidgetButton(action: WatchRecordMemoIntent()) {
                 Label("Record memo", systemImage: "mic.fill")
             }
@@ -20,7 +20,7 @@ struct WatchRecordMemoControl: ControlWidget {
 /// The **Record memo** complication. Tapping it opens Kyo on the Watch and starts recording.
 struct RecordMemoComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "com.example.kyo.watch.complication.record-memo", provider: RecordMemoProvider()) { _ in
+        StaticConfiguration(kind: "computer.srcery.kyo.watch.complication.record-memo", provider: RecordMemoProvider()) { _ in
             RecordMemoComplicationView()
         }
         .configurationDisplayName("Record memo")

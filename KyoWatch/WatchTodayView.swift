@@ -6,6 +6,8 @@ struct WatchTodayView: View {
     @ObservedObject private var taskList = WatchAppModel.shared.taskList
     @ObservedObject private var habitList = WatchAppModel.shared.habitList
     @ObservedObject private var memoList = WatchAppModel.shared.memoList
+    /// Which sections are collapsed, kept on the watch and separate from the phone's.
+    @StateObject private var sections = CollapsedSections()
     @State private var activeSheet: WatchPreviewSheet?
     /// Made once the memo list exists, which is where the outbox a recording is saved to lives.
     @State private var recordingSession: VoiceRecordingSession?
@@ -130,44 +132,51 @@ struct WatchTodayView: View {
 
     @ViewBuilder
     private var taskRows: some View {
-        WatchSectionHeader(title: "Tasks")
-            .listRow(top: 8, bottom: 5)
+        WatchSectionHeader(
+            title: "Tasks",
+            section: .tasks,
+            sections: sections,
+            count: WatchCollapsedCount.progress(done: taskList.completedCount, total: taskList.taskCount)
+        )
+        .listRow(top: 8, bottom: 5)
 
-        if taskList.tasks.isEmpty {
-            Text("No tasks yet")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                WatchCheckRow(
-                    title: task.text,
-                    completed: task.isComplete,
-                    task: true,
-                    onToggle: { taskList.toggleTask(id: task.id) },
-                    onEdit: { activeSheet = .edit(task) },
-                    onDelete: { taskList.deleteTask(id: task.id) }
-                )
-                .padding(.horizontal, 9)
-                .overlay(alignment: .top) {
-                    if index > 0 { rowDivider.padding(.horizontal, 9) }
-                }
-                .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        taskList.deleteTask(id: task.id)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+        if !sections.isCollapsed(.tasks) {
+            if taskList.tasks.isEmpty {
+                Text("No tasks yet")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                    WatchCheckRow(
+                        title: task.text,
+                        completed: task.isComplete,
+                        task: true,
+                        onToggle: { taskList.toggleTask(id: task.id) },
+                        onEdit: { activeSheet = .edit(task) },
+                        onDelete: { taskList.deleteTask(id: task.id) }
+                    )
+                    .padding(.horizontal, 9)
+                    .overlay(alignment: .top) {
+                        if index > 0 { rowDivider.padding(.horizontal, 9) }
                     }
-                    Button {
-                        activeSheet = .edit(task)
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
+                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            taskList.deleteTask(id: task.id)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        Button {
+                            activeSheet = .edit(task)
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
                     }
-                    .tint(.blue)
                 }
             }
         }
@@ -177,25 +186,32 @@ struct WatchTodayView: View {
     /// checks the habit off or unchecks it; there are no swipe actions or editing.
     @ViewBuilder
     private var habitRows: some View {
-        WatchSectionHeader(title: "Habits")
-            .listRow(top: 8, bottom: 5)
+        WatchSectionHeader(
+            title: "Habits",
+            section: .habits,
+            sections: sections,
+            count: WatchCollapsedCount.progress(done: habitList.doneCount, total: habitList.todayCount)
+        )
+        .listRow(top: 8, bottom: 5)
 
-        if habitList.todayHabits.isEmpty {
-            Text(habitEmptyMessage)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
-                WatchHabitRow(entry: entry, onToggle: { toggleHabit(entry) })
+        if !sections.isCollapsed(.habits) {
+            if habitList.todayHabits.isEmpty {
+                Text(habitEmptyMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
                     .padding(.horizontal, 9)
-                    .overlay(alignment: .top) {
-                        if index > 0 { rowDivider.padding(.horizontal, 9) }
-                    }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
+                    WatchHabitRow(entry: entry, onToggle: { toggleHabit(entry) })
+                        .padding(.horizontal, 9)
+                        .overlay(alignment: .top) {
+                            if index > 0 { rowDivider.padding(.horizontal, 9) }
+                        }
+                        .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: habitList.todayHabits.count)))
+                }
             }
         }
     }
@@ -241,45 +257,52 @@ struct WatchTodayView: View {
     /// editing or deleting.
     @ViewBuilder
     private var memoRows: some View {
-        WatchSectionHeader(title: "Memos")
-            .listRow(top: 8, bottom: 5)
+        WatchSectionHeader(
+            title: "Memos",
+            section: .memos,
+            sections: sections,
+            count: WatchCollapsedCount.memos(memoList.listedMemos.count)
+        )
+        .listRow(top: 8, bottom: 5)
 
-        Button {
-            isRecording = true
-        } label: {
-            Label("Record", systemImage: "mic.fill")
-                .font(.footnote.weight(.semibold))
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
-        .disabled(recordingSession == nil)
-        .accessibilityHint("Records a voice memo")
-        .listRow(top: 0, bottom: 5)
+        if !sections.isCollapsed(.memos) {
+                Button {
+                    isRecording = true
+                } label: {
+                    Label("Record", systemImage: "mic.fill")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .disabled(recordingSession == nil)
+                .accessibilityHint("Records a voice memo")
+                .listRow(top: 0, bottom: 5)
 
-        if memoList.listedMemos.isEmpty {
-            Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 7)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .listRow(background: WatchTaskRowBackground(position: .only))
-        } else {
-            ForEach(Array(memoList.listedMemos.enumerated()), id: \.element.id) { index, memo in
-                WatchMemoRow(memo: memo)
-                    .padding(.horizontal, 9)
-                    .overlay(alignment: .top) {
-                        if index > 0 { rowDivider.padding(.horizontal, 9) }
-                    }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.listedMemos.count)))
-            }
-            if !memoList.hasSynced {
-                Text("Open Kyo on iPhone to sync memos")
-                    .font(.caption2)
+            if memoList.listedMemos.isEmpty {
+                Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRow(top: 5, bottom: 0)
+                    .listRow(background: WatchTaskRowBackground(position: .only))
+            } else {
+                ForEach(Array(memoList.listedMemos.enumerated()), id: \.element.id) { index, memo in
+                    WatchMemoRow(memo: memo)
+                        .padding(.horizontal, 9)
+                        .overlay(alignment: .top) {
+                            if index > 0 { rowDivider.padding(.horizontal, 9) }
+                        }
+                        .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: memoList.listedMemos.count)))
+                }
+                if !memoList.hasSynced {
+                    Text("Open Kyo on iPhone to sync memos")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .listRow(top: 5, bottom: 0)
+                }
             }
         }
     }
@@ -435,20 +458,46 @@ private struct WatchActionBar: View {
     }
 }
 
+/// A section's header. Tapping it collapses or expands the section. While collapsed it shows the
+/// section's count, if there is one, at the right.
 private struct WatchSectionHeader: View {
     let title: String
+    let section: TodaySectionID
+    @ObservedObject var sections: CollapsedSections
+    /// What the section holds, such as "2/5". Only shown while the section is collapsed.
+    let count: WatchCollapsedCount?
+
+    private var isCollapsed: Bool { sections.isCollapsed(section) }
+    private var shownCount: WatchCollapsedCount? { isCollapsed ? count : nil }
 
     var body: some View {
-        HStack(spacing: 5) {
-            Text(title)
-                .font(.headline.weight(.semibold))
-            Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
+        Button {
+            withAnimation { sections.toggle(section) }
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                Spacer(minLength: 4)
+                if let shownCount {
+                    Text(shownCount.text)
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(shownCount.map { "\(title), \($0.spoken)" } ?? title)
+        .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("section-header-\(section.rawValue)")
     }
 }
 

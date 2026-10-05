@@ -168,6 +168,7 @@ targets:
       - Shared/QuickCaptureRouter.swift
       - Shared/UserDefaultsImport.swift
       - Shared/CollapsedSections.swift
+      - Shared/WatchCollapsedCount.swift
       - Kyo/CalendarService.swift
       - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift

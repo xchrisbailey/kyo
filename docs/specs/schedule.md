@@ -8,7 +8,7 @@ Kyo presents one day at a time, but Today shows nothing of what's already on the
 
 ## Solution
 
-Add a compact **Schedule** section to the top of Today on iPhone and iPad, below the summary stats and above Tasks. It reads Today's **events** from the device's calendars through EventKit and never stores or changes them. Access is requested only when the user taps the section's prompt. The section shows all-day events on one line, then up to three upcoming timed events, with "+N more" to expand. Tapping an event opens the system event detail as a sheet. A new Schedule group in Settings turns the section off and picks which calendars it reads. Terms follow `CONTEXT.md`: **Today**, **Event**, **Schedule**.
+Add a compact **Schedule** section to the top of Today on iPhone and iPad, below the summary stats and above Tasks. It reads Today's **events** from the device's calendars through EventKit and never stores or changes them. Access is requested only when the user taps the section's prompt. The section shows all-day events on one line, then up to three upcoming timed events, with "+N more" to expand. Tapping an event opens the system event detail as a sheet. A new Schedule group in Settings turns the section off and picks which calendars it reads. Terms follow `GLOSSARY.md`: **Today**, **Event**, **Schedule**.
 
 ## User Stories
 

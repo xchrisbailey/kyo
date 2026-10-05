@@ -32,7 +32,7 @@ Commit and push completed changes to the GitHub remote. Before pushing, check th
 - Run it in a subagent or a new thread with its own git worktree and branch.
 - The brief must stand alone. Include:
   - the ticket link and its acceptance criteria;
-  - the relevant ADRs and `CONTEXT.md` terms;
+  - the relevant ADRs and `GLOSSARY.md` terms;
   - what is out of bounds;
   - the build and test commands;
   - what to report back: the branch, the PR, a summary, and anything left open.

@@ -8,7 +8,7 @@ Kyo presents one day at a time, but its Habits section still shows fixed sample 
 
 ## Solution
 
-Make Habits a real feature within the existing layout. A user adds a habit from the bottom Add menu and gives it a habit schedule: every day, specific weekdays, or a weekly target (N times per week). Each day, Today's Habits section lists the habits due that day for the user to check off. Every check-off is logged, and each row shows light feedback: a streak, or week progress for weekly targets. Habits are managed in a new Settings sheet. The Watch shows the same list and can check habits off. Terms follow `CONTEXT.md`: **Habit**, **Habit schedule**, **Weekly target**, **Check-off**, **Log**, **Streak**, **Week progress**.
+Make Habits a real feature within the existing layout. A user adds a habit from the bottom Add menu and gives it a habit schedule: every day, specific weekdays, or a weekly target (N times per week). Each day, Today's Habits section lists the habits due that day for the user to check off. Every check-off is logged, and each row shows light feedback: a streak, or week progress for weekly targets. Habits are managed in a new Settings sheet. The Watch shows the same list and can check habits off. Terms follow `GLOSSARY.md`: **Habit**, **Habit schedule**, **Weekly target**, **Check-off**, **Log**, **Streak**, **Week progress**.
 
 ## User Stories
 

@@ -1,19 +1,27 @@
 import SwiftUI
 import UIKit
 
-/// A **Memo**'s share payload made ready for the system share sheet: its text, then each photo
-/// as a file holding the stored HEIC, so the receiving app gets the stored copy rather than a
-/// re-encoded image. The files live in a temporary folder that `cleanUp()` removes.
+/// What a **Memo** or a **Task** shares, made ready for the system share sheet.
+///
+/// A Memo's is its text, then each photo as a file holding the stored HEIC, so the receiving app
+/// gets the stored copy rather than a re-encoded image. The files live in a temporary folder that
+/// `cleanUp()` removes. A Task's is its text alone, with nothing to clean up.
 ///
 /// This uses `UIActivityViewController` rather than `ShareLink`. `ShareLink` takes one `Transferable`
 /// type per share, and a `Transferable`'s representations are fixed for the type, so a share of text
 /// plus several images needs a wrapper that can't vary its content type per item. It also wants its
 /// items before the card opens, which would read every photo's bytes up front.
-final class MemoShareItems: Identifiable {
+final class ShareItems: Identifiable {
     let id = UUID()
     /// The text first, when there is any, then the photo files in order.
     let activityItems: [Any]
     private var folder: URL?
+
+    /// A **Task**'s text as the one item to share.
+    init(_ payload: TaskSharePayload) {
+        self.activityItems = payload.activityItems
+        self.folder = nil
+    }
 
     private static var root: URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("memo-share", isDirectory: true)
@@ -52,14 +60,14 @@ final class MemoShareItems: Identifiable {
     }
 }
 
-/// The iOS share sheet for a memo. `onFinish` runs when the sheet is done, shared or cancelled.
+/// The iOS share sheet for a Memo or a Task. `onFinish` runs when the sheet is done, shared or cancelled.
 ///
 /// The activity controller's completion handler doesn't run when SwiftUI dismisses the sheet or
 /// popover itself (a swipe down on iPhone, a tap outside the popover on iPad), so the files are
 /// also removed when the sheet's view controller is torn down. That happens only once the sheet
 /// is gone, never while a share destination is presented on top of it.
-struct MemoShareSheet: UIViewControllerRepresentable {
-    let items: MemoShareItems
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: ShareItems
     let onFinish: () -> Void
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
@@ -80,8 +88,8 @@ struct MemoShareSheet: UIViewControllerRepresentable {
     }
 
     final class Coordinator {
-        let items: MemoShareItems
+        let items: ShareItems
 
-        init(items: MemoShareItems) { self.items = items }
+        init(items: ShareItems) { self.items = items }
     }
 }

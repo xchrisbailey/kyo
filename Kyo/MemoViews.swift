@@ -20,7 +20,7 @@ struct MemoRow: View {
     var snippet: MemoSnippet?
 
     @State private var isDeleteRevealed = false
-    @State private var shareItems: MemoShareItems?
+    @State private var shareItems: ShareItems?
 
     private let deleteWidth: CGFloat = 84
 
@@ -65,7 +65,7 @@ struct MemoRow: View {
         }
         // A popover anchored to the row on iPad; a sheet on iPhone.
         .popover(item: $shareItems) { items in
-            MemoShareSheet(items: items) { shareItems = nil }
+            ShareSheet(items: items) { shareItems = nil }
                 .presentationDetents([.medium, .large])
                 .presentationCompactAdaptation(.sheet)
         }
@@ -76,7 +76,7 @@ struct MemoRow: View {
     /// Reads the photo bytes only now, when the user chooses Share, and opens the share sheet. The
     /// memo is shared as saved, and sharing changes nothing about it.
     private func share() {
-        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: memo.text, loadPhoto: loadPhoto))
+        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: memo.text, loadPhoto: loadPhoto))
     }
 
     private var rowContents: some View {
@@ -253,7 +253,7 @@ struct MemoCardSheet: View {
     @State private var title: String
     @State private var isConfirmingDelete = false
     @State private var taskSuggestions: MemoTaskSuggestions?
-    @State private var shareItems: MemoShareItems?
+    @State private var shareItems: ShareItems?
     @FocusState private var isEditorFocused: Bool
     @FocusState private var isTitleFocused: Bool
 
@@ -369,7 +369,7 @@ struct MemoCardSheet: View {
             MemoTaskSheet(suggestions: suggestions)
         }
         .sheet(item: $shareItems) { items in
-            MemoShareSheet(items: items) { shareItems = nil }
+            ShareSheet(items: items) { shareItems = nil }
                 .presentationDetents([.medium, .large])
         }
         .onDisappear(perform: onClose)
@@ -488,7 +488,7 @@ struct MemoCardSheet: View {
 
     /// Reads the photo bytes only now, when the user shares, and opens the share sheet.
     private func share() {
-        shareItems = MemoShareItems(MemoSharePayload.make(for: memo, currentText: text, loadPhoto: loadPhoto))
+        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: text, loadPhoto: loadPhoto))
     }
 
     private var editor: some View {

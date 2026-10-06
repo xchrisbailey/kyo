@@ -143,6 +143,7 @@ targets:
       - Shared/WatchConnectivityTaskTransport.swift
       - Shared/KyoSchema.swift
       - Shared/TaskRecord.swift
+      - Shared/TaskShare.swift
       - Shared/TaskContentPersistence.swift
       - Shared/HabitRecord.swift
       - Shared/HabitContentPersistence.swift

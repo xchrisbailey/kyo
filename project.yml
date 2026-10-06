@@ -111,8 +111,28 @@ targets:
     dependencies:
       - target: KyoWatchWidgets
         embed: true
+    # `CODE_SIGNING_ALLOWED=NO` builds (scripts, CI) leave only the linker's ad-hoc signature, whose
+    # identifier is the executable's name ("KyoWatchWidgets"), not the bundle identifier. The
+    # Shortcuts daemon maps a client to its app by that identifier, rejects the Watch's Record memo
+    # control as having no entitlements, and WidgetKit's assertion on that kills the extension on
+    # its first launch. Signing the bundles ad hoc binds the identifier to the bundle identifier.
+    # It runs only for unsigned Watch simulator builds; Xcode signs every other build itself. It
+    # has to rewrite the products in place, so the target turns script sandboxing off.
+    postBuildScripts:
+      - name: Sign Unsigned Simulator Build
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$CODE_SIGNING_ALLOWED" != "NO" ] || [ "$PLATFORM_NAME" != "watchsimulator" ]; then
+            exit 0
+          fi
+          app="$TARGET_BUILD_DIR/$WRAPPER_NAME"
+          for appex in "$app"/PlugIns/*.appex; do
+            codesign --force --sign - "$appex"
+          done
+          codesign --force --sign - "$app"
     settings:
       base:
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.watchkitapp
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SDKROOT: watchos

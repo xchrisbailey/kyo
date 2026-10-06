@@ -670,6 +670,7 @@
 				9311104316602DA912BD3E58 /* Sources */,
 				8486E7283B7065102CDF2EBF /* Resources */,
 				C22FFB3988E5F4509C63B231 /* Embed Foundation Extensions */,
+				FFC207EEECEFF5FBA398F23F /* Sign Unsigned Simulator Build */,
 			);
 			buildRules = (
 			);
@@ -859,6 +860,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		FFC207EEECEFF5FBA398F23F /* Sign Unsigned Simulator Build */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Sign Unsigned Simulator Build";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$CODE_SIGNING_ALLOWED\" != \"NO\" ] || [ \"$PLATFORM_NAME\" != \"watchsimulator\" ]; then\n  exit 0\nfi\napp=\"$TARGET_BUILD_DIR/$WRAPPER_NAME\"\nfor appex in \"$app\"/PlugIns/*.appex; do\n  codesign --force --sign - \"$appex\"\ndone\ncodesign --force --sign - \"$app\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4691A0720A3D812969A0C296 /* Sources */ = {
@@ -1207,6 +1230,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;
@@ -1238,6 +1262,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/KyoWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Kyo;

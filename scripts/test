@@ -132,9 +132,12 @@ echo "scripts/test: full log: $log"
 failed_pattern="^Test Suite '(All tests|Selected tests)' failed"
 grace=60
 set +e
+# No CODE_SIGNING_ALLOWED=NO on purpose: unsigned builds give the watch widget extension a signature
+# identifier that isn't its bundle identifier, so the Record memo control is rejected and the
+# extension is killed on first launch. Simulator builds sign to run locally, with no account.
 xcodebuild -project "$project" -scheme "$scheme" \
   -destination "id=$udid" -derivedDataPath "$derived_data" \
-  CODE_SIGNING_ALLOWED=NO "$@" test >"$log" 2>&1 &
+  "$@" test >"$log" 2>&1 &
 xcodebuild_pid=$!
 stopped=0
 seconds_since_failure=0

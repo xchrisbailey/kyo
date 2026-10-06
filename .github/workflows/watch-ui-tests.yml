@@ -59,6 +59,8 @@ jobs:
       # linker signature with the wrong identifier, and WidgetKit kills it on the Watch app's first
       # launch (#150). A simulator build signs to run locally, with no account. This job is the
       # regression test for that: it fails if the Watch app is built unsigned.
+      # Unlike ui-tests.yml, there is no -retry-tests-on-failure: the #150 crash can pass on a
+      # second launch on the same simulator, so a retry would hide the regression this job catches.
       - name: Test
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoWatchUITests \

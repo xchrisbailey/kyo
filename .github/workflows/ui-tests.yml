@@ -19,8 +19,9 @@ jobs:
   test:
     name: Test KyoUITests
     runs-on: xcode-27
-    # The suite takes 12 to 15 minutes locally. The headroom also bounds a hung test runner.
-    timeout-minutes: 45
+    # The suite takes about 25 minutes on the runner, and a failing run can add 10 minutes of
+    # diagnostics collection. The headroom also bounds a hung test runner.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,12 +29,14 @@ jobs:
 
       # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
       # paired Watch simulator here.
+      # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
+      # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
       - name: Test
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO test
+            test
 
       - name: Upload result bundle
         if: failure() || cancelled()

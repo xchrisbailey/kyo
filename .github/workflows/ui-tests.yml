@@ -1,0 +1,45 @@
+name: UI Tests
+
+# Only pull requests that change the app target or the UI tests. `Kyo/**` matches the Kyo/
+# directory alone, never KyoWatch/, KyoTests/, KyoWidgets/ or KyoUITests/ by prefix.
+on:
+  pull_request:
+    paths:
+      - 'Kyo/**'
+      - 'KyoUITests/**'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test KyoUITests
+    runs-on: xcode-27
+    # The suite takes 12 to 15 minutes locally. The headroom also bounds a hung test runner.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
+      # paired Watch simulator here.
+      - name: Test
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
+            -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO test
+
+      - name: Upload result bundle
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: KyoUITests-xcresult
+          path: ${{ runner.temp }}/KyoUITests.xcresult
+          if-no-files-found: ignore
+          retention-days: 14

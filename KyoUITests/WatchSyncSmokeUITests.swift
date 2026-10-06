@@ -5,7 +5,7 @@ final class WatchSyncSmokeUITests: XCTestCase {
     /// Exercises real phone-to-Watch delivery through WatchConnectivity against the actual,
     /// non-isolated task store. Opt-in only: it needs a paired Watch to receive anything, so
     /// ordinary runs (with no paired simulator or device) skip it rather than hang waiting on
-    /// delivery that never arrives. See section 4 of the plan for the paired-simulator setup
+    /// delivery that never arrives. See docs/development.md for the paired-simulator setup
     /// and docs/adr/0001-phone-authoritative-task-snapshots.md for the sync model.
     func testAddCompleteEditAndDeletePropagateToPhoneSideList() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["KYO_WATCH_SYNC_SMOKE"] == "1")

@@ -25,6 +25,6 @@ You are the coder for Kyo, a SwiftUI app for iPhone, iPad, and Apple Watch. An O
 - Build both schemes:
   - `xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`
   - `xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build`
-- Run the tests that cover your change, and report any failures with their output.
+- Run the tests that cover your change through `scripts/test <scheme> [extra xcodebuild arguments]`, such as `scripts/test KyoTests` or `scripts/test KyoUITests -only-testing:KyoUITests/SectionCollapseUITests`. It gives each run its own simulator and derived data, so parallel worktrees don't interfere. Never call `xcodebuild test` directly. Quote the final `** TEST SUCCEEDED **` or `** TEST FAILED **` line of every run in your report, and report any failures with their output.
 - Push your branch and open a **draft** PR against the base branch in your brief. Include `Closes #<issue>` and name any PR this one is stacked on.
 - Report the branch, the PR URL, what you built, the test results, and anything you left open or were unsure about. Don't mark the PR ready and don't merge it. Review belongs to the orchestrator.

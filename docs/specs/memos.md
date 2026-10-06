@@ -28,7 +28,7 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 14. As a Kyo user, I want to tap a memo to open it, and have my edits save on their own.
 15. As a Kyo user, I want to play a voice memo and scrub through it while reading its transcript.
 16. As a Kyo user, I want to delete a memo by swiping or long-pressing, with a confirmation for voice memos, so that I don't lose a recording by accident.
-17. As a Kyo user, I want to share a memo's text and photos through the share sheet, so that I can send it to another app.
+17. As a Kyo user, I want to share a memo's text and photos through the share sheet, from the open memo or by long-pressing its row, so that I can send it to another app.
 18. As a Kyo user, I want Kyo to suggest tasks from a memo and let me pick and edit them before adding them to Today, so that what I said becomes something I'll act on.
 19. As a Kyo user on a device without Apple Intelligence, I want Memo → Task to still let me type tasks, so that the action is never missing.
 20. As a Kyo user, I want to see all my memos, grouped by day, from a "See all" link, so that older memos are still within reach.
@@ -111,7 +111,7 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 - Up to 4 photo thumbnails sit under the detail line. (#56)
 - On the right: the creation time ("9:41 AM") and, for voice memos, the duration. (#55, #56)
 - The section subtitle shows the count ("2 memos"), or "Notes & voice" when there are none. (#51, #56)
-- Tapping a row opens the memo. Swiping or long-pressing a row deletes it; voice memos confirm first. (#51, #56)
+- Tapping a row opens the memo. Swiping a row reveals Delete; long-pressing it opens a menu with **Share** and **Delete**. Deleting a voice memo confirms first. (#51, #56, #134)
 - A **See all** link in the section header opens the Memos sheet whenever any memo exists, including when Today has none, and is hidden when there are no memos. (#58)
 
 ### The open memo
@@ -132,6 +132,8 @@ Make Memos a real feature within the existing layout. A user adds a **Written me
 
 - The open memo's **Share** button opens the iOS share sheet; Claude, ChatGPT, and other installed apps appear there. There are no per-app buttons. (#55)
 - It shares the text (title, then body or transcript) plus any photos, never the audio. A voice memo with no transcript shares only its photos; if it has none, Share is unavailable. (#55)
+- A row's long-press **Share**, on Today and in the Memos sheet, sends exactly what the open memo's Share button would send for the memo as saved. Photos are read only when the user chooses Share. When the memo has nothing to share, the menu has no Share. (#134)
+- Sharing leaves the memo unchanged, and Kyo keeps no record of it. The Watch has no Share. The routes considered and ruled out are in `docs/research/task-handoff-to-agents.md`. (#134)
 
 ### Memo → Task
 

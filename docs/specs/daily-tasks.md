@@ -31,6 +31,7 @@ Make Tasks a simple daily list of text entries and checkboxes within the existin
 17. As a phone and Watch user, I want both devices to show the same task data, so that changes made on either device are reflected on the other.
 18. As a Kyo user, I want my saved tasks to survive closing and reopening the app, so that the list remains useful between sessions.
 19. As a Kyo user, I want the task summary to reflect the real list, so that the displayed completion count is accurate.
+20. As an iPhone or iPad user, I want to share a task's text through the share sheet, so that I can pass it to another app, such as an AI assistant, to work on.
 
 ## Implementation Decisions
 
@@ -45,6 +46,7 @@ Make Tasks a simple daily list of text entries and checkboxes within the existin
 - Introduce a shared task model and a task-list interface for the two platform views. The interface owns observable task operations and day behavior; storage and device communication remain behind it.
 - Persist saved task changes and synchronize the paired phone/Watch task list. Stable task identity is required so that delivery retries and rollover do not duplicate entries. Choose the concrete storage and synchronization mechanisms during implementation; none exists in the starter today.
 - Watch supports adding, completing, and reopening tasks using suitable native text input. Watch editing and deleting (#21) use a swipe that reveals Edit and Delete; see #21 for the confirmed behavior.
+- Sharing (#133). On iPhone and iPad, long-pressing a task row opens a menu with **Share** and **Delete**. Share opens the iOS share sheet with the task's text exactly as saved and nothing added; Claude, ChatGPT, T3 Code, and other installed apps appear there. There are no per-app buttons. Any task can be shared, completed or not. A task being edited inline shares its last saved text. Sharing leaves the task unchanged, and Kyo keeps no record of it. Delete in the menu does what swipe-to-delete does. The Watch has no Share. The routes considered and ruled out are in `docs/research/task-handoff-to-agents.md`.
 - Preserve accessible task names and completion state when converting the decorative checkbox rows into interactive controls.
 - Keep lasting target/build configuration changes in the project's XcodeGen definition and regenerate the checked-in project when necessary.
 - Phone/Watch synchronization uses phone-authoritative full-list snapshots delivered over WatchConnectivity `applicationContext`, reconciled by a hybrid-clock revision; see `docs/adr/0001-phone-authoritative-task-snapshots.md`. Watch-originated changes travel as commands the phone applies; see `docs/adr/0002-watch-commands-and-phone-reconciliation.md`.
@@ -58,7 +60,8 @@ Test approach proposed during specification review:
 - Control the current day in tests to verify overnight carryover, reopening after several days, completion-day retention, and repeated rollover without duplication.
 - Verify persistence by saving changes and reopening the task list against the same test storage.
 - Exercise two task-list instances connected by a controllable transport to verify phone/Watch convergence for supported operations and duplicate delivery. Do not mock the task behavior under test.
-- Complement these checks with focused platform interaction checks: bottom Add focuses a row, Return saves, text editing and checkbox taps act independently, swipe deletes, completed rows appear gray, and Watch input/toggling works.
+- Complement these checks with focused platform interaction checks: bottom Add focuses a row, Return saves, text editing and checkbox taps act independently, swipe deletes, completed rows appear gray, long-pressing a row offers Share and Delete, and Watch input/toggling works.
+- Cover what is shared for a task directly: the saved text, unchanged, for a completed and an unfinished task.
 - Build both app schemes. Check actual paired-device communication in a suitable paired simulator or device environment; a transport substitute cannot establish that platform integration works.
 - There is no existing test target or comparable automated test suite in the repository. Add the minimum test configuration needed for these observable behaviors.
 
@@ -67,6 +70,7 @@ Test approach proposed during specification review:
 - Implementing the feature as part of this specification request.
 - Due dates, task times, reminders, priorities, tags, subtasks, recurring tasks, and manual reordering.
 - New historical-day navigation or editing workflows.
+- Sharing several tasks at once, wrapping shared text in a prompt, tracking that a task was shared, sending a task to an AI service from Kyo itself, and sharing from the Watch.
 - General cloud account synchronization across multiple phones or tablets beyond the requested paired phone/Watch behavior.
 - Implementing Habits or Memos, or redesigning the overall app layout.
 

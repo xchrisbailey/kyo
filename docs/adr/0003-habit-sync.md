@@ -22,7 +22,7 @@ revision**, separate from tasks, under their own context key. The transport keep
 snapshot of each kind and always writes **both keys in a single `updateApplicationContext`
 call**, so publishing one never drops the other.
 
-The habit snapshot carries every habit (id, name, manager order, dated schedule history) and a
+The habit snapshot carries every habit (id, name, habit order, dated schedule history) and a
 **trimmed log**: only the check-offs needed to reproduce each habit's current streak and this
 week's week progress. That set is enough because, from then on, a streak can only grow by one
 more due day or week, or break. Check-offs from before the current streak can't change what the

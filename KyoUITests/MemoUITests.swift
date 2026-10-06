@@ -109,6 +109,61 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Add to Today (0)"].exists)
     }
 
+    func testLongPressingAMemoRowOffersShareAboveDeleteOnTodayAndInMemoHistory() throws {
+        let app = launchIsolatedApp()
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Written memo"].tap()
+        let compose = app.textFields["Memo text"]
+        XCTAssertTrue(compose.waitForExistence(timeout: 3))
+        compose.typeText("Weekend idea\nTry the trail")
+        app.buttons["Save"].tap()
+
+        let rowPredicate = NSPredicate(format: "label BEGINSWITH 'Written memo. Weekend idea.'")
+        let todayRow = app.buttons.matching(rowPredicate).firstMatch
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 3))
+        assertMenuOffersShareAboveDelete(from: todayRow, in: app)
+
+        app.buttons["See all"].tap()
+        XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 3))
+        let historyRow = sheetRow(matching: rowPredicate, behind: todayRow, in: app)
+        assertMenuOffersShareAboveDelete(from: historyRow, in: app)
+
+        let search = app.searchFields.firstMatch
+        search.tap()
+        search.typeText("trail")
+        let result = sheetRow(matching: rowPredicate, behind: todayRow, in: app)
+        assertMenuOffersShareAboveDelete(from: result, in: app)
+    }
+
+    /// The row in the Memos sheet. Today's row is still in the hierarchy behind the sheet, so
+    /// there must be two matches: Today's, which the sheet covers, and the sheet's own, which is
+    /// the one on top. Fails if the sheet shows no such row.
+    private func sheetRow(
+        matching predicate: NSPredicate, behind todayRow: XCUIElement, in app: XCUIApplication
+    ) -> XCUIElement {
+        let rows = app.buttons.matching(predicate)
+        let row = rows.element(boundBy: 1)
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertTrue(row.isHittable)
+        XCTAssertFalse(todayRow.isHittable)
+        return row
+    }
+
+    /// Long-presses `row`, checks the menu has Share above Delete, then closes the menu.
+    private func assertMenuOffersShareAboveDelete(from row: XCUIElement, in app: XCUIApplication) {
+        row.press(forDuration: 1)
+        let share = app.buttons["Share"]
+        let delete = app.buttons["Delete"]
+        XCTAssertTrue(share.waitForExistence(timeout: 3))
+        XCTAssertTrue(delete.exists)
+        XCTAssertLessThan(share.frame.minY, delete.frame.minY)
+        // Tapping outside the menu closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.15)).tap()
+        XCTAssertTrue(share.waitForNonExistence(timeout: 3))
+    }
+
     func testSeeAllOpensTheMemosSheetWithTodayAndSearch() throws {
         let app = launchIsolatedApp()
         XCTAssertFalse(app.buttons["See all"].exists)

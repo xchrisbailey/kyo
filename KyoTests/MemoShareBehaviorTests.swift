@@ -221,6 +221,70 @@ final class MemoShareBehaviorTests: XCTestCase {
         XCTAssertTrue(MemoSharePayload.canShare(try voice("Spoken."), currentText: "Spoken."))
     }
 
+    // MARK: Sharing from a row
+
+    func testRowOffersShareForAWrittenMemoWithText() throws {
+        XCTAssertTrue(MemoSharePayload.canShare(try written("Plan the week")))
+    }
+
+    func testRowOffersShareForATranscribedVoiceMemo() throws {
+        XCTAssertTrue(MemoSharePayload.canShare(try voice("Spoken.")))
+    }
+
+    func testRowOffersNoShareForATranscribingOrNoTranscriptVoiceMemoWithoutPhotos() throws {
+        XCTAssertFalse(MemoSharePayload.canShare(try voice(state: .transcribing)))
+        XCTAssertFalse(MemoSharePayload.canShare(try voice(state: .noTranscript)))
+    }
+
+    func testRowOffersShareForAVoiceMemoWithoutATranscriptWhenItHasPhotos() throws {
+        let photoIDs = [UUID()]
+
+        XCTAssertTrue(MemoSharePayload.canShare(try voice(state: .transcribing, photoIDs: photoIDs)))
+        XCTAssertTrue(MemoSharePayload.canShare(try voice(state: .noTranscript, photoIDs: photoIDs)))
+    }
+
+    func testRowOffersShareForAPhotoOnlyMemoButNotABlankOne() throws {
+        XCTAssertTrue(MemoSharePayload.canShare(try written("", photoIDs: [UUID()])))
+        XCTAssertFalse(MemoSharePayload.canShare(try written("  \n ")))
+    }
+
+    func testARowSharesTheSameThingTheOpenCardWouldForTheMemoAsSaved() throws {
+        let ids = [UUID(), UUID()]
+        let bytes = [ids[0]: photoA, ids[1]: photoB]
+        let memos = [
+            try written("Garden\nTomatoes", photoIDs: ids),
+            try voice("Look at this.", title: "Sketch", photoIDs: ids),
+            try written("", photoIDs: ids),
+            try voice(state: .noTranscript, photoIDs: ids),
+        ]
+
+        for memo in memos {
+            let fromRow = MemoSharePayload.make(
+                for: memo, currentText: memo.text, loadPhoto: { bytes[$0] }, locale: english, timeZone: utc
+            )
+            let fromCard = payload(memo, currentText: memo.text, photos: [photoA, photoB])
+            XCTAssertEqual(fromRow, fromCard)
+        }
+    }
+
+    func testPhotoBytesAreReadOnlyWhenThePayloadIsBuiltInPhotoOrder() throws {
+        let ids = [UUID(), UUID(), UUID()]
+        let memo = try written("Trip", photoIDs: ids)
+        var reads: [UUID] = []
+
+        XCTAssertTrue(MemoSharePayload.canShare(memo))
+        XCTAssertTrue(reads.isEmpty)
+
+        let shared = MemoSharePayload.make(for: memo, currentText: memo.text, loadPhoto: { id in
+            reads.append(id)
+            // The middle photo can't be read, so it is left out.
+            return id == ids[1] ? nil : Data([UInt8(reads.count)])
+        })
+
+        XCTAssertEqual(reads, ids)
+        XCTAssertEqual(shared.photos, [Data([1]), Data([3])])
+    }
+
     func testPayloadFromAStoredMemoCarriesThePhotoBytesTheStoreHolds() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let clock = try moment()

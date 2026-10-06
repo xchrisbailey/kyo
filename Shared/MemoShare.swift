@@ -32,6 +32,28 @@ struct MemoSharePayload: Equatable, Sendable {
         )
     }
 
+    /// The payload for `memo`, reading each photo's bytes through `loadPhoto` only now. The open
+    /// card and a memo row both build their share items through this, so they send the same thing.
+    static func make(
+        for memo: Memo,
+        currentText: String,
+        loadPhoto: (UUID) -> Data?,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> MemoSharePayload {
+        make(
+            for: memo, currentText: currentText, photos: memo.photoIDs.compactMap(loadPhoto),
+            locale: locale, timeZone: timeZone
+        )
+    }
+
+    /// Whether a memo row offers Share: `canShare` for the memo as saved, with no open editor.
+    /// A Written memo's text and a Voice memo's Transcript are the memo's own `text`, which is
+    /// what the open card starts from.
+    static func canShare(_ memo: Memo) -> Bool {
+        canShare(memo, currentText: memo.text)
+    }
+
     /// Whether Share is available for `memo`: it has shareable text or at least one photo. Reads
     /// no photo bytes, so the card can ask it while it is open.
     static func canShare(_ memo: Memo, currentText: String) -> Bool {

@@ -164,6 +164,7 @@ struct TodayView: View {
                                     MemoRow(
                                         memo: memo,
                                         loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
+                                        loadPhoto: { memoStore.photoData(forPhotoID: $0) },
                                         onOpen: { activeSheet = .memo(memo.id) },
                                         onDelete: { requestDelete(of: memo) }
                                     )

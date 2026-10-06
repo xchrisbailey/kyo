@@ -13,7 +13,7 @@ final class MemoShareItems: Identifiable {
     let id = UUID()
     /// The text first, when there is any, then the photo files in order.
     let activityItems: [Any]
-    private let folder: URL?
+    private var folder: URL?
 
     private static var root: URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("memo-share", isDirectory: true)
@@ -44,12 +44,20 @@ final class MemoShareItems: Identifiable {
         self.folder = folder
     }
 
+    /// Removes the photo files. Safe to call more than once.
     func cleanUp() {
-        if let folder { try? FileManager.default.removeItem(at: folder) }
+        guard let folder else { return }
+        self.folder = nil
+        try? FileManager.default.removeItem(at: folder)
     }
 }
 
 /// The iOS share sheet for a memo. `onFinish` runs when the sheet is done, shared or cancelled.
+///
+/// The activity controller's completion handler doesn't run when SwiftUI dismisses the sheet or
+/// popover itself (a swipe down on iPhone, a tap outside the popover on iPad), so the files are
+/// also removed when the sheet's view controller is torn down. That happens only once the sheet
+/// is gone, never while a share destination is presented on top of it.
 struct MemoShareSheet: UIViewControllerRepresentable {
     let items: MemoShareItems
     let onFinish: () -> Void
@@ -64,4 +72,16 @@ struct MemoShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(items: items) }
+
+    static func dismantleUIViewController(_ controller: UIActivityViewController, coordinator: Coordinator) {
+        coordinator.items.cleanUp()
+    }
+
+    final class Coordinator {
+        let items: MemoShareItems
+
+        init(items: MemoShareItems) { self.items = items }
+    }
 }

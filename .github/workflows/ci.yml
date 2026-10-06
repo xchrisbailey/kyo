@@ -82,7 +82,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # KyoUITests is not run in CI.
+      # KyoUITests runs in ui-tests.yml, on pull requests that change Kyo/ or KyoUITests/.
       - name: Test
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoTests \

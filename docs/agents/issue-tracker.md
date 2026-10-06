@@ -23,6 +23,8 @@ If changed to `yes`, triage external PRs through the same states and labels. Use
 
 When a skill says "publish to the issue tracker", create a GitHub issue. When it says "fetch the relevant ticket", use `gh issue view <number> --comments`.
 
+A spec's single home is its file under `docs/specs/`. When a skill says to publish a spec, write the file, then create the issue with the Problem Statement, the Solution, and a link to the file. Tickets and briefs point at the file.
+
 ## Wayfinding operations
 
 For `/wayfinder`, keep the map as one issue labeled `wayfinder:map` and create child tickets as GitHub sub-issues. If sub-issues are unavailable, link children in a task list in the map body and put `Part of #<map>` in each child. Use `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, or `wayfinder:task` for child types.

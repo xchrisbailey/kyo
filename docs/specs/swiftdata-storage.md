@@ -13,7 +13,7 @@ On iPhone and iPad, tasks and habits move from UserDefaults to one SwiftData sto
 ## User Stories
 
 1. As a Kyo user, I want all my tasks, including unfinished ones carried forward and completed ones, to still be there after the update, so that updating never costs me data.
-2. As a Kyo user, I want my habits to keep their names, order and schedules after the update, so that Today and the habit manager look the same as before.
+2. As a Kyo user, I want my habits to keep their names, order and schedules after the update, so that Today and the Habits sheet look the same as before.
 3. As a Kyo user, I want every check-off in a habit's log to survive the update, so that my streaks and week progress don't reset.
 4. As a Kyo user, I want a habit's past schedules to survive the update, so that past days are still judged by the schedule they had.
 5. As a Kyo user, I want the update to need nothing from me, with no migration screen or prompt, so that I can open Kyo and carry on.

@@ -195,6 +195,20 @@ targets:
         SUPPORTED_PLATFORMS: iphoneos iphonesimulator
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
+  KyoWatchUITests:
+    type: bundle.ui-testing
+    platform: watchOS
+    sources:
+      - KyoWatchUITests
+    dependencies:
+      - target: KyoWatch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.watchuitests
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: watchos watchsimulator
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Kyo:
     build:
@@ -224,3 +238,15 @@ schemes:
       config: Debug
       targets:
         - KyoUITests
+  # This scheme builds only the test bundle, which pulls the Watch app in as a dependency. It must
+  # not list KyoWatch itself: that would stop Xcode auto-creating the KyoWatch scheme above. It's
+  # shared so `scripts/test KyoWatchUITests` works from the command line. Whether Xcode
+  # re-saves it the way it does a watch-app scheme is untested.
+  KyoWatchUITests:
+    build:
+      targets:
+        KyoWatchUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - KyoWatchUITests

@@ -64,7 +64,7 @@ jobs:
           xcodebuild -project Kyo.xcodeproj -scheme KyoWatchUITests \
             -destination "platform=watchOS Simulator,id=$SIMULATOR_UDID" \
             -resultBundlePath "$RUNNER_TEMP/KyoWatchUITests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO test
+            test
 
       - name: Upload result bundle
         if: failure() || cancelled()

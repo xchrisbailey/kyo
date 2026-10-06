@@ -1,0 +1,78 @@
+name: Watch UI Tests
+
+# Only pull requests that can change the Watch app: its sources, the widget extension, the UI
+# tests, the code compiled into both apps, and the project definition. `KyoWatch/**` matches that
+# directory alone, never KyoWatchWidgets/ or KyoWatchUITests/ by prefix.
+on:
+  pull_request:
+    paths:
+      - 'KyoWatch/**'
+      - 'KyoWatchWidgets/**'
+      - 'KyoWatchUITests/**'
+      - 'Shared/**'
+      - 'project.yml'
+      - '.github/workflows/watch-ui-tests.yml'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test KyoWatchUITests
+    runs-on: xcode-27
+    # A failing run can add 10 minutes of diagnostics collection. The headroom also bounds a hung
+    # test runner.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The first launch of the Watch app on a fresh simulator is what #150 broke, so the test runs
+      # on a simulator that is booted just now. The UDID is resolved from the watchOS 27.0 runtime
+      # so the boot and the destination name one device. The runner image may not ship a Watch
+      # device, so one is created when the runtime has none.
+      - name: Boot simulator
+        run: |
+          udid=$(xcrun simctl list devices "watchOS 27.0" available | grep -E '^ +Apple Watch Series [0-9]+ \(46mm\) \(' | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -n 1)
+          if [ -z "$udid" ]; then
+            device_type=$(xcrun simctl list devicetypes | grep -E '^Apple Watch Series [0-9]+ \(46mm\)' | sort -V | tail -n 1 | sed -E 's/.*\((com\.apple[^)]*)\)$/\1/')
+            runtime=$(xcrun simctl list runtimes available | grep -E '^watchOS 27\.0 ' | head -n 1 | awk '{print $NF}')
+            if [ -z "$device_type" ] || [ -z "$runtime" ]; then
+              echo "::error::No Apple Watch 46mm device type or watchOS 27.0 runtime."
+              xcrun simctl list devicetypes
+              xcrun simctl list runtimes available
+              exit 1
+            fi
+            echo "No Apple Watch simulator on the watchOS 27.0 runtime; creating one ($device_type)."
+            udid=$(xcrun simctl create "Kyo CI Watch" "$device_type" "$runtime")
+          fi
+          echo "Using Apple Watch $udid"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$udid" -b
+
+      # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
+      # linker signature with the wrong identifier, and WidgetKit kills it on the Watch app's first
+      # launch (#150). A simulator build signs to run locally, with no account. This job is the
+      # regression test for that: it fails if the Watch app is built unsigned.
+      # Unlike ui-tests.yml, there is no -retry-tests-on-failure: the #150 crash can pass on a
+      # second launch on the same simulator, so a retry would hide the regression this job catches.
+      - name: Test
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme KyoWatchUITests \
+            -destination "platform=watchOS Simulator,id=$SIMULATOR_UDID" \
+            -resultBundlePath "$RUNNER_TEMP/KyoWatchUITests.xcresult" \
+            test
+
+      - name: Upload result bundle
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: KyoWatchUITests-xcresult
+          path: ${{ runner.temp }}/KyoWatchUITests.xcresult
+          if-no-files-found: ignore
+          retention-days: 14

@@ -26,6 +26,12 @@ xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 
 xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
+## Tests
+
+Run tests through `scripts/test <scheme> [extra xcodebuild arguments]`, for example `scripts/test KyoTests`, `scripts/test KyoUITests -only-testing:KyoUITests/SectionCollapseUITests`, or `scripts/test KyoWatchUITests`. Each run gets its own simulator and derived data, so runs from separate worktrees can't interfere, and both are removed afterwards. The script picks an iPhone or Apple Watch simulator from the scheme's test targets, so `--platform` is only an override. Don't call `xcodebuild test` directly.
+
+Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the `KyoWatchWidgets` extension a linker signature whose identifier is `KyoWatchWidgets` instead of its bundle identifier. The Shortcuts daemon then rejects the extension, WidgetKit asserts in `WatchRecordMemoControl`, and the extension is killed when the Watch app first launches on a fresh simulator (#150). `scripts/test` builds signed for the simulator, which needs no account. The build checks above can stay unsigned because they never launch the app.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
@@ -35,6 +41,8 @@ xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destinat
 - regenerates `Kyo.xcodeproj` with XcodeGen and fails if it differs from the checked-in project.
 
 `.github/workflows/ui-tests.yml` runs the **KyoUITests** scheme on the same simulator, only on pull requests that change files under `Kyo/` or `KyoUITests/`. `WatchSyncSmokeUITests` skips itself there. A failed or timed-out run uploads its result bundle as an artifact.
+
+`.github/workflows/watch-ui-tests.yml` runs the **KyoWatchUITests** scheme as the **Test KyoWatchUITests** job, on a freshly booted watchOS 27 simulator (a new one is created if the runner has none). It runs only on pull requests that change `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/`, `Shared/`, `project.yml`, or the workflow file. It builds signed for the simulator, without `CODE_SIGNING_ALLOWED=NO`, and the first-launch smoke test is the regression test for #150: the job fails if the Watch app is built unsigned. A failed or timed-out run uploads its result bundle as an artifact.
 
 The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the project check fails, install that version, run `xcodegen generate`, and commit the result. A newer push to the same ref cancels the run in progress.
 

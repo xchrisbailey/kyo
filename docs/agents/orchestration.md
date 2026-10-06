@@ -44,6 +44,6 @@
   - the spec and ADRs;
   - the glossary;
   - `CODING_STANDARDS.md` and `AGENTS.md`.
-- Opus also confirms that both app schemes build and the tests pass. CI covers the builds, `KyoTests`, and `KyoUITests` on PRs that touch `Kyo/` or `KyoUITests/`; a coder's report covers the rest, and counts only when it quotes the final `** TEST SUCCEEDED **` line of each run.
+- Opus also confirms that both app schemes build and the tests pass. CI covers the builds, `KyoTests`, `KyoUITests` on PRs that touch `Kyo/` or `KyoUITests/`, and `KyoWatchUITests` on PRs that touch `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/`, `Shared/`, or `project.yml`; a coder's report covers the rest, and counts only when it quotes the final `** TEST SUCCEEDED **` line of each run.
 - Review findings go back to the same coder, which keeps its context, until the review passes.
 - Opus reports the result to the user. Merge only when the user asks, or has already said to merge PRs that pass review.

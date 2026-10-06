@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#
+# Run one `xcodebuild test` in isolation: a throwaway simulator and a derived data directory that
+# belong to this run alone, both removed on exit (success, failure, or interrupt). Parallel runs
+# from separate worktrees can't share a simulator or a build, so they can't contaminate each other.
+#
+#   scripts/test [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]
+#
+#   scripts/test KyoTests
+#   scripts/test KyoUITests -only-testing:KyoUITests/SectionCollapseUITests
+#
+# Output is quiet: the per-suite "Executed N tests" lines, every failure, the final
+# `** TEST SUCCEEDED **` / `** TEST FAILED **` line, and the path of the full log, which is kept.
+# Exits with xcodebuild's status.
+#
+# The simulator platform comes from the scheme's test targets: watchOS when every test target
+# supports only watchOS, iOS otherwise. `--platform` overrides that.
+set -euo pipefail
+
+usage() {
+  echo "usage: scripts/test [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]" >&2
+  exit 2
+}
+
+platform=""
+if [[ "${1:-}" == "--platform" ]]; then
+  [[ $# -ge 3 ]] || usage
+  platform="$2"
+  shift 2
+  [[ "$platform" == "ios" || "$platform" == "watchos" ]] || usage
+fi
+[[ $# -ge 1 ]] || usage
+scheme="$1"
+shift
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project="$root/Kyo.xcodeproj"
+
+# Pick the platform from the test targets the scheme runs. A target that supports watchOS and no
+# iOS platform means a watchOS simulator; anything else (or no shared scheme file) means iOS.
+detect_platform() {
+  local scheme_file="$project/xcshareddata/xcschemes/$1.xcscheme"
+  [[ -f "$scheme_file" ]] || { echo ios; return; }
+  local targets target supported found=0
+  targets="$(awk '/<Testables>/ {on=1} /<\/Testables>/ {on=0} on && /BlueprintName/ {gsub(/.*= "|".*/, ""); print}' "$scheme_file")"
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    supported="$(xcodebuild -project "$project" -target "$target" -showBuildSettings 2>/dev/null \
+      | awk -F' = ' '/^ *SUPPORTED_PLATFORMS = / {print $2; exit}')"
+    if [[ "$supported" == *watchsimulator* && "$supported" != *iphonesimulator* ]]; then
+      found=1
+    else
+      echo ios
+      return
+    fi
+  done <<<"$targets"
+  if [[ $found -eq 1 ]]; then echo watchos; else echo ios; fi
+}
+
+[[ -n "$platform" ]] || platform="$(detect_platform "$scheme")"
+
+# Newest installed runtime for the platform, preferring the version CI uses (27.0).
+pick_runtime() {
+  local prefix="$1" preferred="$2" lines
+  lines="$(xcrun simctl list runtimes available | grep -E "^$prefix [0-9]" || true)"
+  [[ -n "$lines" ]] || { echo "scripts/test: no available $prefix simulator runtime" >&2; exit 1; }
+  if grep -qE "^$prefix $preferred " <<<"$lines"; then
+    grep -E "^$prefix $preferred " <<<"$lines" | head -n 1 | awk '{print $NF}'
+  else
+    sort -V <<<"$lines" | tail -n 1 | awk '{print $NF}'
+  fi
+}
+
+if [[ "$platform" == "watchos" ]]; then
+  runtime="$(pick_runtime watchOS 27.0)"
+  # Newest Apple Watch Series in the 46mm size.
+  device_type="$(xcrun simctl list devicetypes | grep -E '^Apple Watch Series [0-9]+ \(46mm\)' \
+    | sort -V | tail -n 1 | sed -E 's/.*\((com\.apple[^)]*)\)$/\1/')"
+else
+  runtime="$(pick_runtime iOS 27.0)"
+  device_type="com.apple.CoreSimulator.SimDeviceType.iPhone-17"
+fi
+
+run_id="kyo-test-$(basename "$root")-$$-$(date +%s)"
+tmp="${TMPDIR:-/tmp}"
+tmp="${tmp%/}"
+work="$(mktemp -d "$tmp/$run_id.XXXXXX")"
+derived_data="$work/DerivedData"
+log_dir="$tmp/kyo-test-logs"
+mkdir -p "$log_dir"
+log="$log_dir/$run_id-$scheme.log"
+
+udid=""
+xcodebuild_pid=""
+
+# Stop xcodebuild and the helpers it spawned (simctl diagnose, the test runner).
+stop_xcodebuild() {
+  pkill -TERM -P "$xcodebuild_pid" 2>/dev/null || true
+  kill -TERM "$xcodebuild_pid" 2>/dev/null || true
+}
+
+cleanup() {
+  if [[ -n "$xcodebuild_pid" ]] && kill -0 "$xcodebuild_pid" 2>/dev/null; then
+    stop_xcodebuild
+    wait "$xcodebuild_pid" 2>/dev/null || true
+  fi
+  if [[ -n "$udid" ]]; then
+    xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+    xcrun simctl delete "$udid" >/dev/null 2>&1 || true
+  fi
+  # Helpers that outlive xcodebuild can still be writing into the derived data for a moment.
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    rm -rf "$work" 2>/dev/null
+    [[ ! -e "$work" ]] && break
+    sleep 1
+  done
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+udid="$(xcrun simctl create "$run_id" "$device_type" "$runtime")"
+echo "scripts/test: $scheme on $platform simulator $run_id ($udid)"
+echo "scripts/test: full log: $log"
+
+# Run in the background and poll, so a signal reaches the trap within a second instead of after
+# xcodebuild. After a failed run xcodebuild can sit for up to ten minutes collecting simulator
+# diagnostics (`simctl diagnose`, 600s timeout) before it prints its result line. Once the
+# top-level suite has reported a failure, give it a grace period, then stop it and report the
+# failure ourselves.
+failed_pattern="^Test Suite '(All tests|Selected tests)' failed"
+grace=60
+set +e
+# No CODE_SIGNING_ALLOWED=NO on purpose: unsigned builds give the watch widget extension a signature
+# identifier that isn't its bundle identifier, so the Record memo control is rejected and the
+# extension is killed on first launch. Simulator builds sign to run locally, with no account.
+xcodebuild -project "$project" -scheme "$scheme" \
+  -destination "id=$udid" -derivedDataPath "$derived_data" \
+  "$@" test >"$log" 2>&1 &
+xcodebuild_pid=$!
+stopped=0
+seconds_since_failure=0
+while kill -0 "$xcodebuild_pid" 2>/dev/null; do
+  if grep -qE "$failed_pattern" "$log"; then
+    seconds_since_failure=$((seconds_since_failure + 1))
+    if [[ $seconds_since_failure -ge $grace ]]; then
+      stopped=1
+      stop_xcodebuild
+      break
+    fi
+  fi
+  sleep 1
+done
+wait "$xcodebuild_pid"
+status=$?
+xcodebuild_pid=""
+set -e
+if [[ $stopped -eq 1 ]]; then
+  echo "scripts/test: xcodebuild was still running ${grace}s after the tests failed; stopped it" >&2
+  grep -q '^\*\* TEST FAILED \*\*' "$log" || echo "** TEST FAILED **" >>"$log"
+  status=65
+fi
+
+# Suite results, failures (XCTest and Swift Testing), build errors, and the final result line.
+grep -E "Test Suite '.*' (passed|failed)|Executed [0-9]+ tests?, with|: error:|Test Case .* failed|✘|Testing failed:|Result bundle|\*\* (TEST |BUILD )?(SUCCEEDED|FAILED|BUILD FAILED) \*\*" "$log" || true
+
+echo "scripts/test: full log: $log"
+exit "$status"

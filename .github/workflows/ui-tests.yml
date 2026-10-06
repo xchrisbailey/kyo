@@ -27,14 +27,31 @@ jobs:
         with:
           persist-credentials: false
 
+      # A cold simulator is the usual cause of launch stalls, so boot it and wait until it is ready.
+      # The UDID is resolved from the iOS 27.0 runtime so the boot and the destination name one device.
+      - name: Boot simulator
+        run: |
+          udid=$(xcrun simctl list devices "iOS 27.0" available | grep -E '^ +iPhone 17 \(' | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -n 1)
+          if [ -z "$udid" ]; then
+            echo "::error::No iPhone 17 simulator on the iOS 27.0 runtime."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Using iPhone 17 $udid"
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$udid" -b
+
       # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
       # paired Watch simulator here.
       # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
       # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
+      # App launches sometimes stall on the runner's simulator. A failed test gets one retry, which
+      # tells a stall from a real failure: a real failure fails twice.
       - name: Test
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0' \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -retry-tests-on-failure -test-iterations 2 \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
             test
 

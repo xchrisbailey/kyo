@@ -1,7 +1,7 @@
 import Foundation
 
 /// Picks where this launch keeps which sections are collapsed: the device's own defaults, or, for UI
-/// tests, a suite of their own.
+/// tests, a suite of their own. The phone and the Watch share it.
 enum CollapsedSectionsSelection {
     /// UI tests set this to a suite name. A launch with the same name sees the state an earlier
     /// launch left, so a test can relaunch; a name nothing has used starts with every section expanded.

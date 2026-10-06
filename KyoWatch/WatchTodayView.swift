@@ -7,7 +7,7 @@ struct WatchTodayView: View {
     @ObservedObject private var habitList = WatchAppModel.shared.habitList
     @ObservedObject private var memoList = WatchAppModel.shared.memoList
     /// Which sections are collapsed, kept on the watch and separate from the phone's.
-    @StateObject private var sections = CollapsedSections()
+    @StateObject private var sections = CollapsedSectionsSelection.make()
     @State private var activeSheet: WatchPreviewSheet?
     /// Made once the memo list exists, which is where the outbox a recording is saved to lives.
     @State private var recordingSession: VoiceRecordingSession?

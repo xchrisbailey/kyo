@@ -41,7 +41,7 @@ final class HabitManagerUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["New Habit"].exists)
         field.typeText("Journal")
         app.buttons["Weekly target"].tap()
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
 
         let journal = managerRow("Journal", in: app)
         XCTAssertTrue(journal.waitForExistence(timeout: 10))
@@ -56,7 +56,7 @@ final class HabitManagerUITests: XCTestCase {
         editField.tap()
         editField.typeText(" daily")
         app.buttons["Every day"].tap()
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
 
         let renamed = managerRow("Journal daily", in: app)
         XCTAssertTrue(renamed.waitForExistence(timeout: 10))
@@ -106,12 +106,21 @@ final class HabitManagerUITests: XCTestCase {
             app.buttons["Weekdays"].tap()
             app.buttons[weekday].tap()
         }
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
         if weekday == nil {
             XCTAssertTrue(app.buttons[name].waitForExistence(timeout: 10))
         } else {
             XCTAssertTrue(field.waitForNonExistence(timeout: 10), "the form closes after Save")
         }
+    }
+
+    /// Save stays disabled until the typed name reaches the form, which can lag the keystrokes on the CI runner;
+    /// a tap before then does nothing and the habit is never added.
+    private func tapSaveWhenEnabled(in app: XCUIApplication) {
+        let save = app.buttons["Save"]
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "Save never became enabled")
+        save.tap()
     }
 
     private func launchIsolatedApp() -> XCUIApplication {

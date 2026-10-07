@@ -139,7 +139,7 @@ final class TaskCheckboxUITests: XCTestCase {
         let field = openHabitForm(in: app)
         XCTAssertFalse(app.buttons["Save"].isEnabled)
         field.typeText("Stretch")
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
 
         let circle = app.buttons["Stretch"]
         XCTAssertTrue(circle.waitForExistence(timeout: 10))
@@ -194,7 +194,7 @@ final class TaskCheckboxUITests: XCTestCase {
         openHabitForm(in: app).typeText("Today only")
         app.buttons["Weekdays"].tap()
         app.buttons[today].tap()
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
         let todayCircle = app.buttons["Today only"]
         XCTAssertTrue(todayCircle.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Nothing due today"].waitForNonExistence(timeout: 10))
@@ -240,5 +240,14 @@ final class TaskCheckboxUITests: XCTestCase {
             XCTWaiter.wait(for: [expectation], timeout: 10), .completed,
             "expected \(element) to have value \(expectedValue), has \(String(describing: element.value))"
         )
+    }
+
+    /// Save stays disabled until the typed name reaches the form, which can lag the keystrokes on the CI runner;
+    /// a tap before then does nothing and the habit is never added (#165).
+    private func tapSaveWhenEnabled(in app: XCUIApplication) {
+        let save = app.buttons["Save"]
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "Save never became enabled")
+        save.tap()
     }
 }

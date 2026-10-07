@@ -1,12 +1,16 @@
 name: UI Tests
 
-# Only pull requests that change the app target or the UI tests. `Kyo/**` matches the Kyo/
-# directory alone, never KyoWatch/, KyoTests/, KyoWidgets/ or KyoUITests/ by prefix.
+# Only pull requests that change the app target, the UI tests, or this workflow. `Kyo/**` matches
+# the Kyo/ directory alone, never KyoWatch/, KyoTests/, KyoWidgets/ or KyoUITests/ by prefix.
+# Draft pull requests skip the suite: coders run `scripts/test` locally, and marking the PR ready
+# (`ready_for_review`) starts the run.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'Kyo/**'
       - 'KyoUITests/**'
+      - '.github/workflows/ui-tests.yml'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -17,11 +21,37 @@ permissions:
 
 jobs:
   test:
-    name: Test KyoUITests
+    name: Test KyoUITests (${{ matrix.shard }}/3)
+    if: github.event.pull_request.draft == false
     runs-on: xcode-27
-    # The suite takes about 25 minutes on the runner. The headroom bounds a hung test runner and
+    # One shard takes 12 to 20 minutes on the runner. The headroom bounds a hung test runner and
     # covers a retried failure.
     timeout-minutes: 60
+    # Each shard builds and runs its own subset of classes on its own runner and simulator. The
+    # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shards 1
+    # and 2 name their classes, balanced by measured time (about 6 minutes of tests each). Shard 3
+    # names none: it skips shards 1 and 2's classes, so a new UI test class runs there instead of
+    # being silently left out. Keep shard 3's -skip-testing list equal to shards 1 and 2's classes.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            selection: >-
+              -only-testing:KyoUITests/SectionCollapseUITests
+              -only-testing:KyoUITests/ScheduleCalendarsUITests
+              -only-testing:KyoUITests/ScheduleEventDetailUITests
+          - shard: 2
+            selection: >-
+              -only-testing:KyoUITests/TaskCheckboxUITests
+              -only-testing:KyoUITests/ScheduleUITests
+          - shard: 3
+            selection: >-
+              -skip-testing:KyoUITests/SectionCollapseUITests
+              -skip-testing:KyoUITests/ScheduleCalendarsUITests
+              -skip-testing:KyoUITests/ScheduleEventDetailUITests
+              -skip-testing:KyoUITests/TaskCheckboxUITests
+              -skip-testing:KyoUITests/ScheduleUITests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -50,10 +80,14 @@ jobs:
       # -collect-test-diagnostics never: by default a failed iteration waits up to ten minutes for
       # simulator diagnostics (#152). With it a failed run exits in under a second and still writes
       # the result bundle, screen recordings included, which the next step uploads.
+      # $SELECTION is deliberately unquoted: it holds several -only-testing or -skip-testing flags.
       - name: Test
+        env:
+          SELECTION: ${{ matrix.selection }}
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            $SELECTION \
             -retry-tests-on-failure -test-iterations 2 \
             -collect-test-diagnostics never \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
@@ -63,7 +97,7 @@ jobs:
         if: failure() || cancelled()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: KyoUITests-xcresult
+          name: KyoUITests-xcresult-${{ matrix.shard }}
           path: ${{ runner.temp }}/KyoUITests.xcresult
           if-no-files-found: ignore
           retention-days: 14

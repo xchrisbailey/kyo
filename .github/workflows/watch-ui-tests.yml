@@ -3,8 +3,11 @@ name: Watch UI Tests
 # Only pull requests that can change the Watch app: its sources, the widget extension, the UI
 # tests, the code compiled into both apps, and the project definition. `KyoWatch/**` matches that
 # directory alone, never KyoWatchWidgets/ or KyoWatchUITests/ by prefix.
+# Draft pull requests skip the suite: coders run `scripts/test` locally, and marking the PR ready
+# (`ready_for_review`) starts the run.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'KyoWatch/**'
       - 'KyoWatchWidgets/**'
@@ -23,6 +26,7 @@ permissions:
 jobs:
   test:
     name: Test KyoWatchUITests
+    if: github.event.pull_request.draft == false
     runs-on: xcode-27
     # A failing run can add 10 minutes of diagnostics collection. The headroom also bounds a hung
     # test runner.

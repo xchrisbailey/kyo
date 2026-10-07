@@ -8,6 +8,7 @@
   - `reviewer` (Sonnet 5.5, high) gives each draft PR a first-pass review;
   - `shepherd` (Haiku 5.5) reruns the local checks on a PR branch and cleans up after merges;
   - `scout` (Haiku 5.5) is a read-only lookup subagent for gathering what a brief needs. It works in either mode.
+- **Fable 5.1** (`claude-fable-5-1`) runs the `adversary` subagent, which tries to break a ticket breakdown or a risky PR. Opus calls it; it is never a teammate.
 - Opus fixes trivial review nits itself. Anything larger goes back to a coder.
 - When a spec or ticket records execution assignments, it uses these roles unless the user names others for that work.
 
@@ -55,6 +56,14 @@
 - Keep stacks short. Don't stack work that could run in parallel.
 - PR descriptions link the ticket with `Closes #<issue>` and name the PR this one is stacked on, if any.
 - A skill that asks for one integration branch and merger agents, such as `implement-spec`, gets this per-ticket PR workflow instead.
+
+**Adversarial pass.**
+
+- Run the `adversary` subagent at two points:
+  - on the ticket breakdown, before delegating work that spans two or more tickets;
+  - on a PR, before the Opus review, when it touches watch and phone sync, SwiftData or CloudKit storage, or a shipped `UserDefaults` key.
+- Give it the tickets or the PR and the spec. Keep your own conclusions and the reviewer's pass out of the brief, so its read isn't anchored on them.
+- A finding counts when it comes with a scenario that reproduces it. Opus decides each one: fix the breakdown, send it to the coder, or set it aside with the reason in the PR.
 
 **Review.**
 

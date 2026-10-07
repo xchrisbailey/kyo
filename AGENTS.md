@@ -19,7 +19,7 @@ Commit and push completed changes to the GitHub remote. Before pushing, check th
 
 ### Orchestration
 
-The main session (Opus 5.5) plans, delegates, reviews, and merges; all coding and test writing goes to the `coder` agent. A session spawned as a `coder`, `reviewer`, `shepherd`, or `scout` follows its own file in `.claude/agents/` instead. When delegating a ticket, starting an agent team, stacking or merging PRs, or reviewing a coder's PR, read `docs/agents/orchestration.md`.
+The main session (Opus 5.5) plans, delegates, reviews, and merges; all coding and test writing goes to the `coder` agent. A session spawned as a `coder`, `reviewer`, `shepherd`, `scout`, or `adversary` follows its own file in `.claude/agents/` instead. When delegating a ticket, starting an agent team, stacking or merging PRs, or reviewing a coder's PR, read `docs/agents/orchestration.md`.
 
 ### Coding standards
 

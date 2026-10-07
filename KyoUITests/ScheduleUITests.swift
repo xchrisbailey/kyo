@@ -70,11 +70,9 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(more.waitForExistence(timeout: 3))
         more.tap()
         XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 3))
-        app.terminate()
+        relaunch(app)
 
-        app.launch()
-
-        XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["schedule-show-less"].exists)
     }
 
@@ -104,7 +102,7 @@ final class ScheduleUITests: XCTestCase {
             openSettings.tap()
             XCTAssertEqual(openSettings.value as? String, "Requested", state)
             XCTAssertEqual(app.state, .runningForeground, state)
-            app.terminate()
+            terminateAndWait(app)
         }
     }
 
@@ -132,7 +130,7 @@ final class ScheduleUITests: XCTestCase {
             XCTAssertFalse(app.staticTexts[line].exists, state)
             XCTAssertFalse(app.buttons["section-header-schedule"].exists, state)
             XCTAssertTrue(app.buttons["section-header-tasks"].exists, state)
-            app.terminate()
+            terminateAndWait(app)
         }
     }
 
@@ -174,6 +172,19 @@ final class ScheduleUITests: XCTestCase {
 
     private func row(_ app: XCUIApplication, endingWith suffix: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label ENDSWITH %@", suffix)).firstMatch
+    }
+
+    /// Terminates the app and waits for the process to be gone, so the next launch starts from a clean slate.
+    private func terminateAndWait(_ app: XCUIApplication) {
+        app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app is still running after terminate")
+    }
+
+    /// Terminates the app, then launches it again with the same launch environment and waits for the foreground.
+    private func relaunch(_ app: XCUIApplication) {
+        terminateAndWait(app)
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "the app isn't in the foreground after launch")
     }
 
     private func launchApp(calendar: String) -> XCUIApplication {

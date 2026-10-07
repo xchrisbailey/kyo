@@ -136,9 +136,7 @@ final class SectionCollapseUITests: XCTestCase {
         app.buttons["section-header-habits"].tap()
         app.buttons["section-header-tasks"].tap()
         XCTAssertTrue(waitForValue("collapsed", of: app.buttons["section-header-habits"]))
-        app.terminate()
-
-        app.launch()
+        relaunch(app)
 
         XCTAssertTrue(waitForValue("collapsed", of: app.buttons["section-header-habits"]))
         XCTAssertEqual(app.buttons["section-header-tasks"].value as? String, "collapsed")
@@ -148,9 +146,7 @@ final class SectionCollapseUITests: XCTestCase {
         app.buttons["Add an item"].tap()
         app.buttons["Task"].tap()
         XCTAssertTrue(waitForValue("expanded", of: app.buttons["section-header-tasks"]))
-        app.terminate()
-
-        app.launch()
+        relaunch(app)
 
         XCTAssertTrue(waitForValue("expanded", of: app.buttons["section-header-tasks"]))
         XCTAssertEqual(app.buttons["section-header-habits"].value as? String, "collapsed")
@@ -243,9 +239,19 @@ final class SectionCollapseUITests: XCTestCase {
         return app
     }
 
-    private func waitForValue(_ value: String, of element: XCUIElement) -> Bool {
+    /// Generous: a collapse or expansion is an animation plus a re-render, and the CI runner is slow enough that
+    /// a relaunched app can take several seconds before its elements are queryable.
+    private func waitForValue(_ value: String, of element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
-        return XCTWaiter.wait(for: [expectation], timeout: 3) == .completed
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Terminates the app, waits for the process to be gone, then launches it again with the same launch environment.
+    private func relaunch(_ app: XCUIApplication) {
+        app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app is still running after terminate")
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "the app isn't in the foreground after launch")
     }
 
     private func addTask(_ title: String, to app: XCUIApplication) {

@@ -1,7 +1,7 @@
 name: UI Tests
 
-# Only pull requests that change the app target or the UI tests. `Kyo/**` matches the Kyo/
-# directory alone, never KyoWatch/, KyoTests/, KyoWidgets/ or KyoUITests/ by prefix.
+# Only pull requests that change the app target, the UI tests, or this workflow. `Kyo/**` matches
+# the Kyo/ directory alone, never KyoWatch/, KyoTests/, KyoWidgets/ or KyoUITests/ by prefix.
 # Draft pull requests skip the suite: coders run `scripts/test` locally, and marking the PR ready
 # (`ready_for_review`) starts the run.
 on:
@@ -10,7 +10,7 @@ on:
     paths:
       - 'Kyo/**'
       - 'KyoUITests/**'
-      - '.github/workflows/ui-tests.yml' # TEMP #159
+      - '.github/workflows/ui-tests.yml'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

@@ -103,7 +103,8 @@ final class SectionCollapseUITests: XCTestCase {
 
         addMemo("Quiet capture", to: app, expectingRow: false)
 
-        XCTAssertTrue(app.buttons["Memos, 2 memos"].waitForExistence(timeout: 10))
+        let relabelled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Memos, 2 memos"), object: memos)
+        XCTAssertEqual(XCTWaiter.wait(for: [relabelled], timeout: 10), .completed)
         XCTAssertEqual(memos.value as? String, "collapsed")
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo.'")).firstMatch.exists)
     }

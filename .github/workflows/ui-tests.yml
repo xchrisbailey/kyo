@@ -53,9 +53,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # A cold simulator is the usual cause of launch stalls, so boot it and wait until it is ready.
-      # The UDID is resolved from the iOS 27.0 runtime so the boot and the destination name one device.
-      - name: Boot simulator
+      # The UDID is resolved from the iOS 27.0 runtime so the build, the boot and the test name one
+      # device. The simulator is not booted yet: see the Boot simulator step.
+      - name: Resolve simulator
         run: |
           udid=$(xcrun simctl list devices "iOS 27.0" available | grep -E '^ +iPhone 17 \(' | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -n 1)
           if [ -z "$udid" ]; then
@@ -65,12 +65,25 @@ jobs:
           fi
           echo "Using iPhone 17 $udid"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
-          xcrun simctl bootstatus "$udid" -b
+
+      # The build runs before the simulator boots, not after: a freshly booted simulator keeps the
+      # runner's three cores at a load average of several hundred for minutes (#166). With a booted
+      # simulator, xcodebuild took 2 to 4 minutes just to print its invocation and the build ran
+      # about three times slower than it does on an idle runner.
+      # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
+      # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
+      - name: Build for testing
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            build-for-testing
+
+      # A cold simulator is the usual cause of launch stalls, so boot it and wait until it is ready.
+      - name: Boot simulator
+        run: xcrun simctl bootstatus "$SIMULATOR_UDID" -b
 
       # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
       # paired Watch simulator here.
-      # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
-      # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
       # App launches sometimes stall on the runner's simulator. A failed test gets one retry, which
       # tells a stall from a real failure: a real failure fails twice.
       # -collect-test-diagnostics never: by default a failed iteration waits up to ten minutes for
@@ -81,37 +94,13 @@ jobs:
         env:
           SELECTION: ${{ matrix.selection }}
         run: |
-          # TEMPORARY diagnostics for #166: what is xcodebuild doing before it logs its invocation?
-          monitor() {
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
-              sleep 20
-              echo "::group::diag t+$((i * 20))s $(date -u +%T)"
-              uptime
-              top -l 1 -o cpu -n 8 -stats pid,command,cpu,mem,state | tail -n 10
-              ps -axo pid,ppid,stat,etime,pcpu,comm | grep -E 'xcodebuild|XCBBuildService|testmanagerd|CoreSimulator|simctl|xctest' | grep -v grep
-              if [ "$i" = 3 ] || [ "$i" = 8 ]; then
-                pid=$(pgrep -x xcodebuild | head -n 1)
-                [ -n "$pid" ] && sample "$pid" 3 -file "$RUNNER_TEMP/sample$i.txt" >/dev/null 2>&1 && head -n 90 "$RUNNER_TEMP/sample$i.txt"
-              fi
-              echo "::endgroup::"
-            done
-          }
-          monitor &
-          monitor_pid=$!
-          echo "diag start $(date -u +%T)"
-          time xcodebuild -version
-          echo "diag after -version $(date -u +%T)"
-          set +e
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             $SELECTION \
             -retry-tests-on-failure -test-iterations 2 \
             -collect-test-diagnostics never \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
-            test
-          status=$?
-          kill "$monitor_pid" 2>/dev/null
-          exit $status
+            test-without-building
 
       - name: Upload result bundle
         if: failure() || cancelled()

@@ -81,6 +81,27 @@ jobs:
         env:
           SELECTION: ${{ matrix.selection }}
         run: |
+          # TEMPORARY diagnostics for #166: what is xcodebuild doing before it logs its invocation?
+          monitor() {
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+              sleep 20
+              echo "::group::diag t+$((i * 20))s $(date -u +%T)"
+              uptime
+              top -l 1 -o cpu -n 8 -stats pid,command,cpu,mem,state | tail -n 10
+              ps -axo pid,ppid,stat,etime,pcpu,comm | grep -E 'xcodebuild|XCBBuildService|testmanagerd|CoreSimulator|simctl|xctest' | grep -v grep
+              if [ "$i" = 3 ] || [ "$i" = 8 ]; then
+                pid=$(pgrep -x xcodebuild | head -n 1)
+                [ -n "$pid" ] && sample "$pid" 3 -file "$RUNNER_TEMP/sample$i.txt" >/dev/null 2>&1 && head -n 90 "$RUNNER_TEMP/sample$i.txt"
+              fi
+              echo "::endgroup::"
+            done
+          }
+          monitor &
+          monitor_pid=$!
+          echo "diag start $(date -u +%T)"
+          time xcodebuild -version
+          echo "diag after -version $(date -u +%T)"
+          set +e
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             $SELECTION \
@@ -88,6 +109,9 @@ jobs:
             -collect-test-diagnostics never \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
             test
+          status=$?
+          kill "$monitor_pid" 2>/dev/null
+          exit $status
 
       - name: Upload result bundle
         if: failure() || cancelled()

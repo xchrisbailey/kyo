@@ -182,10 +182,10 @@ final class TaskCheckboxUITests: XCTestCase {
         // A weekday habit on another day exists but isn't due, and Save needs at least one weekday.
         openHabitForm(in: app).typeText("Elsewhere")
         app.buttons["Weekdays"].tap()
-        XCTAssertFalse(app.buttons["Save"].isEnabled, "Save needs at least one weekday")
+        let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == false"), object: app.buttons["Save"])
+        XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 10), .completed, "Save needs at least one weekday")
         app.buttons[otherDay].tap()
-        XCTAssertTrue(app.buttons["Save"].isEnabled)
-        app.buttons["Save"].tap()
+        tapSaveWhenEnabled(in: app)
         XCTAssertTrue(app.staticTexts["Nothing due today"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Elsewhere"].exists)
         assertValue(summary, equals: "0 / 0 habits done")

@@ -21,17 +21,17 @@ permissions:
 
 jobs:
   test:
-    name: Test KyoUITests (${{ matrix.shard }}/3)
+    name: Test KyoUITests (${{ matrix.shard }}/2)
     if: github.event.pull_request.draft == false
     runs-on: xcode-27
-    # One shard takes 12 to 20 minutes on the runner. The headroom bounds a hung test runner and
+    # One shard takes about 12 minutes on the runner. The headroom bounds a hung test runner and
     # covers a retried failure.
     timeout-minutes: 60
     # Each shard builds and runs its own subset of classes on its own runner and simulator. The
-    # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shards 1
-    # and 2 name their classes, balanced by measured time (about 6 minutes of tests each). Shard 3
-    # names none: it skips shards 1 and 2's classes, so a new UI test class runs there instead of
-    # being silently left out. Keep shard 3's -skip-testing list equal to shards 1 and 2's classes.
+    # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shard 1
+    # names its classes, balanced by measured time (about 6.5 minutes of tests each after #167).
+    # Shard 2 names none: it skips shard 1's classes, so a new UI test class runs there instead of
+    # being silently left out. Keep shard 2's -skip-testing list equal to shard 1's classes.
     strategy:
       fail-fast: false
       matrix:
@@ -39,19 +39,15 @@ jobs:
           - shard: 1
             selection: >-
               -only-testing:KyoUITests/SectionCollapseUITests
-              -only-testing:KyoUITests/ScheduleCalendarsUITests
+              -only-testing:KyoUITests/HabitManagerUITests
+              -only-testing:KyoUITests/ScheduleUITests
               -only-testing:KyoUITests/ScheduleEventDetailUITests
           - shard: 2
             selection: >-
-              -only-testing:KyoUITests/TaskCheckboxUITests
-              -only-testing:KyoUITests/ScheduleUITests
-          - shard: 3
-            selection: >-
               -skip-testing:KyoUITests/SectionCollapseUITests
-              -skip-testing:KyoUITests/ScheduleCalendarsUITests
-              -skip-testing:KyoUITests/ScheduleEventDetailUITests
-              -skip-testing:KyoUITests/TaskCheckboxUITests
+              -skip-testing:KyoUITests/HabitManagerUITests
               -skip-testing:KyoUITests/ScheduleUITests
+              -skip-testing:KyoUITests/ScheduleEventDetailUITests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

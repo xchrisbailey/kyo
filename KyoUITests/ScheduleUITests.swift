@@ -72,9 +72,14 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(waitForValue("Requested", of: openSettings))
         XCTAssertEqual(app.state, .runningForeground)
 
-        // Without full access the Calendars screen shows the access line instead of calendars.
+        // Without full access the Calendars screen shows the access line instead of calendars. Today's
+        // line is still in the hierarchy behind the sheet, so the screen's own is the second match.
         openCalendars(in: app)
-        XCTAssertTrue(app.buttons["schedule-open-settings"].waitForExistence(timeout: 10))
+        let accessLines = app.buttons.matching(identifier: "schedule-open-settings")
+        let calendarsAccessLine = accessLines.element(boundBy: 1)
+        XCTAssertTrue(calendarsAccessLine.waitForExistence(timeout: 10))
+        XCTAssertEqual(accessLines.count, 2)
+        XCTAssertTrue(calendarsAccessLine.isHittable)
         XCTAssertFalse(app.buttons["schedule-calendar-work"].exists)
         XCTAssertFalse(app.staticTexts["iCloud"].exists)
         app.navigationBars.buttons["Settings"].tap()

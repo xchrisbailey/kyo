@@ -34,6 +34,13 @@ Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the 
 
 ## CI
 
+**The test workflows are paused.** `CI`, `UI Tests` and `Watch UI Tests` are disabled in GitHub Actions (`gh workflow disable`), so pull requests and pushes to `main` run nothing but TestFlight. Their files stay in `.github/workflows/` as described below; turn them back on with `gh workflow enable "CI"`, `gh workflow enable "UI Tests"` and `gh workflow enable "Watch UI Tests"`. While they're paused, every PR is checked locally before it merges:
+
+- both build checks above;
+- `scripts/test KyoTests`;
+- `scripts/test KyoUITests` when the PR touches `Kyo/`, `KyoUITests/` or `Shared/`, and `scripts/test KyoWatchUITests` when it touches `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/` or `Shared/`;
+- `xcodegen generate` with no resulting diff when the PR touches `project.yml`.
+
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
 
 - builds the **Kyo** and **KyoWatch** schemes with the commands above;

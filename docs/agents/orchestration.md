@@ -44,6 +44,6 @@
   - the spec and ADRs;
   - the glossary;
   - `CODING_STANDARDS.md` and `AGENTS.md`.
-- Opus also confirms that both app schemes build and the tests pass. CI covers the builds and `KyoTests` on every PR, and the UI tests only once a PR is ready: `KyoUITests` (two shards) on PRs that touch `Kyo/` or `KyoUITests/`, and `KyoWatchUITests` on PRs that touch `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/`, `Shared/`, or `project.yml`. Draft PRs skip the UI tests, so a coder's draft is checked by its own `scripts/test` runs until Opus marks it ready and CI runs them; a coder's report covers the rest, and counts only when it quotes the final `** TEST SUCCEEDED **` line of each run.
+- Opus also confirms that both app schemes build and the tests pass. The CI test workflows are paused (see the CI section of `docs/development.md`), so nothing runs on PRs and the checks are local: the coder runs the checks listed there and quotes the final `** TEST SUCCEEDED **` or `** BUILD SUCCEEDED **` line of each, and Opus reruns the builds and `scripts/test KyoTests` on the PR branch before merging. A report without those lines doesn't count.
 - Review findings go back to the same coder, which keeps its context, until the review passes.
 - Opus reports the result to the user. Merge only when the user asks, or has already said to merge PRs that pass review.

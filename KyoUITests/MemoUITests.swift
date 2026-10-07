@@ -9,7 +9,7 @@ final class MemoUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Memos, Notes & voice"].exists)
-        XCTAssertFalse(app.buttons["See all"].exists)
+        XCTAssertFalse(app.buttons["section-link-memos"].exists)
 
         app.buttons["Add an item"].tap()
         XCTAssertTrue(app.buttons["Written memo"].waitForExistence(timeout: 10))
@@ -70,7 +70,7 @@ final class MemoUITests: XCTestCase {
     /// M11. A memo's context menu on Today and in the Memos sheet, the sheet's Today group, and its search.
     func testMemoHistorySheetMenusAndSearch() throws {
         let app = launchIsolatedApp()
-        XCTAssertFalse(app.buttons["See all"].exists)
+        XCTAssertFalse(app.buttons["section-link-memos"].exists)
 
         app.buttons["Add an item"].tap()
         app.buttons["Written memo"].tap()
@@ -84,7 +84,7 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(todayRow.waitForExistence(timeout: 10))
         assertMenuOffersShareAboveDelete(from: todayRow, in: app)
 
-        let seeAll = app.buttons["See all"]
+        let seeAll = app.buttons["section-link-memos"]
         XCTAssertTrue(seeAll.waitForExistence(timeout: 10))
         seeAll.tap()
         XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 10))

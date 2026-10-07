@@ -41,13 +41,13 @@ jobs:
           - shard: 1
             selection: >-
               -only-testing:KyoUITests/SectionCollapseUITests
-              -only-testing:KyoUITests/HabitManagerUITests
+              -only-testing:KyoUITests/HabitsSheetUITests
               -only-testing:KyoUITests/ScheduleUITests
               -only-testing:KyoUITests/ScheduleEventDetailUITests
           - shard: 2
             selection: >-
               -skip-testing:KyoUITests/SectionCollapseUITests
-              -skip-testing:KyoUITests/HabitManagerUITests
+              -skip-testing:KyoUITests/HabitsSheetUITests
               -skip-testing:KyoUITests/ScheduleUITests
               -skip-testing:KyoUITests/ScheduleEventDetailUITests
     steps:

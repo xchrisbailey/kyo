@@ -360,8 +360,10 @@ struct TodayHabit: Identifiable, Equatable, Sendable {
 
 @MainActor
 protocol HabitListBehavior: AnyObject {
-    /// Every habit, in manager order.
+    /// Every habit, in habit order.
     var habits: [Habit] { get }
+    /// `true` when any habit exists, due today or not: whether **See all** shows.
+    var hasHabits: Bool { get }
     /// Habits on Today's list: still to do first, then the done group; each keeps manager order.
     var todayHabits: [TodayHabit] { get }
     /// Habits on Today's list (the denominator of the "Habits done" summary).
@@ -434,6 +436,8 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
 
     var todayCount: Int { todayHabits.count }
     var doneCount: Int { todayHabits.filter(\.isDone).count }
+
+    var hasHabits: Bool { !habits.isEmpty }
 
     var collapsedSummary: String {
         if habits.isEmpty { return "No habits" }

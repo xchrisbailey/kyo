@@ -1,28 +1,35 @@
 import XCTest
 
 @MainActor
-final class HabitManagerUITests: XCTestCase {
-    /// M7. Today's habits through Settings → Habits: every habit is listed with its schedule, the manager adds and
-    /// edits through the form, Edit mode offers a reorder handle on every habit (the drag itself isn't exercised:
-    /// on the CI simulator a synthesized drag often lifts the row without swapping it, #152), and swipe-delete
-    /// asks for confirmation, cancelling keeps the habit and confirming removes it.
-    func testHabitManagerListsAddsEditsReordersAndDeletesHabits() throws {
+final class HabitsSheetUITests: XCTestCase {
+    /// M7. The Habits sheet behind See all: the link shows only once a habit exists, every habit is listed with its
+    /// schedule, the sheet adds and edits through the form, Edit mode offers a reorder handle on every habit (the
+    /// drag itself isn't exercised: on the CI simulator a synthesized drag often lifts the row without swapping it,
+    /// #152) and swaps the sheet's Done for its own, and swipe-delete asks for confirmation, cancelling keeps the
+    /// habit and confirming removes it. Settings holds only the Schedule group.
+    func testHabitsSheetListsAddsEditsReordersAndDeletesHabits() throws {
         let app = launchIsolatedApp()
         let calendar = Calendar.current
         let todayIndex = calendar.component(.weekday, from: .now) - 1
         let otherDay = calendar.weekdaySymbols[(todayIndex + 1) % 7]
 
+        XCTAssertFalse(app.buttons["section-link-habits"].exists, "no habits, so no See all")
+
         addHabitOnToday("Stretch", in: app)
+        XCTAssertTrue(app.buttons["section-link-habits"].waitForExistence(timeout: 10))
         addHabitOnToday("Elsewhere", onlyOn: otherDay, in: app)
         XCTAssertFalse(app.buttons["Elsewhere"].exists, "not due today, so not on Today")
 
-        // Settings holds the Habits entry and the Schedule group's switch; the manager lists every habit.
+        // Settings holds only the Schedule group.
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Habits"].exists)
-        XCTAssertTrue(app.switches["Show schedule"].exists, "Settings' other entry is the Schedule group's switch")
-        app.buttons["Habits"].tap()
-        XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.switches["Show schedule"].exists)
+        XCTAssertFalse(app.buttons["Habits"].exists, "Settings has no Habits entry")
+        app.navigationBars["Settings"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForNonExistence(timeout: 10))
+
+        // See all opens the sheet, which lists every habit.
+        openHabitsSheet(in: app)
 
         let stretch = managerRow("Stretch", in: app)
         let elsewhere = managerRow("Elsewhere", in: app)
@@ -34,7 +41,7 @@ final class HabitManagerUITests: XCTestCase {
             "\(calendar.shortWeekdaySymbols[(todayIndex + 1) % 7]), not due today"
         )
 
-        // Add from the manager with a weekly target.
+        // Add from the sheet with a weekly target.
         app.buttons["Add habit"].tap()
         let field = app.textFields["Habit name"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
@@ -47,7 +54,7 @@ final class HabitManagerUITests: XCTestCase {
         XCTAssertTrue(journal.waitForExistence(timeout: 10))
         XCTAssertEqual(journal.value as? String, "3× a week")
 
-        // Edit it: the form is prefilled, and renaming and rescheduling shows in the manager.
+        // Edit it: the form is prefilled, and renaming and rescheduling shows in the sheet.
         journal.tap()
         let editField = app.textFields["Habit name"]
         XCTAssertTrue(editField.waitForExistence(timeout: 10))
@@ -63,13 +70,18 @@ final class HabitManagerUITests: XCTestCase {
         XCTAssertEqual(renamed.value as? String, "Every day")
         XCTAssertTrue(managerRow("Journal", in: app).waitForNonExistence(timeout: 10))
 
-        // Edit mode offers a reorder handle on every habit, and Done takes them away.
+        // Edit mode offers a reorder handle on every habit. Its Done replaces the sheet's, so there is only one;
+        // tapping it ends Edit mode and leaves the sheet open, with its own Done back.
         app.buttons["Edit"].tap()
         XCTAssertTrue(app.buttons["Reorder Stretch"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Reorder Elsewhere"].exists)
         XCTAssertTrue(app.buttons["Reorder Journal daily"].exists)
-        app.buttons["Done"].firstMatch.tap()
+        XCTAssertEqual(app.navigationBars["Habits"].buttons.matching(identifier: "Done").count, 1)
+        app.navigationBars["Habits"].buttons["Done"].tap()
         XCTAssertTrue(app.buttons["Reorder Stretch"].waitForNonExistence(timeout: 10), "Done ends Edit mode")
+        XCTAssertTrue(app.navigationBars["Habits"].exists, "ending Edit mode leaves the sheet open")
+        XCTAssertTrue(app.buttons["Edit"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Habits"].buttons["Done"].exists)
 
         // Swipe-delete asks first. The dialog is a centered popover with no Cancel button; tapping outside
         // dismisses it and keeps the habit.
@@ -87,9 +99,42 @@ final class HabitManagerUITests: XCTestCase {
         XCTAssertTrue(managerRow("Stretch", in: app).waitForNonExistence(timeout: 10))
         XCTAssertTrue(managerRow("Elsewhere", in: app).exists)
         XCTAssertTrue(managerRow("Journal daily", in: app).exists)
+
+        // Done closes the sheet.
+        app.navigationBars["Habits"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Habits"].waitForNonExistence(timeout: 10))
+    }
+
+    /// Deleting from a habit's edit form: Delete habit asks first, confirming pops back to the sheet without the row.
+    func testDeletingAHabitFromItsEditFormRemovesItFromTheSheet() throws {
+        let app = launchIsolatedApp()
+        addHabitOnToday("Stretch", in: app)
+        addHabitOnToday("Journal", in: app)
+        openHabitsSheet(in: app)
+
+        let stretch = managerRow("Stretch", in: app)
+        XCTAssertTrue(stretch.waitForExistence(timeout: 10))
+        stretch.tap()
+        XCTAssertTrue(app.navigationBars["Edit Habit"].waitForExistence(timeout: 10))
+        app.buttons["Delete habit"].tap()
+        XCTAssertTrue(app.buttons["Delete habit and log"].waitForExistence(timeout: 10))
+        app.buttons["Delete habit and log"].tap()
+
+        XCTAssertTrue(app.navigationBars["Edit Habit"].waitForNonExistence(timeout: 10), "the form pops after deleting")
+        XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
+        XCTAssertTrue(managerRow("Stretch", in: app).waitForNonExistence(timeout: 10))
+        XCTAssertTrue(managerRow("Journal", in: app).exists)
     }
 
     // MARK: Helpers
+
+    /// Opens the Habits sheet from the Habits section's See all, not Memos' (a user with a habit and a memo has two).
+    private func openHabitsSheet(in app: XCUIApplication) {
+        let seeAll = app.buttons["section-link-habits"]
+        XCTAssertTrue(seeAll.waitForExistence(timeout: 10))
+        seeAll.tap()
+        XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
+    }
 
     private func managerRow(_ name: String, in app: XCUIApplication) -> XCUIElement {
         app.cells.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch

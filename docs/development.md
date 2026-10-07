@@ -37,7 +37,7 @@ Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
 
 - builds the **Kyo** and **KyoWatch** schemes with the commands above;
-- runs the **KyoTests** scheme on the iPhone 17 simulator, with parallel testing enabled (`KyoUITests` runs separately, see below);
+- runs the **KyoTests** scheme on the iPhone 17 simulator (`KyoUITests` runs separately, see below);
 - regenerates `Kyo.xcodeproj` with XcodeGen and fails if it differs from the checked-in project.
 
 `.github/workflows/ui-tests.yml` runs the **KyoUITests** scheme on the same simulator, only on pull requests that change files under `Kyo/` or `KyoUITests/`, or the workflow file, and only once the PR is ready: a draft skips the jobs, and marking the PR ready (`ready_for_review`) starts them. Run `scripts/test KyoUITests` locally while a PR is a draft. The suite is split across three runners, each with its own simulator, as the jobs **Test KyoUITests (1/3)**, **(2/3)**, and **(3/3)**. Shards 1 and 2 name their classes with `-only-testing` (1: `SectionCollapseUITests`, `ScheduleCalendarsUITests`, `ScheduleEventDetailUITests`; 2: `TaskCheckboxUITests`, `ScheduleUITests`), balanced by measured time. Shard 3 runs everything else by skipping shards 1 and 2's classes with `-skip-testing`, so a new UI test class runs in shard 3 without any workflow change; to rebalance, move a class by editing its `-only-testing` line and shard 3's `-skip-testing` list together. `WatchSyncSmokeUITests` skips itself there. A failed or timed-out shard uploads its result bundle as an artifact named `KyoUITests-xcresult-<shard>`.

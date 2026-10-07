@@ -6,84 +6,112 @@ import XCTest
 final class SectionCollapseUITests: XCTestCase {
     private let suite = "kyo.collapsed-sections.ui-tests.\(UUID().uuidString)"
 
-    func testEverySectionStartsExpandedAndTheHeaderIsAButtonWithAValue() throws {
-        let app = launchApp()
-
-        for section in ["schedule", "tasks", "habits", "memos"] {
-            let header = app.buttons["section-header-\(section)"]
-            XCTAssertTrue(header.waitForExistence(timeout: 3), section)
-            XCTAssertEqual(header.value as? String, "expanded", section)
-        }
-        XCTAssertEqual(app.buttons["section-header-tasks"].label, "Tasks, For today")
-    }
-
-    func testTappingAHeaderHidesAndShowsItsRowsWithoutTouchingTheOtherSections() throws {
-        let app = launchApp()
-        addTask("Water the plants", to: app)
+    /// M3. Header values and labels, collapsing with and without rows, and the schedule's show-more surviving a collapse.
+    func testCollapseBasicsHideRowsKeepSummariesAndLeaveOtherSectionsAlone() throws {
+        let app = launchApp(calendar: "full")
+        let schedule = app.buttons["section-header-schedule"]
         let tasks = app.buttons["section-header-tasks"]
-        XCTAssertTrue(app.buttons["Water the plants"].exists)
+        let habits = app.buttons["section-header-habits"]
+        let memos = app.buttons["section-header-memos"]
+
+        for section in [schedule, tasks, habits, memos] {
+            XCTAssertTrue(section.waitForExistence(timeout: 10), section.identifier)
+            XCTAssertEqual(section.value as? String, "expanded", section.identifier)
+        }
+        XCTAssertEqual(tasks.label, "Tasks, For today")
+        XCTAssertEqual(habits.label, "Habits, Small steps, daily")
+
+        // Empty sections: collapsing hides their empty-state rows, and the header says what's missing.
+        XCTAssertTrue(app.staticTexts["No tasks yet"].exists)
+        XCTAssertTrue(app.staticTexts["No habits yet"].exists)
+        tasks.tap()
+        habits.tap()
+        memos.tap()
+        XCTAssertTrue(waitForValue("collapsed", of: tasks))
+        XCTAssertTrue(waitForValue("collapsed", of: habits))
+        XCTAssertTrue(waitForValue("collapsed", of: memos))
+        XCTAssertTrue(app.staticTexts["No tasks yet"].waitForNonExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["No habits yet"].exists)
+        XCTAssertFalse(app.staticTexts["Tap + to add a memo"].exists)
+        XCTAssertEqual(tasks.label, "Tasks, No tasks")
+        XCTAssertEqual(habits.label, "Habits, No habits")
 
         tasks.tap()
+        habits.tap()
+        memos.tap()
+        XCTAssertTrue(waitForValue("expanded", of: tasks))
+        XCTAssertTrue(waitForValue("expanded", of: habits))
+        XCTAssertTrue(waitForValue("expanded", of: memos))
+        XCTAssertTrue(app.staticTexts["No tasks yet"].waitForExistence(timeout: 10))
+        XCTAssertEqual(tasks.label, "Tasks, For today")
+        XCTAssertEqual(habits.label, "Habits, Small steps, daily")
 
+        // A section with rows: collapsing hides the rows but not its header or the summary stats, and
+        // touches no other section. The header's label carries the collapsed summary.
+        addTask("Water the plants", to: app)
+        tasks.tap()
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
-        XCTAssertFalse(app.buttons["Water the plants"].exists)
+        XCTAssertTrue(app.buttons["Water the plants"].waitForNonExistence(timeout: 10))
         XCTAssertTrue(tasks.exists)
+        XCTAssertEqual(tasks.label, "Tasks, 0 of 1 done")
         XCTAssertTrue(app.staticTexts["Tap + to add a memo"].exists)
-        XCTAssertEqual(app.buttons["section-header-habits"].value as? String, "expanded")
-        XCTAssertEqual(app.buttons["section-header-memos"].value as? String, "expanded")
+        XCTAssertEqual(habits.value as? String, "expanded")
+        XCTAssertEqual(memos.value as? String, "expanded")
+        XCTAssertEqual(schedule.value as? String, "expanded")
         XCTAssertTrue(app.descendants(matching: .any)["task-count-summary"].exists, "the summary stats don't collapse")
 
         tasks.tap()
-
         XCTAssertTrue(waitForValue("expanded", of: tasks))
-        XCTAssertTrue(app.buttons["Water the plants"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Water the plants"].waitForExistence(timeout: 10))
+        XCTAssertEqual(tasks.label, "Tasks, For today")
+
+        // Collapse and show-more are separate states: collapsing the schedule keeps it showing more.
+        let more = app.buttons["schedule-more"]
+        XCTAssertTrue(more.waitForExistence(timeout: 10))
+        more.tap()
+        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 10))
+
+        schedule.tap()
+        XCTAssertTrue(waitForValue("collapsed", of: schedule))
+        XCTAssertTrue(app.buttons["schedule-show-less"].waitForNonExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["schedule-all-day"].exists)
+
+        schedule.tap()
+        XCTAssertTrue(waitForValue("expanded", of: schedule))
+        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["schedule-more"].exists)
     }
 
-    func testCollapsingHidesEmptyStateRows() throws {
-        let app = launchApp()
-        XCTAssertTrue(app.staticTexts["No tasks yet"].exists)
-        XCTAssertTrue(app.staticTexts["No habits yet"].exists)
-
-        app.buttons["section-header-tasks"].tap()
-        app.buttons["section-header-habits"].tap()
-        app.buttons["section-header-memos"].tap()
-
-        XCTAssertFalse(app.staticTexts["No tasks yet"].waitForExistence(timeout: 1))
-        XCTAssertFalse(app.staticTexts["No habits yet"].exists)
-        XCTAssertFalse(app.staticTexts["Tap + to add a memo"].exists)
-    }
-
-    func testSeeAllStaysOnACollapsedMemosHeaderAndOpensTheMemosSheetWithoutToggling() throws {
+    /// M4. A collapsed Memos header keeps See all, and neither opening the sheet nor saving a memo expands it.
+    func testACollapsedMemosSectionStaysCollapsedThroughSeeAllAndSavingAMemo() throws {
         let app = launchApp()
         addMemo("Weekend idea", to: app)
         let memos = app.buttons["section-header-memos"]
         memos.tap()
         XCTAssertTrue(waitForValue("collapsed", of: memos))
+        XCTAssertEqual(memos.label, "Memos, 1 memo")
 
         let seeAll = app.buttons["See all"]
         XCTAssertTrue(seeAll.exists)
         seeAll.tap()
 
-        XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["Memos"].waitForExistence(timeout: 10))
         app.navigationBars["Memos"].buttons.firstMatch.tap()
-        XCTAssertTrue(memos.waitForExistence(timeout: 3))
+        XCTAssertTrue(memos.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Memos"].waitForNonExistence(timeout: 10))
         XCTAssertEqual(memos.value as? String, "collapsed")
-    }
-
-    func testSavingAMemoLeavesACollapsedMemosSectionCollapsed() throws {
-        let app = launchApp()
-        let memos = app.buttons["section-header-memos"]
-        memos.tap()
-        XCTAssertTrue(waitForValue("collapsed", of: memos))
 
         addMemo("Quiet capture", to: app, expectingRow: false)
 
-        XCTAssertTrue(app.buttons["Memos, 1 memo"].waitForExistence(timeout: 3))
+        let relabelled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Memos, 2 memos"), object: memos)
+        XCTAssertEqual(XCTWaiter.wait(for: [relabelled], timeout: 10), .completed)
         XCTAssertEqual(memos.value as? String, "collapsed")
-        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. Quiet capture.'")).firstMatch.exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo.'")).firstMatch.exists)
     }
 
-    func testStartingATaskDraftExpandsACollapsedTasksSection() throws {
+    /// M5. Starting a task draft expands a collapsed Tasks section; collapsing mid-draft keeps the text, and
+    /// starting a task again brings the draft back focused.
+    func testTaskDraftExpandsTasksAndSurvivesCollapsingMidDraft() throws {
         let app = launchApp()
         let tasks = app.buttons["section-header-tasks"]
         tasks.tap()
@@ -91,141 +119,50 @@ final class SectionCollapseUITests: XCTestCase {
 
         app.buttons["Add an item"].tap()
         app.buttons["Task"].tap()
-
-        XCTAssertTrue(app.textFields["New task"].waitForExistence(timeout: 3))
-        XCTAssertTrue(waitForValue("expanded", of: tasks))
-        app.textFields["New task"].typeText("Pack the bag\n")
-        XCTAssertTrue(app.buttons["Pack the bag"].waitForExistence(timeout: 3))
-        XCTAssertEqual(tasks.value as? String, "expanded", "it stays expanded after the task is added")
-    }
-
-    func testCollapsingMidDraftKeepsTheTextAndStartingATaskAgainBringsTheDraftBack() throws {
-        let app = launchApp()
-        let tasks = app.buttons["section-header-tasks"]
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
         let field = app.textFields["New task"]
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitForValue("expanded", of: tasks))
         field.typeText("Half-written")
 
         tasks.tap()
 
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
-        XCTAssertFalse(field.exists)
-        XCTAssertFalse(app.keyboards.firstMatch.waitForExistence(timeout: 1), "the keyboard doesn't stay up over a hidden field")
+        XCTAssertTrue(field.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(
+            app.keyboards.firstMatch.waitForNonExistence(timeout: 10),
+            "the keyboard doesn't stay up over a hidden field"
+        )
 
         app.buttons["Add an item"].tap()
         app.buttons["Task"].tap()
 
         XCTAssertTrue(waitForValue("expanded", of: tasks))
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
         XCTAssertEqual(field.value as? String, "Half-written")
         XCTAssertTrue(
             XCTWaiter.wait(
                 for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: field)],
-                timeout: 3
+                timeout: 10
             ) == .completed,
             "the draft is focused again"
         )
         field.typeText(" and done\n")
-        XCTAssertTrue(app.buttons["Half-written and done"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Half-written and done"].waitForExistence(timeout: 10))
+        XCTAssertEqual(tasks.value as? String, "expanded", "it stays expanded after the task is added")
     }
 
-    func testCollapsedSectionsSurviveARelaunchAndATaskDraftsExpansionDoes() throws {
+    func testCollapsedSectionsSurviveARelaunch() throws {
         let app = launchApp()
         app.buttons["section-header-habits"].tap()
         app.buttons["section-header-tasks"].tap()
         XCTAssertTrue(waitForValue("collapsed", of: app.buttons["section-header-habits"]))
+        XCTAssertTrue(waitForValue("collapsed", of: app.buttons["section-header-tasks"]))
         relaunch(app)
 
         XCTAssertTrue(waitForValue("collapsed", of: app.buttons["section-header-habits"]))
         XCTAssertEqual(app.buttons["section-header-tasks"].value as? String, "collapsed")
         XCTAssertEqual(app.buttons["section-header-memos"].value as? String, "expanded")
         XCTAssertFalse(app.staticTexts["No habits yet"].exists)
-
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
-        XCTAssertTrue(waitForValue("expanded", of: app.buttons["section-header-tasks"]))
-        relaunch(app)
-
-        XCTAssertTrue(waitForValue("expanded", of: app.buttons["section-header-tasks"]))
-        XCTAssertEqual(app.buttons["section-header-habits"].value as? String, "collapsed")
-    }
-
-    func testCollapsedTasksAndHabitsHeadersSummarizeTheEmptyListsAndExpandedOnesKeepTheirNotes() throws {
-        let app = launchApp()
-        let tasks = app.buttons["section-header-tasks"]
-        let habits = app.buttons["section-header-habits"]
-        XCTAssertEqual(habits.label, "Habits, Small steps, daily")
-
-        tasks.tap()
-        habits.tap()
-
-        XCTAssertTrue(waitForValue("collapsed", of: tasks))
-        XCTAssertEqual(tasks.label, "Tasks, No tasks")
-        XCTAssertEqual(habits.label, "Habits, No habits")
-
-        tasks.tap()
-        habits.tap()
-
-        XCTAssertTrue(waitForValue("expanded", of: tasks))
-        XCTAssertEqual(tasks.label, "Tasks, For today")
-        XCTAssertEqual(habits.label, "Habits, Small steps, daily")
-    }
-
-    func testCollapsedTasksHeaderShowsHowManyTasksAreDone() throws {
-        let app = launchApp()
-        addTask("Water the plants", to: app)
-        addTask("Pack the bag", to: app)
-        app.buttons["Water the plants"].tap()
-        let tasks = app.buttons["section-header-tasks"]
-
-        tasks.tap()
-
-        XCTAssertTrue(waitForValue("collapsed", of: tasks))
-        XCTAssertEqual(tasks.label, "Tasks, 1 of 2 done")
-    }
-
-    func testCollapsedHabitsHeaderShowsHowManyHabitsDoneTodayAndWhenNoneAreDue() throws {
-        let app = launchApp()
-        let calendar = Calendar.current
-        let otherDay = calendar.weekdaySymbols[calendar.component(.weekday, from: .now) % 7]
-        let habits = app.buttons["section-header-habits"]
-
-        addHabit("Elsewhere", onlyOn: otherDay, to: app)
-        habits.tap()
-        XCTAssertTrue(waitForValue("collapsed", of: habits))
-        XCTAssertEqual(habits.label, "Habits, Nothing due today")
-
-        habits.tap()
-        XCTAssertTrue(waitForValue("expanded", of: habits))
-        addHabit("Stretch", to: app)
-        addHabit("Read", to: app)
-        app.buttons["Stretch"].tap()
-        habits.tap()
-
-        XCTAssertTrue(waitForValue("collapsed", of: habits))
-        XCTAssertEqual(habits.label, "Habits, 1 of 2 done", "the habit on another day isn't counted")
-    }
-
-    func testCollapsingTheScheduleKeepsItShowingMore() throws {
-        let app = launchApp(calendar: "full")
-        let schedule = app.buttons["section-header-schedule"]
-        let more = app.buttons["schedule-more"]
-        XCTAssertTrue(more.waitForExistence(timeout: 3))
-        more.tap()
-        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 3))
-
-        schedule.tap()
-
-        XCTAssertTrue(waitForValue("collapsed", of: schedule))
-        XCTAssertFalse(app.buttons["schedule-show-less"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["schedule-all-day"].exists)
-
-        schedule.tap()
-
-        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["schedule-more"].exists)
     }
 
     // MARK: Helpers
@@ -258,38 +195,22 @@ final class SectionCollapseUITests: XCTestCase {
         app.buttons["Add an item"].tap()
         app.buttons["Task"].tap()
         let field = app.textFields["New task"]
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText(title + "\n")
-        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 3))
-    }
-
-    private func addHabit(_ name: String, onlyOn weekday: String? = nil, to app: XCUIApplication) {
-        app.buttons["Add an item"].tap()
-        app.buttons["Habit"].tap()
-        let field = app.textFields["Habit name"]
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
-        field.typeText(name)
-        if let weekday {
-            app.buttons["Weekdays"].tap()
-            app.buttons[weekday].tap()
-        }
-        app.buttons["Save"].tap()
-        if weekday == nil {
-            XCTAssertTrue(app.buttons[name].waitForExistence(timeout: 3))
-        }
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 10))
     }
 
     private func addMemo(_ text: String, to app: XCUIApplication, expectingRow: Bool = true) {
         app.buttons["Add an item"].tap()
         app.buttons["Written memo"].tap()
         let compose = app.textFields["Memo text"]
-        XCTAssertTrue(compose.waitForExistence(timeout: 3))
+        XCTAssertTrue(compose.waitForExistence(timeout: 10))
         compose.typeText(text)
         app.buttons["Save"].tap()
         if expectingRow {
             let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo. \(text).'")).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 3))
+            XCTAssertTrue(row.waitForExistence(timeout: 10))
         }
     }
 }

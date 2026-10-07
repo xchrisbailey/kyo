@@ -24,8 +24,9 @@ jobs:
     name: Test KyoUITests (${{ matrix.shard }}/2)
     if: github.event.pull_request.draft == false
     runs-on: xcode-27
-    # One shard takes about 12 minutes on the runner. The headroom bounds a hung test runner and
-    # covers a retried failure.
+    # One shard takes about 10 to 14 minutes on the runner: under 2 minutes of build, a minute or
+    # two to boot the simulator, and about 6.5 minutes of tests. The headroom bounds a hung test
+    # runner and covers a retried failure.
     timeout-minutes: 60
     # Each shard builds and runs its own subset of classes on its own runner and simulator. The
     # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shard 1
@@ -53,8 +54,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # The UDID is resolved from the iOS 27.0 runtime so the build, the boot and the test name one
-      # device. The simulator is not booted yet: see the Boot simulator step.
+      # The UDID is resolved from the iOS 27.0 runtime so the build and the test name one device.
+      # The simulator is left shut down until xcodebuild boots it for the test: see the Build step.
       - name: Resolve simulator
         run: |
           udid=$(xcrun simctl list devices "iOS 27.0" available | grep -E '^ +iPhone 17 \(' | grep -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}' | head -n 1)
@@ -66,10 +67,11 @@ jobs:
           echo "Using iPhone 17 $udid"
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
-      # The build runs before the simulator boots, not after: a freshly booted simulator keeps the
-      # runner's three cores at a load average of several hundred for minutes (#166). With a booted
-      # simulator, xcodebuild took 2 to 4 minutes just to print its invocation and the build ran
-      # about three times slower than it does on an idle runner.
+      # Nothing here runs against a booted simulator, on purpose (#166). A freshly booted simulator
+      # keeps the runner's three cores at a load average of several hundred for the rest of the job,
+      # and xcodebuild needed two to four minutes just to print its invocation while it was up,
+      # then built about twice as slowly. With the simulator still shut down, the same xcodebuild
+      # prints its invocation in two seconds and the build takes under two minutes.
       # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
       # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
       - name: Build for testing
@@ -78,10 +80,9 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             build-for-testing
 
-      # A cold simulator is the usual cause of launch stalls, so boot it and wait until it is ready.
-      - name: Boot simulator
-        run: xcrun simctl bootstatus "$SIMULATOR_UDID" -b
-
+      # The Test step starts xcodebuild on the still idle runner, and xcodebuild boots the simulator
+      # and waits for it. A step that boots and waits first (this workflow's old Boot simulator step)
+      # puts the slow xcodebuild start-up described above back in front of the tests.
       # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
       # paired Watch simulator here.
       # App launches sometimes stall on the runner's simulator. A failed test gets one retry, which

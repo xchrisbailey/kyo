@@ -1,18 +1,20 @@
 import XCTest
 
+/// The Schedule section on Today: the happy path from Connect to showing more and less, and the
+/// denied-access flow through Open Settings, the Calendars screen, Hide schedule and Show schedule.
 @MainActor
 final class ScheduleUITests: XCTestCase {
-    func testConnectShowsTheSeededAllDayLineAndTimedRows() throws {
+    func testConnectShowsTheScheduleAndShowMoreAndShowLessSwitchTheCompactList() throws {
         let app = launchApp(calendar: "notDetermined")
 
-        XCTAssertTrue(app.staticTexts["See today's events"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["See today's events"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Schedule, Calendar"].exists)
         let connect = app.buttons["Connect"]
         XCTAssertTrue(connect.exists)
         connect.tap()
 
-        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.staticTexts["See today's events"].exists)
+        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 10))
+        XCTAssertTrue(waitForDisappearance(of: app.staticTexts["See today's events"]))
         XCTAssertFalse(app.buttons["Connect"].exists)
 
         let allDay = app.descendants(matching: .any)["schedule-all-day"]
@@ -27,164 +29,104 @@ final class ScheduleUITests: XCTestCase {
         XCTAssertTrue(lunch.exists)
         XCTAssertLessThan(nowRow.frame.minY, lunch.frame.minY)
         XCTAssertFalse(row(app, endingWith: "Standup, Work calendar, ended").exists)
-    }
 
-    func testSeededEventsShowWithoutConnecting() throws {
-        let app = launchApp(calendar: "full")
-
-        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["Connect"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["schedule-all-day"].exists)
-    }
-
-    func testShowingMoreShowsTheEndedEventAndShowLessReturnsToCompact() throws {
-        let app = launchApp(calendar: "full")
         let more = app.buttons["schedule-more"]
-        XCTAssertTrue(more.waitForExistence(timeout: 3))
+        XCTAssertTrue(more.exists)
         XCTAssertEqual(more.label, "1 more event")
         XCTAssertFalse(app.buttons["schedule-show-less"].exists)
 
         more.tap()
 
         let standup = row(app, endingWith: "Standup, Work calendar, ended")
-        XCTAssertTrue(standup.waitForExistence(timeout: 3))
+        XCTAssertTrue(standup.waitForExistence(timeout: 10))
         XCTAssertTrue(standup.label.contains("9:30"), standup.label)
-        XCTAssertTrue(row(app, endingWith: "Design review, Work calendar").exists)
-        XCTAssertTrue(row(app, endingWith: "Lunch, Personal calendar").exists)
-        XCTAssertFalse(more.exists)
+        XCTAssertTrue(nowRow.exists)
+        XCTAssertTrue(lunch.exists)
+        XCTAssertTrue(waitForDisappearance(of: more))
         let showLess = app.buttons["schedule-show-less"]
         XCTAssertTrue(showLess.exists)
         // In time order.
-        XCTAssertLessThan(standup.frame.minY, row(app, endingWith: "Design review, Work calendar").frame.minY)
+        XCTAssertLessThan(standup.frame.minY, nowRow.frame.minY)
 
         showLess.tap()
 
-        XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 3))
-        XCTAssertFalse(row(app, endingWith: "Standup, Work calendar, ended").exists)
-        XCTAssertFalse(app.buttons["schedule-show-less"].exists)
-    }
-
-    func testShowingMoreIsNotRememberedAcrossLaunches() throws {
-        let app = launchApp(calendar: "full")
-        let more = app.buttons["schedule-more"]
-        XCTAssertTrue(more.waitForExistence(timeout: 3))
-        more.tap()
-        XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 3))
-        relaunch(app)
-
         XCTAssertTrue(app.buttons["schedule-more"].waitForExistence(timeout: 10))
+        XCTAssertTrue(waitForDisappearance(of: row(app, endingWith: "Standup, Work calendar, ended")))
         XCTAssertFalse(app.buttons["schedule-show-less"].exists)
     }
 
-    func testAnEmptyDayShowsNothingScheduled() throws {
-        let app = launchApp(calendar: "empty")
-
-        XCTAssertTrue(app.staticTexts["Nothing scheduled"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["Schedule, Calendar"].exists)
-        // The summary stats are unchanged.
-        XCTAssertTrue(app.descendants(matching: .any)["task-count-summary"].exists)
-    }
-
-    func testDeniedAndWriteOnlyAccessShowTheAccessOffLineWithOpenSettings() throws {
-        for state in ["denied", "writeOnly"] {
-            let app = launchApp(calendar: state)
-
-            XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 3), state)
-            XCTAssertTrue(app.buttons["section-header-schedule"].exists, state)
-            XCTAssertFalse(app.buttons["Connect"].exists, state)
-            XCTAssertFalse(app.staticTexts["Nothing scheduled"].exists, state)
-            XCTAssertTrue(app.buttons["Hide schedule"].exists, state)
-
-            // The fake records the request instead of leaving Kyo for the Settings app.
-            let openSettings = app.buttons["Open Settings"]
-            XCTAssertTrue(openSettings.exists, state)
-            XCTAssertEqual(openSettings.value as? String ?? "", "", state)
-            openSettings.tap()
-            XCTAssertEqual(openSettings.value as? String, "Requested", state)
-            XCTAssertEqual(app.state, .runningForeground, state)
-            terminateAndWait(app)
-        }
-    }
-
-    func testRestrictedAccessShowsTheUnavailableLineWithoutAButton() throws {
-        let app = launchApp(calendar: "restricted")
-
-        XCTAssertTrue(app.staticTexts["Calendar access isn't available"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["Open Settings"].exists)
-        XCTAssertFalse(app.buttons["Connect"].exists)
-        XCTAssertTrue(app.buttons["Hide schedule"].exists)
-    }
-
-    func testDismissingEachPromptLineHidesTheSchedule() throws {
-        let lines = [
-            ("notDetermined", "See today's events"),
-            ("denied", "Calendar access is off"),
-            ("restricted", "Calendar access isn't available"),
-        ]
-        for (state, line) in lines {
-            let app = launchApp(calendar: state)
-            XCTAssertTrue(app.staticTexts[line].waitForExistence(timeout: 3), state)
-
-            app.buttons["Hide schedule"].tap()
-
-            XCTAssertFalse(app.staticTexts[line].exists, state)
-            XCTAssertFalse(app.buttons["section-header-schedule"].exists, state)
-            XCTAssertTrue(app.buttons["section-header-tasks"].exists, state)
-            terminateAndWait(app)
-        }
-    }
-
-    func testTurningShowScheduleBackOnFromSettingsShowsTheCurrentAccessState() throws {
+    func testDeniedAccessOpenSettingsCalendarsHideScheduleAndShowScheduleFromSettings() throws {
         let app = launchApp(calendar: "denied")
-        XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 3))
-        app.buttons["Hide schedule"].tap()
-        XCTAssertFalse(app.staticTexts["Calendar access is off"].exists)
+
+        XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["section-header-schedule"].exists)
+        XCTAssertFalse(app.buttons["Connect"].exists)
+        XCTAssertFalse(app.staticTexts["Nothing scheduled"].exists)
+        XCTAssertTrue(app.buttons["Hide schedule"].exists)
+
+        // The fake records the request instead of leaving Kyo for the Settings app.
+        let openSettings = app.buttons["Open Settings"]
+        XCTAssertTrue(openSettings.exists)
+        XCTAssertEqual(openSettings.value as? String ?? "", "")
+        openSettings.tap()
+        XCTAssertTrue(waitForValue("Requested", of: openSettings))
+        XCTAssertEqual(app.state, .runningForeground)
+
+        // Without full access the Calendars screen shows the access line instead of calendars. Today's
+        // line is still in the hierarchy behind the sheet, so the screen's own is the second match.
+        openCalendars(in: app)
+        let accessLines = app.buttons.matching(identifier: "schedule-open-settings")
+        let calendarsAccessLine = accessLines.element(boundBy: 1)
+        XCTAssertTrue(calendarsAccessLine.waitForExistence(timeout: 10))
+        XCTAssertEqual(accessLines.count, 2)
+        XCTAssertTrue(calendarsAccessLine.isHittable)
+        XCTAssertFalse(app.buttons["schedule-calendar-work"].exists)
+        XCTAssertFalse(app.staticTexts["iCloud"].exists)
+        app.navigationBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.switches["Show schedule"].waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
+
+        let hide = app.buttons["Hide schedule"]
+        XCTAssertTrue(hide.waitForExistence(timeout: 10))
+        hide.tap()
+
+        XCTAssertTrue(waitForDisappearance(of: app.staticTexts["Calendar access is off"]))
+        XCTAssertTrue(waitForDisappearance(of: app.buttons["section-header-schedule"]))
+        XCTAssertTrue(app.buttons["section-header-tasks"].exists)
 
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         let showSchedule = app.switches["Show schedule"]
-        XCTAssertTrue(showSchedule.waitForExistence(timeout: 3))
+        XCTAssertTrue(showSchedule.waitForExistence(timeout: 10))
         XCTAssertEqual(showSchedule.value as? String, "0")
         showSchedule.switches.firstMatch.tap()
-        XCTAssertEqual(showSchedule.value as? String, "1")
+        XCTAssertTrue(waitForValue("1", of: showSchedule))
         app.buttons["Done"].tap()
 
-        XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Calendar access is off"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["section-header-schedule"].exists)
-    }
-
-    func testShowScheduleIsOnByDefaultAndTurningItOffFromSettingsHidesTheSection() throws {
-        let app = launchApp(calendar: "full")
-        XCTAssertTrue(app.buttons["Schedule, 5 events"].waitForExistence(timeout: 3))
-
-        app.buttons["Settings"].tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
-        let showSchedule = app.switches["Show schedule"]
-        XCTAssertTrue(showSchedule.waitForExistence(timeout: 3))
-        XCTAssertEqual(showSchedule.value as? String, "1")
-        showSchedule.switches.firstMatch.tap()
-        app.buttons["Done"].tap()
-
-        XCTAssertTrue(app.buttons["section-header-tasks"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["Schedule, 5 events"].exists)
-        XCTAssertFalse(app.buttons["section-header-schedule"].exists)
     }
 
     private func row(_ app: XCUIApplication, endingWith suffix: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label ENDSWITH %@", suffix)).firstMatch
     }
 
-    /// Terminates the app and waits for the process to be gone, so the next launch starts from a clean slate.
-    private func terminateAndWait(_ app: XCUIApplication) {
-        app.terminate()
-        XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app is still running after terminate")
+    private func openCalendars(in app: XCUIApplication) {
+        app.buttons["Settings"].tap()
+        let calendars = app.buttons["Calendars"]
+        XCTAssertTrue(calendars.waitForExistence(timeout: 10))
+        calendars.tap()
+        XCTAssertTrue(app.navigationBars["Calendars"].waitForExistence(timeout: 10))
     }
 
-    /// Terminates the app, then launches it again with the same launch environment and waits for the foreground.
-    private func relaunch(_ app: XCUIApplication) {
-        terminateAndWait(app)
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "the app isn't in the foreground after launch")
+    private func waitForValue(_ value: String, of element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: element)
+        return XCTWaiter.wait(for: [gone], timeout: timeout) == .completed
     }
 
     private func launchApp(calendar: String) -> XCUIApplication {

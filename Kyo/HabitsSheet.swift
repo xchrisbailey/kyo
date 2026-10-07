@@ -4,23 +4,11 @@ import SwiftUI
 /// and drag-to-reorder. It has its own navigation stack, so + and tapping a row push the habit form.
 struct HabitsSheet: View {
     @ObservedObject var habitList: HabitListStore
-    @Environment(\.dismiss) private var dismiss
-    @State private var editMode = EditMode.inactive
 
     var body: some View {
         NavigationStack {
             HabitsList(habitList: habitList)
-                .toolbar {
-                    // Edit mode's own Done sits in the same corner, so the sheet's Done waits for it to end.
-                    if !editMode.isEditing {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { dismiss() }
-                                .fontWeight(.semibold)
-                        }
-                    }
-                }
         }
-        .environment(\.editMode, $editMode)
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
@@ -28,6 +16,8 @@ struct HabitsSheet: View {
 
 private struct HabitsList: View {
     @ObservedObject var habitList: HabitListStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var editMode = EditMode.inactive
     @State private var pendingDelete: Habit?
 
     var body: some View {
@@ -59,6 +49,13 @@ private struct HabitsList: View {
         .navigationTitle("Habits")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Edit mode's own Done sits in the same corner, so the sheet's Done waits for it to end.
+            if !editMode.isEditing {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 NavigationLink {
                     HabitForm(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
@@ -84,6 +81,8 @@ private struct HabitsList: View {
         } message: { habit in
             Text("This permanently deletes \"\(habit.name)\" and its log. It can't be undone.")
         }
+        // After `.toolbar`, so the Edit button's own state is the one the toolbar reads to hide Done.
+        .environment(\.editMode, $editMode)
     }
 }
 

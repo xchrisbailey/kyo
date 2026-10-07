@@ -19,8 +19,8 @@ jobs:
   test:
     name: Test KyoUITests
     runs-on: xcode-27
-    # The suite takes about 25 minutes on the runner, and a failing run can add 10 minutes of
-    # diagnostics collection. The headroom also bounds a hung test runner.
+    # The suite takes about 25 minutes on the runner. The headroom bounds a hung test runner and
+    # covers a retried failure.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,11 +47,15 @@ jobs:
       # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
       # App launches sometimes stall on the runner's simulator. A failed test gets one retry, which
       # tells a stall from a real failure: a real failure fails twice.
+      # -collect-test-diagnostics never: by default a failed iteration waits up to ten minutes for
+      # simulator diagnostics (#152). With it a failed run exits in under a second and still writes
+      # the result bundle, screen recordings included, which the next step uploads.
       - name: Test
         run: |
           xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             -retry-tests-on-failure -test-iterations 2 \
+            -collect-test-diagnostics never \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
             test
 

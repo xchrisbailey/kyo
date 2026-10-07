@@ -20,14 +20,61 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test KyoUITests (${{ matrix.shard }}/3)
+  # Compile the app and the UI tests once. The shards below run the products without building, so
+  # none of them repeats the 6 to 9 minutes of compiling (#162). This job is gated like the shards
+  # (draft skip, path filters), which is why it does not also stand in for ci.yml's Build Kyo: that
+  # check has to run on every pull request, whatever it changes and whether or not it is a draft.
+  build:
+    name: Build KyoUITests
     if: github.event.pull_request.draft == false
     runs-on: xcode-27
-    # One shard takes 12 to 20 minutes on the runner. The headroom bounds a hung test runner and
-    # covers a retried failure.
     timeout-minutes: 60
-    # Each shard builds and runs its own subset of classes on its own runner and simulator. The
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The destination is generic, so the build needs no booted simulator: the shards pick the
+      # device. CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives
+      # KyoWatchWidgets a linker signature with the wrong identifier, and WidgetKit kills it on
+      # first launch (#150).
+      # The .xctestrun file refers to the products through __TESTROOT__, so it works wherever the
+      # shards unpack Build/Products.
+      - name: Build for testing
+        run: |
+          xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            build-for-testing
+          count=$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 1 -name '*.xctestrun' | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Expected one .xctestrun file in Build/Products, found $count."
+            ls -la "$RUNNER_TEMP/dd/Build/Products"
+            exit 1
+          fi
+
+      # The products go up as one tar file. upload-artifact flattens symlinks and drops execute
+      # bits, and the frameworks inside the .app bundles need both.
+      - name: Pack products
+        run: tar -C "$RUNNER_TEMP/dd/Build" -cf "$RUNNER_TEMP/ui-tests-build.tar" Products
+
+      - name: Upload products
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: KyoUITests-build
+          path: ${{ runner.temp }}/ui-tests-build.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    name: Test KyoUITests (${{ matrix.shard }}/3)
+    needs: build
+    if: github.event.pull_request.draft == false
+    runs-on: xcode-27
+    # One shard takes about 6 to 8 minutes of tests plus setup. The headroom bounds a hung test
+    # runner and covers a retried failure.
+    timeout-minutes: 60
+    # Each shard runs its own subset of classes on its own runner and simulator. The
     # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shards 1
     # and 2 name their classes, balanced by measured time (about 6 minutes of tests each). Shard 3
     # names none: it skips shards 1 and 2's classes, so a new UI test class runs there instead of
@@ -52,11 +99,8 @@ jobs:
               -skip-testing:KyoUITests/ScheduleEventDetailUITests
               -skip-testing:KyoUITests/TaskCheckboxUITests
               -skip-testing:KyoUITests/ScheduleUITests
+    # The shards need no checkout: the .xctestrun file and the products come from the build job.
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       # A cold simulator is the usual cause of launch stalls, so boot it and wait until it is ready.
       # The UDID is resolved from the iOS 27.0 runtime so the boot and the destination name one device.
       - name: Boot simulator
@@ -71,10 +115,21 @@ jobs:
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
           xcrun simctl bootstatus "$udid" -b
 
+      - name: Download products
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: KyoUITests-build
+          path: ${{ runner.temp }}/artifact
+
+      - name: Unpack products
+        run: |
+          mkdir -p "$RUNNER_TEMP/dd/Build"
+          tar -C "$RUNNER_TEMP/dd/Build" -xf "$RUNNER_TEMP/artifact/ui-tests-build.tar"
+
       # KYO_WATCH_SYNC_SMOKE is left unset, so WatchSyncSmokeUITests skips itself: there is no
       # paired Watch simulator here.
-      # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
-      # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
+      # test-without-building runs the products the build job signed (#150), so nothing compiles
+      # here.
       # App launches sometimes stall on the runner's simulator. A failed test gets one retry, which
       # tells a stall from a real failure: a real failure fails twice.
       # -collect-test-diagnostics never: by default a failed iteration waits up to ten minutes for
@@ -85,13 +140,14 @@ jobs:
         env:
           SELECTION: ${{ matrix.selection }}
         run: |
-          xcodebuild -project Kyo.xcodeproj -scheme KyoUITests \
+          xctestrun=$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 1 -name '*.xctestrun')
+          xcodebuild -xctestrun "$xctestrun" \
             -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
             $SELECTION \
             -retry-tests-on-failure -test-iterations 2 \
             -collect-test-diagnostics never \
             -resultBundlePath "$RUNNER_TEMP/KyoUITests.xcresult" \
-            test
+            test-without-building
 
       - name: Upload result bundle
         if: failure() || cancelled()

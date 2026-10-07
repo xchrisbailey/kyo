@@ -24,9 +24,10 @@ jobs:
     name: Test KyoUITests (${{ matrix.shard }}/2)
     if: github.event.pull_request.draft == false
     runs-on: xcode-27
-    # One shard takes about 10 to 14 minutes on the runner: under 2 minutes of build, a minute or
-    # two to boot the simulator, and about 6.5 minutes of tests. The headroom bounds a hung test
-    # runner and covers a retried failure.
+    # One shard takes about 10 to 14 minutes on the runner: about a minute of build, three to four
+    # minutes from the start of the Test step to the first test (xcodebuild boots the simulator and
+    # launches the runner), and 5 to 9 minutes of tests. The headroom bounds a hung test runner and
+    # covers a retried failure.
     timeout-minutes: 60
     # Each shard builds and runs its own subset of classes on its own runner and simulator. The
     # simulators are not parallel within a runner: CPU contention caused the #152 flake. Shard 1
@@ -70,8 +71,8 @@ jobs:
       # Nothing here runs against a booted simulator, on purpose (#166). A freshly booted simulator
       # keeps the runner's three cores at a load average of several hundred for the rest of the job,
       # and xcodebuild needed two to four minutes just to print its invocation while it was up,
-      # then built about twice as slowly. With the simulator still shut down, the same xcodebuild
-      # prints its invocation in two seconds and the build takes under two minutes.
+      # then built in two to two and a half minutes instead of one. With the simulator still shut
+      # down, the same xcodebuild prints its invocation in two seconds and the build takes a minute.
       # CODE_SIGNING_ALLOWED=NO is left off on purpose: an unsigned build gives KyoWatchWidgets a
       # linker signature with the wrong identifier, and WidgetKit kills it on first launch (#150).
       - name: Build for testing

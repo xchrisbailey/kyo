@@ -123,7 +123,7 @@ final class HabitManagerUITests: XCTestCase {
 
         let first = managerRow("First", in: app)
         let second = managerRow("Second", in: app)
-        expectAbove(second, first, "Second now sits above First")
+        assertAbove(second, first, message: "Second now sits above First")
         app.buttons["Done"].firstMatch.tap()
 
         // Back out to Today: it lists the habits in the new order.
@@ -132,7 +132,7 @@ final class HabitManagerUITests: XCTestCase {
         let todayFirst = app.buttons["First"]
         let todaySecond = app.buttons["Second"]
         XCTAssertTrue(todaySecond.waitForExistence(timeout: 3))
-        expectAbove(todaySecond, todayFirst, "Second sits above First on Today")
+        assertAbove(todaySecond, todayFirst, message: "Second sits above First on Today")
     }
 
     // MARK: Helpers
@@ -142,8 +142,8 @@ final class HabitManagerUITests: XCTestCase {
     }
 
     /// Waits for `upper` to sit above `lower`, instead of reading their frames once.
-    private func expectAbove(
-        _ upper: XCUIElement, _ lower: XCUIElement, _ message: String,
+    private func assertAbove(
+        _ upper: XCUIElement, _ lower: XCUIElement, message: String,
         file: StaticString = #filePath, line: UInt = #line
     ) {
         let settled = XCTNSPredicateExpectation(

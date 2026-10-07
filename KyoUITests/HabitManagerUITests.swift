@@ -117,12 +117,14 @@ final class HabitManagerUITests: XCTestCase {
         let handle = app.buttons["Reorder Second"]
         XCTAssertTrue(handle.waitForExistence(timeout: 3))
         let target = app.buttons["Reorder First"]
-        handle.press(forDuration: 0.6, thenDragTo: target)
-        app.buttons["Done"].firstMatch.tap()
+        // A fast drag on a slow simulator lifts the row but never triggers the swap, so the row snaps
+        // back on release (#152). Drag slowly and hold over the target before letting go.
+        handle.press(forDuration: 0.6, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 1)
 
         let first = managerRow("First", in: app)
         let second = managerRow("Second", in: app)
-        XCTAssertTrue(second.frame.minY < first.frame.minY, "Second now sits above First")
+        expectAbove(second, first, "Second now sits above First")
+        app.buttons["Done"].firstMatch.tap()
 
         // Back out to Today: it lists the habits in the new order.
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -130,13 +132,24 @@ final class HabitManagerUITests: XCTestCase {
         let todayFirst = app.buttons["First"]
         let todaySecond = app.buttons["Second"]
         XCTAssertTrue(todaySecond.waitForExistence(timeout: 3))
-        XCTAssertTrue(todaySecond.frame.minY < todayFirst.frame.minY)
+        expectAbove(todaySecond, todayFirst, "Second sits above First on Today")
     }
 
     // MARK: Helpers
 
     private func managerRow(_ name: String, in app: XCUIApplication) -> XCUIElement {
         app.cells.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+    }
+
+    /// Waits for `upper` to sit above `lower`, instead of reading their frames once.
+    private func expectAbove(
+        _ upper: XCUIElement, _ lower: XCUIElement, _ message: String,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in upper.frame.minY < lower.frame.minY }, object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 5), .completed, message, file: file, line: line)
     }
 
     private func openManager(in app: XCUIApplication) {

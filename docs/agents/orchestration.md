@@ -23,6 +23,7 @@
   - the build and test commands;
   - what to report back: the branch, the PR, a summary, and anything left open.
 - Coders don't widen scope or make product or architecture decisions. They stop and report any open question to Opus.
+- A coder that goes idle with checks still running may never wake to report. When one says it is waiting on a run, Opus watches the PR head or the run's output itself, with a background wait, and doesn't wait on the coder's message alone.
 
 **Agent teams.**
 

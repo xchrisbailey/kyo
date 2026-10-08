@@ -80,6 +80,7 @@ struct TodayView: View {
                     .padding(.horizontal, horizontalPadding(for: geometry.size.width))
                     .padding(.top, 12)
                     .padding(.bottom, 28)
+                    .id("main-top")
                 }
                 .background(Color(uiColor: .systemGroupedBackground))
                 .scrollIndicators(.hidden)
@@ -146,6 +147,10 @@ struct TodayView: View {
                 .onChange(of: sections.isCollapsed(.tasks)) { _, isCollapsed in
                     // A hidden field mustn't keep the keyboard up. The draft text stays.
                     if isCollapsed { isTaskDraftFocused = false }
+                }
+                // Today and Month share this scroll view, so each opens at its top, not where the other was left.
+                .onChange(of: mainView) {
+                    scrollProxy.scrollTo("main-top", anchor: .top)
                 }
                 .onChange(of: isShowingTaskDraft) { _, isShowing in
                     if isShowing {
@@ -556,7 +561,7 @@ private struct TaskDraftRow: View {
 }
 
 /// The main content the bottom bar switches between.
-private enum MainView {
+private enum MainView: String {
     case today
     case month
 }
@@ -620,7 +625,7 @@ private struct MainBottomBar: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier("main-view-\(title.lowercased())")
+        .accessibilityIdentifier("main-view-\(view.rawValue)")
     }
 
     private var accentColor: Color {

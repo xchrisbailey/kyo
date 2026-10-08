@@ -89,8 +89,51 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(app.buttons["main-view-month"].isSelected)
     }
 
-    private func launchApp() -> XCUIApplication {
+    func testMonthAndTodayEachOpenAtTheTopWhateverTheOtherWasScrolledTo() throws {
+        // At an accessibility text size Month is taller than the screen too, so it can't hide behind a clamped offset.
+        let app = launchApp(textSize: "UICTContentSizeCategoryAccessibilityXXXL")
+        let month = app.buttons["main-view-month"]
+        XCTAssertTrue(month.waitForExistence(timeout: 10))
+        for index in 1...3 { addTask("Task \(index)", to: app) }
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertFalse(app.descendants(matching: .any)["task-count-summary"].isHittable, "Today is scrolled away from its top")
+
+        month.tap()
+
+        XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["month-header"].isHittable)
+        XCTAssertTrue(app.buttons[dayIdentifier()].isHittable)
+
+        app.buttons["main-view-today"].tap()
+
+        let summary = app.descendants(matching: .any)["task-count-summary"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 10))
+        XCTAssertTrue(summary.isHittable)
+
+        // + → Task from Month scrolls Today to the new field, past the tasks above it.
+        month.tap()
+        XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
+        app.buttons["Add an item"].tap()
+        app.buttons["Task"].tap()
+        let field = app.textFields["New task"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        let isShown = NSPredicate(format: "isHittable == true")
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: isShown, object: field)], timeout: 10), .completed)
+    }
+
+    private func addTask(_ title: String, to app: XCUIApplication) {
+        app.buttons["Add an item"].tap()
+        app.buttons["Task"].tap()
+        let field = app.textFields["New task"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText(title + "\n")
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 10))
+    }
+
+    private func launchApp(textSize: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
+        if let textSize { app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize] }
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
         return app

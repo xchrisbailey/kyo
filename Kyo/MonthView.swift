@@ -32,6 +32,9 @@ struct MonthView: View {
                 }
             }
             .padding(8)
+            // Seven columns can't hold accessibility-size text, so the grid stops growing at the largest
+            // standard size. The header, legend and Day summary keep scaling.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             legend
@@ -96,6 +99,8 @@ private struct MonthDayCell: View {
                 Text("\(day.number)")
                     .font(.body)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(day.isToday ? Color(uiColor: .systemBackground) : Color.primary)
                     .frame(minWidth: 30, minHeight: 30)
                     .background {

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import XCTest
 
 /// The setup every Month behavior test shares: a fixed UTC Gregorian calendar and locale, and a
 /// clock fixed at a chosen moment. The task, habit, memo and Schedule tickets add their real stores and the
@@ -74,5 +75,26 @@ final class StandInMonthContent: MonthContentSource {
     func content(on days: [Date]) -> [Date: MonthKindDay] {
         requests.append(days)
         return content.filter { days.contains($0.key) }
+    }
+}
+
+/// The base of the Month behavior tests that share these lookups and waits.
+@MainActor
+class MonthTestCase: XCTestCase {
+    /// The grid's cell for day `number` of the shown month.
+    func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
+        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
+    }
+
+    /// A Day summary row that shows `text` and nothing more.
+    func row(_ text: String) -> MonthSummaryRow { MonthSummaryRow(id: text, text: text) }
+
+    /// Polls until `condition` holds, for refreshes that finish on their own tasks.
+    func eventually(_ message: String = "condition", _ condition: @MainActor () throws -> Bool) async rethrows {
+        for _ in 0..<500 {
+            if try condition() { return }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("Timed out waiting for \(message)")
     }
 }

@@ -22,17 +22,48 @@ enum MonthSummaryTarget: Equatable, Sendable {
     case event(ScheduleEventID)
 }
 
-/// One line in the Day summary. A row with a target can be tapped; one without is plain.
+/// One line in the Day summary. What a row is decides what it draws and whether it can be tapped.
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
+    enum Kind: Equatable, Sendable {
+        /// Text alone, as a completed task is listed.
+        case plain
+        /// A habit, with whether it was checked off that day. Drawn with an indicator, not a control.
+        case habit(isChecked: Bool)
+        /// A memo, which opens in the memo sheet.
+        case memo(UUID)
+        /// An event, drawn with a time and a calendar dot, which opens the event's details.
+        case event(MonthEventPresentation, target: ScheduleEventID)
+    }
+
     let id: String
     let text: String
-    /// Whether a habit was checked off that day. Absent on rows of other kinds.
-    var isChecked: Bool? = nil
-    var target: MonthSummaryTarget? = nil
+    var kind: Kind = .plain
     /// What VoiceOver reads instead of `text`, when the row reads as more than it shows.
     var accessibilityLabel: String? = nil
-    /// Set on an event row, which draws a time and a calendar dot beside `text`.
-    var event: MonthEventPresentation? = nil
+    /// What VoiceOver reads after the label, such as whether a task or a habit is done.
+    var accessibilityValue: String? = nil
+
+    /// What the row's one accessibility element is found by.
+    var accessibilityIdentifier: String { "month-summary-row-\(id)" }
+
+    /// Whether a habit was checked off that day. Absent on rows of other kinds.
+    var isChecked: Bool? {
+        if case .habit(let isChecked) = kind { isChecked } else { nil }
+    }
+
+    /// What tapping the row opens. A row without one is plain.
+    var target: MonthSummaryTarget? {
+        switch kind {
+        case .plain, .habit: nil
+        case .memo(let id): .memo(id)
+        case .event(_, let target): .event(target)
+        }
+    }
+
+    /// Set on an event row.
+    var event: MonthEventPresentation? {
+        if case .event(let presentation, _) = kind { presentation } else { nil }
+    }
 }
 
 /// What one kind holds on one day: its mark, the phrase a day cell reads aloud for it (such as
@@ -46,6 +77,11 @@ struct MonthKindDay: Equatable, Sendable {
         self.mark = mark
         self.phrase = phrase
         self.rows = rows
+    }
+
+    /// "1 event" or "3 events": the count with whichever noun fits it.
+    static func countPhrase(_ count: Int, one singular: String, other plural: String) -> String {
+        count == 1 ? "1 \(singular)" : "\(count) \(plural)"
     }
 }
 
@@ -208,9 +244,9 @@ final class MonthModel: ObservableObject {
 
     /// Shows the current month with Today selected, as Month opens each time and as the jump-back control does.
     func showCurrentMonth() {
-        let current = calendar.startOfDay(for: now())
-        shownMonth = Self.startOfMonth(containing: current, in: calendar)
-        chosenDay = current
+        let today = calendar.startOfDay(for: now())
+        shownMonth = Self.startOfMonth(containing: today, in: calendar)
+        chosenDay = today
         refresh()
     }
 
@@ -219,8 +255,8 @@ final class MonthModel: ObservableObject {
     func refreshAtEachDayBoundary() async {
         while !Task.isCancelled {
             refresh()
-            let current = calendar.startOfDay(for: now())
-            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: current) else { return }
+            let today = calendar.startOfDay(for: now())
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else { return }
             do {
                 try await sleep(max(1, tomorrow.timeIntervalSince(now())))
             } catch {

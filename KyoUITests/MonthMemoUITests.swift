@@ -8,13 +8,15 @@ final class MonthMemoUITests: XCTestCase {
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
 
-        app.buttons["Add an item"].tap()
-        app.buttons["Written memo"].tap()
-        let compose = app.textFields["Memo text"]
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-written-memo"].tap()
+        let compose = app.textFields["memo-compose-text"]
         XCTAssertTrue(compose.waitForExistence(timeout: 10))
         compose.typeText("Weekend idea")
-        app.buttons["Save"].tap()
-        XCTAssertTrue(app.buttons["Memos, 1 memo"].waitForExistence(timeout: 10))
+        app.buttons["memo-compose-save"].tap()
+        let memosHeader = app.buttons["section-header-memos"]
+        XCTAssertTrue(memosHeader.waitForExistence(timeout: 10))
+        XCTAssertEqual(memosHeader.label, "Memos, 1 memo")
 
         app.buttons["main-view-month"].tap()
         XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
@@ -28,11 +30,11 @@ final class MonthMemoUITests: XCTestCase {
         XCTAssertEqual(row.label, "Weekend idea")
         row.tap()
 
-        let editor = app.textFields["Memo text"]
+        let editor = app.textFields["memo-text"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10))
         editor.tap()
         editor.typeText("Edited: ")
-        app.buttons["Close memo"].tap()
+        app.buttons["memo-close"].tap()
 
         XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
         let edited = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'month-summary-row-memo-'")).firstMatch

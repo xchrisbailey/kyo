@@ -38,7 +38,12 @@ final class HabitMonthContent: MonthContentSource {
                 return isDue || isChecked ? (habit, isDue, isChecked) : nil
             }
             guard !entries.isEmpty else { continue }
-            let rows = entries.map { MonthSummaryRow(id: "habit-\($0.habit.id)", text: $0.habit.name, isChecked: $0.isChecked) }
+            let rows = entries.map {
+                MonthSummaryRow(
+                    id: "habit-\($0.habit.id)", text: $0.habit.name, kind: .habit(isChecked: $0.isChecked),
+                    accessibilityValue: $0.isChecked ? "Checked off" : "Not checked off"
+                )
+            }
             if entries.contains(where: \.isChecked) {
                 let isComplete = entries.allSatisfy { $0.isChecked || !$0.isDue }
                 result[day] = MonthKindDay(

@@ -580,6 +580,7 @@ private struct TaskDraftRow: View {
                 .submitLabel(.done)
                 .onSubmit(submit)
                 .accessibilityLabel("New task")
+                .accessibilityIdentifier("new-task")
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
@@ -607,9 +608,13 @@ private struct MainBottomBar: View {
 
             Menu {
                 Button("Task", systemImage: "checkmark.circle", action: addTask)
+                    .accessibilityIdentifier("add-item-task")
                 Button("Habit", systemImage: "repeat", action: addHabit)
+                    .accessibilityIdentifier("add-item-habit")
                 Button("Written memo", systemImage: "text.alignleft", action: addWrittenMemo)
+                    .accessibilityIdentifier("add-item-written-memo")
                 Button("Voice memo", systemImage: "waveform", action: addVoiceMemo)
+                    .accessibilityIdentifier("add-item-voice-memo")
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 26, weight: .medium))
@@ -621,6 +626,7 @@ private struct MainBottomBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
             .accessibilityHint("Adds a task, a habit or a memo")
+            .accessibilityIdentifier("add-item")
 
             switchButton(.month, title: "Month", systemImage: "calendar")
         }

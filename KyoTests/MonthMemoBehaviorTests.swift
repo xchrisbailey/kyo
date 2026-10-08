@@ -4,7 +4,7 @@ import XCTest
 /// Memos in Month, seen through the Month model on a real memo store with in-memory storage.
 /// Today is Tuesday 6 October 2026 unless a test moves the clock.
 @MainActor
-final class MonthMemoBehaviorTests: XCTestCase {
+final class MonthMemoBehaviorTests: MonthTestCase {
     private let harness = MonthHarness(2026, 10, 6)
 
     private struct Fixture {
@@ -28,10 +28,6 @@ final class MonthMemoBehaviorTests: XCTestCase {
         harness.setNow(restored)
         store.refreshForCurrentDay()
         return memo
-    }
-
-    private func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
-        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
     }
 
     private func memoMark(onDay number: Int, in model: MonthModel) throws -> MonthMark {

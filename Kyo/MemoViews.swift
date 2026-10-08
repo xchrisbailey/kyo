@@ -132,7 +132,7 @@ struct MemoRow: View {
             .padding(.horizontal, 14)
             .frame(minHeight: 55)
             .frame(maxWidth: .infinity)
-            .background(MemoPresentation.cardBackground)
+            .background(KyoPalette.cardBackground)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -188,7 +188,7 @@ struct WrittenMemoComposeSheet: View {
                         .focused($isFocused)
                         .padding(14)
                         .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-                        .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityLabel("Memo text")
                         .accessibilityIdentifier("memo-compose-text")
                     MemoPendingPhotos(
@@ -502,7 +502,7 @@ struct MemoCardSheet: View {
             .focused($isEditorFocused)
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-            .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityLabel("Memo text")
             .accessibilityIdentifier("memo-text")
     }
@@ -542,7 +542,7 @@ struct MemoCardSheet: View {
                 .focused($isEditorFocused)
                 .padding(14)
                 .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-                .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .accessibilityLabel("Transcript")
         }
     }
@@ -591,13 +591,5 @@ enum MemoPresentation {
 
     static func time(_ date: Date) -> String {
         date.formatted(date: .omitted, time: .shortened)
-    }
-
-    static var cardBackground: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1)
-                : .white
-        })
     }
 }

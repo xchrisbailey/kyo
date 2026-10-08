@@ -78,7 +78,7 @@ struct MemoTaskSheet: View {
                 )
             }
         }
-        .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var addAnotherButton: some View {

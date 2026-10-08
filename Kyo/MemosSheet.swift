@@ -126,7 +126,7 @@ struct MemosSheet: View {
                     )
                 }
             }
-            .background(MemoPresentation.cardBackground)
+            .background(KyoPalette.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .accessibilityElement(children: .contain)
         }

@@ -674,6 +674,14 @@ enum KyoPalette {
                 : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
         })
     }
+
+    static var cardBackground: Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1)
+                : .white
+        })
+    }
 }
 
 private struct SummaryStat: View {
@@ -768,19 +776,11 @@ struct TodaySection<Content: View>: View {
 
             if !isCollapsed {
                 content
-                    .background(cardBackground)
+                    .background(KyoPalette.cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .accessibilityElement(children: .contain)
             }
         }
-    }
-
-    private var cardBackground: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1)
-                : .white
-        })
     }
 }
 
@@ -1062,7 +1062,7 @@ private struct TaskRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
-        .background(Color(uiColor: .systemBackground))
+        .background(KyoPalette.cardBackground)
     }
 
     private var checkboxGlyph: some View {

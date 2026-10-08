@@ -47,17 +47,17 @@ struct TodayView: View {
         // UI tests have no Apple Intelligence, so Memo → Task takes its manual path and a Voice
         // memo keeps its "Voice memo" title.
         let languageModel: any OnDeviceLanguageModel = isInMemory ? NoLanguageModel() : FoundationOnDeviceLanguageModel()
-        _memoStore = StateObject(
-            wrappedValue: MemoStore(
-                modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel,
-                memoSync: isInMemory ? nil : WatchConnectivityTaskTransport.shared,
-                watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
-            )
+        // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
+        lazy var memoStore = MemoStore(
+            modelContainer: modelContainer, transcriber: transcriber, languageModel: languageModel,
+            memoSync: isInMemory ? nil : WatchConnectivityTaskTransport.shared,
+            watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
         )
+        _memoStore = StateObject(wrappedValue: memoStore)
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
-        _month = StateObject(wrappedValue: MonthModel())
+        _month = StateObject(wrappedValue: MonthModel(sources: [MemoMonthContent(store: memoStore)]))
         self.languageModel = languageModel
     }
 
@@ -72,7 +72,11 @@ struct TodayView: View {
                         case .month:
                             topBar
                                 .padding(.bottom, 17)
-                            MonthView(model: month)
+                            MonthView(model: month, onOpen: { target in
+                                switch target {
+                                case .memo(let id): activeSheet = .memo(id)
+                                }
+                            })
                         }
                     }
                     .frame(maxWidth: 680, alignment: .leading)

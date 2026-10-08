@@ -93,6 +93,7 @@
 		5D09E53DBE2037D92F7ABEA9 /* Memo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653131DE37B9A35D5F831A52 /* Memo.swift */; };
 		5E2D638DA705A4D990745606 /* WatchRecordingOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93771BC1E2763ADBC9FADF7 /* WatchRecordingOutbox.swift */; };
 		5E30A47D3688FED5E10E3CCC /* WatchConnectivityTaskTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */; };
+		5E4AB266D0D5ED01CA771F85 /* MonthMemoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D0F3E3B7611E621296C665 /* MonthMemoUITests.swift */; };
 		5ED694DB41479BD59B854D4C /* VoiceRecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */; };
 		619E9EA6EDDF9C4ACB67F46C /* OnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE5820CFA449D4155D9E440 /* OnDeviceLanguageModel.swift */; };
 		6244772E32353CEDCD0E592A /* LiveTranscribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E732658F120C804D3C719F02 /* LiveTranscribing.swift */; };
@@ -430,6 +431,7 @@
 		DC3D16FE3D497CED5BB83656 /* WatchCollapsedCountBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCollapsedCountBehaviorTests.swift; sourceTree = "<group>"; };
 		E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntries.swift; sourceTree = "<group>"; };
 		E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5D0F3E3B7611E621296C665 /* MonthMemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthMemoUITests.swift; sourceTree = "<group>"; };
 		E63C88A027256BF6CE3A9B41 /* HabitForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitForm.swift; sourceTree = "<group>"; };
 		E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAudioRecorder.swift; sourceTree = "<group>"; };
 		E6974F2DE46F616F1A9B0F0F /* ScheduleBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleBehaviorTests.swift; sourceTree = "<group>"; };
@@ -572,6 +574,7 @@
 			children = (
 				9D4BAC2A880E4D23186F4B6A /* HabitsSheetUITests.swift */,
 				F03EDD307CE59DF5F2A81BF3 /* MemoUITests.swift */,
+				E5D0F3E3B7611E621296C665 /* MonthMemoUITests.swift */,
 				1F6F9F8123D66511CA8C7543 /* MonthUITests.swift */,
 				0167112DC57A51C725650C9A /* ScheduleCalendarsUITests.swift */,
 				C245521D5372FC2053C29CBE /* ScheduleEventDetailUITests.swift */,
@@ -916,6 +919,7 @@
 			files = (
 				7968A9C535D2B07775A5C944 /* HabitsSheetUITests.swift in Sources */,
 				3527FC336F5A59D91E02574A /* MemoUITests.swift in Sources */,
+				5E4AB266D0D5ED01CA771F85 /* MonthMemoUITests.swift in Sources */,
 				424B1E767B128D8541975C2D /* MonthUITests.swift in Sources */,
 				FA474485C92C5E70C6EDFACC /* ScheduleCalendarsUITests.swift in Sources */,
 				EB22C10C5F24BA1EAA9C80FC /* ScheduleEventDetailUITests.swift in Sources */,

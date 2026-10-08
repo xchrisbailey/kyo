@@ -15,6 +15,11 @@
 #
 # The simulator platform comes from the scheme's test targets: watchOS when every test target
 # supports only watchOS, iOS otherwise. `--platform` overrides that.
+#
+# UI suites (`KyoUITests`, `KyoWatchUITests`) queue behind one lock shared by every worktree on the
+# machine, so only one runs at a time: several at once each take far longer and time out under the
+# load. A run waiting for the lock says so once, naming the holder. A lock whose holder process is
+# gone is stale and is taken over. Other schemes don't take the lock.
 set -euo pipefail
 
 usage() {
@@ -93,6 +98,60 @@ log="$log_dir/$run_id-$scheme.log"
 udid=""
 xcodebuild_pid=""
 
+# The UI-suite lock is a symlink whose target describes the holder: pid, process start time,
+# worktree, scheme. `ln -s` is atomic and fails if the link exists, so creating the lock and
+# recording its holder are one step. The start time tells a live holder from a reused pid.
+lock_path="$tmp/kyo-ui-lock"
+lock_holder="$$|$(ps -o lstart= -p $$ | sed -E 's/^ +//; s/ +$//')|$(basename "$root")|$scheme"
+holding_lock=0
+
+holder_alive() {
+  local pid="${1%%|*}" rest="${1#*|}"
+  [[ "$(ps -o lstart= -p "$pid" 2>/dev/null | sed -E 's/^ +//; s/ +$//')" == "${rest%%|*}" ]]
+}
+
+describe_holder() {
+  local rest="${1#*|}"
+  rest="${rest#*|}"
+  echo "${rest%%|*} running ${rest#*|} (pid ${1%%|*})"
+}
+
+acquire_ui_lock() {
+  local holder moved waited=0 started=$SECONDS
+  while ! ln -s "$lock_holder" "$lock_path" 2>/dev/null; do
+    holder="$(readlink "$lock_path" 2>/dev/null || true)"
+    [[ -n "$holder" ]] || continue # released between the two calls
+    if ! holder_alive "$holder"; then
+      # Rename rather than delete, so only one waiter takes the stale lock over. If the lock was
+      # replaced by a live holder before the rename, put it back.
+      moved="$lock_path.stale.$$"
+      mv "$lock_path" "$moved" 2>/dev/null || continue
+      if [[ "$(readlink "$moved")" != "$holder" ]]; then
+        ln -s "$(readlink "$moved")" "$lock_path" 2>/dev/null || true
+      else
+        echo "scripts/test: took over a stale UI suite lock from $(describe_holder "$holder")" >&2
+      fi
+      rm -f "$moved"
+      continue
+    fi
+    if [[ $waited -eq 0 ]]; then
+      echo "scripts/test: waiting for the UI suite lock held by $(describe_holder "$holder")" >&2
+      waited=1
+    fi
+    sleep 1
+  done
+  holding_lock=1
+  [[ $waited -eq 0 ]] || echo "scripts/test: got the UI suite lock after $((SECONDS - started))s"
+}
+
+# Release only a lock that is still ours; a stale takeover may have replaced it.
+release_ui_lock() {
+  if [[ $holding_lock -eq 1 && "$(readlink "$lock_path" 2>/dev/null || true)" == "$lock_holder" ]]; then
+    rm -f "$lock_path"
+  fi
+  holding_lock=0
+}
+
 # Stop xcodebuild and the helpers it spawned (simctl diagnose, the test runner).
 stop_xcodebuild() {
   pkill -TERM -P "$xcodebuild_pid" 2>/dev/null || true
@@ -115,10 +174,15 @@ cleanup() {
     [[ ! -e "$work" ]] && break
     sleep 1
   done
+  release_ui_lock
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+if [[ "$scheme" == "KyoUITests" || "$scheme" == "KyoWatchUITests" ]]; then
+  acquire_ui_lock
+fi
 
 udid="$(xcrun simctl create "$run_id" "$device_type" "$runtime")"
 echo "scripts/test: $scheme on $platform simulator $run_id ($udid)"

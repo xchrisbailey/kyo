@@ -12,14 +12,17 @@ final class MonthEventUITests: XCTestCase {
         XCTAssertTrue(month.waitForExistence(timeout: 10))
         month.tap()
 
-        // Two all-day and three timed events, read as the Schedule reads them on Today.
-        let section = app.descendants(matching: .any)["month-summary-section-events"]
-        XCTAssertTrue(section.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["All day: Sam's birthday"].exists)
-        XCTAssertTrue(app.buttons["All day: Holiday"].exists)
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label ENDSWITH %@", "Standup, Work calendar, ended")).firstMatch.exists)
-        let running = app.buttons.matching(NSPredicate(format: "label == %@", "Now, Design review, Work calendar")).firstMatch
-        XCTAssertTrue(running.exists)
+        // Two all-day and three timed events, read as the Schedule reads them on Today. A row's identifier
+        // ends in its occurrence date, which a test can't know, so rows are found by the event's id.
+        func row(_ eventID: String) -> XCUIElement {
+            app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "month-summary-row-event-\(eventID)-")).firstMatch
+        }
+        XCTAssertTrue(row("birthday").exists)
+        XCTAssertEqual(row("birthday").label, "All day: Sam's birthday")
+        XCTAssertEqual(row("holiday").label, "All day: Holiday")
+        XCTAssertEqual(row("standup").label, "9:30 AM, Standup, Work calendar, ended".replacingOccurrences(of: " AM", with: "\u{202F}AM"))
+        let running = row("review")
+        XCTAssertEqual(running.label, "Now, Design review, Work calendar")
 
         running.tap()
 

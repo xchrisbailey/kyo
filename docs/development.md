@@ -17,6 +17,8 @@ For physical devices, Kyo signs automatically with the development team set in `
 - `KyoTests/` and `KyoUITests/`: unit and UI tests.
 - `project.yml`: XcodeGen project definition. The generated Xcode project is checked in so XcodeGen is only needed when changing project configuration.
 
+`KyoTests` has no host app. It compiles all of `Shared/` (a new file there is picked up with no `project.yml` change; one that must stay out of the bundle needs an `excludes` entry) and the `Kyo/` files it tests, which are listed one at a time.
+
 Run `xcodegen generate` after changing `project.yml`. Make lasting build-setting and target changes in that file, since regeneration replaces the Xcode project configuration.
 
 ## Build checks

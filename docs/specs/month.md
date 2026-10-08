@@ -114,12 +114,13 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - The Calendar button is relabelled **Month** and keeps the calendar icon.
 - Kyo always launches into Today. The selected view isn't remembered across launches.
 - Month always opens on the current month with Today selected, each time the user switches to it.
+- Today and Month share one scroll view, so each opens at its top when the user switches to it. Today's scroll position isn't kept across a visit to Month; its stores, sheets, and typed task are.
 
 ### The + menu while Month is showing
 
 - **Task** switches to Today and focuses the task field, as it does now.
 - **Habit**, **Written memo**, and **Voice memo** open their sheets over Month. Dismissing one leaves the user on Month, and the marks and Day summary update.
-- Quick-capture shortcuts work while Month is showing exactly as they do on Today: a voice or written memo capture opens over Month straight away, and a task capture switches to Today and focuses the task field. Watch behavior is unchanged.
+- Quick-capture shortcuts work while Month is showing exactly as they do on Today: a voice or written memo capture opens over Month straight away. Kyo has no task quick capture; if one is added, it switches to Today and focuses the task field, as + → Task does. Watch behavior is unchanged.
 
 ### The grid
 
@@ -129,6 +130,7 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - Today's cell is highlighted as the current day. The selected day has its own highlight, distinct from Today's.
 - If the day rolls over while Month is showing, the current-day highlight moves to the new Today. The selection stays where the user put it. If the new Today is in the next month, the shown month stays and the jump-back control appears.
 - Marks and the Day summary always follow the shown month and the selected day, whichever month that is.
+- The day the user chose is remembered while they move between months. In a month that doesn't hold it, the 1st is shown as selected; returning to the month that holds it shows the choice again. Selecting a day in another month replaces the choice, and jumping back selects Today.
 
 ### Marks
 
@@ -154,12 +156,13 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - When **Show schedule** is off, or access isn't full, Month shows no event marks, lists no events in the Day summary, and shows no prompt. Connecting stays in Today and Settings.
 - Events are fetched for the shown month. Refetch when the event store reports a change, when the shown month changes, when the app returns to the foreground, and when the Settings selection changes.
 - Kyo still stores no events.
+- Events are read asynchronously, so a newly shown month's event marks appear a moment after its other marks.
 
 ### Day summary
 
 - Shown below the grid for the selected day, headed by that day's date.
 - It lists, in this order:
-  - **Events**: all of the day's visible events in time order, all-day first, shown as Schedule rows are. On Today they match the Schedule exactly, including "Now", "Until", and dimming of ended events. On any other day each timed row shows its start time, is never dimmed, and is never read as ended, since those are relative to Today. Tapping one opens the system event detail for that day's occurrence, as the Schedule does.
+  - **Events**: all of the day's visible events in time order, all-day first, shown as Schedule rows are. On Today they match the Schedule exactly, including "Now", "Until", and dimming of ended events. On any other day each timed row shows its start time, is never dimmed, and is never read as ended, since those are relative to Today. Each all-day event is its own row, "All day" with its title, not the Schedule's single combined line, so each opens directly. A row shows its location as a Schedule row does. Tapping one opens the system event detail for that day's occurrence, as the Schedule does.
   - **Tasks**: the tasks completed on that day. Plain rows, not tappable, with no checkbox control.
   - **Habits**: every habit due that day with whether it was checked off, plus any other habit checked off that day: a weekly-target habit, or one whose schedule no longer made it due that day. Every check-off that counts toward the mark has a row. A habit that was due and not checked off is shown as unchecked. Plain rows, not tappable. An unchecked habit is the absence of a check-off, not a record of its own.
   - **Memos**: the day's memos. Tapping one opens it in the same sheet the Memos sheet uses, with whatever that sheet allows: editing, deleting, photos, and Memo → Task, which still adds the task to Today.
@@ -171,8 +174,8 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 ### Accessibility and layout
 
 - Each day cell is a single accessibility element reading the date and what it holds, for example "Tuesday 6 October, 2 events, 3 tasks completed, all habits done, 1 memo". The hollow habit state reads "some habits done". The cell carries the selected trait when selected and says when it is Today.
-- Day summary rows read as they do in their Today sections.
-- The grid and Day summary respect Dynamic Type.
+- Day summary rows read as they do in their Today sections, with one exception: a habit row's state reads "Checked off" or "Not checked off", the glossary's term, where Today's habit rows currently say "Completed".
+- The header, legend, and Day summary respect Dynamic Type at every size. The grid's weekday row and day cells stop growing at the largest standard size, because seven columns can't hold accessibility-size numbers.
 - iPad uses the same stacked layout within the existing Today width.
 
 ### Apple Watch
@@ -196,7 +199,7 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - Row order in the Day summary and phrase order in the day cell's VoiceOver label are fixed (events, tasks, habits, memos) and asserted.
 - The new read-only queries on the task list, memo store, and Schedule model are exercised through the Month model, not with tests of their own, unless a rule can't be reached from there.
 - Prior art: the Schedule's behavior tests (fake calendar service, fixed UTC calendar and locale, a clock closure, and a poll-until helper for refreshes that finish on their own tasks); the habit streak behavior tests (an in-memory container, a mutable clock moved day by day to build a log); the memo history behavior tests for memos grouped by day.
-- UI tests stay few, in line with the UI test audit: one that switches to Month and back, and one that adds a memo on Today, switches to Month, and opens it from Today's Day summary. They use the existing launch variables for the in-memory store and the fake calendar; no new seeding variable is added, so past days are covered by the behavior tests.
+- UI tests stay few, in line with the UI test audit: one that switches to Month and back, and one that adds a memo on Today, switches to Month, and opens it from Today's Day summary. As built there are six: those two, plus memo sheets opening over Month, each view opening at its top at an accessibility text size, moving between months, and opening an event's details from Month. They use the existing launch variables for the in-memory store and the fake calendar; no new seeding variable is added, so past days are covered by the behavior tests.
 - Check by hand on a real device: swiping between months with a large calendar account, and Dynamic Type at accessibility sizes.
 - Build both app schemes.
 

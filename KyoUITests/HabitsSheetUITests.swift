@@ -132,7 +132,7 @@ final class HabitsSheetUITests: XCTestCase {
         addHabitOnToday("Stretch", in: app)
         let circle = app.buttons["Stretch"]
         circle.tap()
-        let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Completed, 1 day streak"), object: circle)
+        let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Checked off, 1 day streak"), object: circle)
         XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 10), .completed, "the check-off never registered")
 
         openHabitsSheet(in: app)

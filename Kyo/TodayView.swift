@@ -911,9 +911,9 @@ private struct HabitRow: View {
             .accessibilityHidden(true)
     }
 
-    /// "Completed" only when Today has a check-off; week progress and the streak follow.
+    /// "Checked off" only when Today has a check-off; week progress and the streak follow.
     private var accessibilityValue: String {
-        var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
+        var value = entry.isCheckedOffToday ? "Checked off" : "Not checked off"
         if let progress = entry.weekProgress {
             value += ", " + HabitStatusLabel.spokenWeekProgress(progress)
             if progress.isTargetMet && !entry.isCheckedOffToday { value += ", target met" }

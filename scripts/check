@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+#
+# Run every check a change needs before it merges, one at a time, and record the result against the
+# commit. The rules for which checks a change needs are in docs/development.md ("CI").
+#
+#   scripts/check [--base <ref>] [--all | --quick]
+#   scripts/check --show [<commit>]
+#
+# The checks run on HEAD, so the working tree must be clean. They are selected from the paths that
+# changed between the base (default: the merge-base with origin/main) and HEAD:
+#
+#   - both build checks and `scripts/test KyoTests`, always;
+#   - `scripts/test KyoUITests` when Kyo/, KyoUITests/ or Shared/ changed;
+#   - `scripts/test KyoWatchUITests` when KyoWatch/, KyoWatchWidgets/, KyoWatchUITests/ or Shared/ changed;
+#   - `xcodegen generate` leaving no diff when project.yml changed;
+#   - `scripts/lint-ui-tests` when KyoUITests/ or KyoWatchUITests/ changed; it needs no simulator, so
+#     it runs first.
+#
+# `--all` runs every check whatever changed. `--quick` runs only the builds and KyoTests; the record
+# says the UI suites were skipped.
+#
+# A failed check doesn't stop the run, so the record is complete. The record is one plain-text file
+# per commit under ${TMPDIR:-/tmp}/kyo-check, named by the full commit SHA, so any worktree can read
+# it. It ends with exactly one of `RESULT: PASS`, `RESULT: FAIL`, `RESULT: PARTIAL`. A rerun on the
+# same commit replaces it. `--show` prints the record for a commit (default HEAD) without running
+# anything, and exits 0 for PASS, 1 for FAIL or PARTIAL, 2 when there is no record.
+#
+# Output is quiet: a line as each check starts, its result line when it ends, then the record.
+# Each check's own output is kept in a log; the record names it. Exits 0 when every check passed,
+# 1 when anything failed or was skipped, 2 for a usage error or a dirty tree.
+set -uo pipefail
+
+usage() {
+  echo "usage: scripts/check [--base <ref>] [--all | --quick]" >&2
+  echo "       scripts/check --show [<commit>]" >&2
+  exit 2
+}
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+
+tmp="${TMPDIR:-/tmp}"
+tmp="${tmp%/}"
+record_dir="$tmp/kyo-check"
+log_dir="$tmp/kyo-check-logs"
+
+base_ref=""
+mode="selected"
+show=0
+show_commit=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) [[ $# -ge 2 ]] || usage; base_ref="$2"; shift 2 ;;
+    --all) mode="all"; shift ;;
+    --quick) mode="quick"; shift ;;
+    --show) show=1; shift ;;
+    -*) usage ;;
+    *) [[ $show -eq 1 && -z "$show_commit" ]] || usage; show_commit="$1"; shift ;;
+  esac
+done
+
+if [[ $show -eq 1 ]]; then
+  [[ -z "$base_ref" && "$mode" == "selected" ]] || usage
+  sha="$(git rev-parse --verify --quiet "${show_commit:-HEAD}^{commit}")" \
+    || { echo "scripts/check: no such commit: ${show_commit:-HEAD}" >&2; exit 2; }
+  record="$record_dir/$sha.txt"
+  [[ -f "$record" ]] || { echo "scripts/check: no record for $sha" >&2; exit 2; }
+  cat "$record"
+  grep -q '^RESULT: PASS$' "$record"
+  exit $?
+fi
+
+[[ "$mode" != "all" || -z "$base_ref" ]] || usage
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "scripts/check: the working tree has uncommitted changes; the record is for HEAD, so commit or stash them first" >&2
+  exit 2
+fi
+
+sha="$(git rev-parse HEAD)"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [[ -z "$base_ref" ]]; then
+  base_ref="origin/main"
+  base="$(git merge-base origin/main HEAD 2>/dev/null)" \
+    || { echo "scripts/check: no merge-base with origin/main; pass --base <ref>" >&2; exit 2; }
+else
+  base="$(git rev-parse --verify --quiet "$base_ref^{commit}")" \
+    || { echo "scripts/check: no such ref: $base_ref" >&2; exit 2; }
+fi
+changed="$(git diff --name-only "$base" HEAD)"
+
+mkdir -p "$record_dir" "$log_dir"
+record="$record_dir/$sha.txt"
+# An interrupted run must not leave the previous run's record standing for this commit.
+rm -f "$record"
+
+# The given directory prefixes that have changed paths under them, comma-separated; empty when none
+# do.
+matched_prefixes() {
+  local prefix hits=""
+  for prefix in "$@"; do
+    if grep -q "^$prefix/" <<<"$changed"; then hits="${hits:+$hits, }$prefix/"; fi
+  done
+  echo "$hits"
+}
+
+ios_paths="$(matched_prefixes Kyo KyoUITests Shared)"
+watch_paths="$(matched_prefixes KyoWatch KyoWatchWidgets KyoWatchUITests Shared)"
+ui_test_paths="$(matched_prefixes KyoUITests KyoWatchUITests)"
+project_paths=""
+if grep -qx 'project.yml' <<<"$changed"; then project_paths="project.yml"; fi
+
+ran_blocks=""     # one text block per check that ran
+skipped_lines=""  # checks not run, with the reason
+failed=0
+partial=0
+index=0
+
+# Run one check: `run_check <name> <why> <log-name> <command...>`. Its output goes to a log; the
+# record gets the final result line, the test count, and the log path.
+run_check() {
+  local name="$1" why="$2" log_name="$3" log result count status verdict detail
+  shift 3
+  index=$((index + 1))
+  log="$log_dir/$sha-$log_name.log"
+  echo "scripts/check: [$index] $name"
+  "$@" >"$log" 2>&1
+  status=$?
+  result="$(grep -E '^\*\* (TEST |BUILD |XCODEGEN |LINT )?(SUCCEEDED|FAILED) \*\*' "$log" | tail -n 1 || true)"
+  count="$(grep -E 'Executed [0-9]+ tests?, with' "$log" | tail -n 1 | sed -E 's/^[[:space:]]+//; s/ in [0-9.]+ \(.*$//' || true)"
+  if [[ $status -eq 0 && "$result" == *SUCCEEDED* ]]; then
+    verdict="PASS"
+  else
+    verdict="FAIL"
+    failed=1
+  fi
+  detail="${result:-no result line, exit status $status}"
+  [[ -z "$count" ]] || detail="$detail ($count)"
+  # A test run keeps its full xcodebuild log elsewhere; point at that one when there is one.
+  local full_log
+  full_log="$(grep -E '^scripts/test: full log: ' "$log" | tail -n 1 | sed -E 's/^scripts\/test: full log: //' || true)"
+  ran_blocks="$ran_blocks
+[$verdict] $name
+  why: $why
+  result: $detail
+  log: ${full_log:-$log}
+"
+  echo "scripts/check: [$index] $name: $verdict, $detail"
+}
+
+# `xcodegen generate` must leave the checked-in project as it was. The tree was clean on entry, so
+# whatever differs afterwards came from xcodegen; report it, then put the tree back.
+xcodegen_check() {
+  local files untracked
+  xcodegen generate || { echo "** XCODEGEN FAILED **"; return 1; }
+  files="$(git diff --name-only)"
+  untracked="$(git ls-files --others --exclude-standard)"
+  [[ -z "$files" ]] || git checkout -- $files
+  [[ -z "$untracked" ]] || rm -rf $untracked
+  if [[ -n "$files$untracked" ]]; then
+    echo "xcodegen generate changed:"
+    echo "$files$untracked"
+    echo "** XCODEGEN FAILED **"
+    return 1
+  fi
+  echo "** XCODEGEN SUCCEEDED **"
+}
+
+skip() { skipped_lines="$skipped_lines
+  $1: $2"; }
+
+# Run a check when something it covers changed (or with --all), otherwise record why it didn't:
+# `plan <name> <changed prefixes> <reason if none> <log-name> <command...>`.
+plan() {
+  local name="$1" selected_by="$2" fallback="$3" log_name="$4"
+  shift 4
+  if [[ "$mode" == "all" ]]; then
+    run_check "$name" "--all" "$log_name" "$@"
+  elif [[ -n "$selected_by" && "$mode" == "quick" ]]; then
+    skip "$name" "skipped by --quick ($selected_by changed)"
+  elif [[ -n "$selected_by" ]]; then
+    run_check "$name" "$selected_by changed" "$log_name" "$@"
+  else
+    skip "$name" "not needed ($fallback)"
+  fi
+}
+
+always="always"
+[[ "$mode" == "all" ]] && always="--all"
+
+if [[ "$mode" == "quick" ]]; then
+  echo "scripts/check: quick mode: the UI suites will be skipped"
+  partial=1 # a quick run is never a PASS, even when the paths didn't call for a UI suite
+fi
+
+plan "scripts/lint-ui-tests" "$ui_test_paths" "no changes under KyoUITests/ or KyoWatchUITests/" lint-ui-tests \
+  scripts/lint-ui-tests
+plan "xcodegen generate leaves no diff" "$project_paths" "project.yml unchanged" xcodegen xcodegen_check
+run_check "build Kyo" "$always" build-kyo \
+  xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+run_check "build KyoWatch" "$always" build-kyowatch \
+  xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator \
+  -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
+run_check "scripts/test KyoTests" "$always" kyotests scripts/test KyoTests
+plan "scripts/test KyoUITests" "$ios_paths" "no changes under Kyo/, KyoUITests/ or Shared/" kyouitests \
+  scripts/test KyoUITests
+plan "scripts/test KyoWatchUITests" "$watch_paths" "no changes under KyoWatch/, KyoWatchWidgets/, KyoWatchUITests/ or Shared/" kyowatchuitests \
+  scripts/test KyoWatchUITests
+
+if [[ $failed -eq 1 ]]; then
+  overall="FAIL"
+elif [[ $partial -eq 1 ]]; then
+  overall="PARTIAL"
+else
+  overall="PASS"
+fi
+
+{
+  echo "Kyo check record"
+  echo "commit: $sha"
+  echo "subject: $(git log -1 --format=%s)"
+  echo "branch: $branch"
+  echo "base: $base_ref ($base)"
+  echo "mode: $mode"
+  echo "ran at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "changed paths: $(grep -c . <<<"$changed" || true)"
+  echo
+  echo "Checks run:"
+  printf '%s' "$ran_blocks"
+  echo
+  echo "Checks not run:"
+  if [[ -n "$skipped_lines" ]]; then printf '%s\n' "${skipped_lines#$'\n'}"; else echo "  none"; fi
+  echo
+  echo "RESULT: $overall"
+} >"$record.tmp"
+mv "$record.tmp" "$record"
+
+echo
+cat "$record"
+echo
+echo "scripts/check: record: $record"
+[[ "$overall" == "PASS" ]]

@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+#
+# Lint the element queries in the UI tests. A UI test finds an element by its accessibility
+# identifier (kebab-case), then asserts its label or value; a query on label text is for a test whose
+# subject is that text (CODING_STANDARDS.md, "Accessibility identifiers").
+#
+#   scripts/lint-ui-tests                    check KyoUITests/ and KyoWatchUITests/ against the baseline
+#   scripts/lint-ui-tests --update-baseline  rewrite the baseline to match the tree, printing the changes
+#
+# A query is flagged when it takes a string literal that isn't kebab-case. The literal may hold
+# interpolations: `"month-day-\(id)"` passes because its fixed part is kebab-case, `"Edit task: \(id)"`
+# does not. A line whose subject really is the text opts out with a trailing comment,
+# `// label-query: <reason>`; the reason is required.
+#
+# Queries covered: a string-literal subscript on buttons, staticTexts, textFields, secureTextFields,
+# textViews, searchFields, switches, toggles, sliders, steppers, pickers, pickerWheels, datePickers,
+# segmentedControls, images, icons, cells, tables, collectionViews, scrollViews, otherElements,
+# navigationBars, tabBars, toolbars, alerts, sheets, popovers, menus, menuItems, links, windows,
+# webViews and progressIndicators, or on `descendants(matching:)` and `children(matching:)`; and
+# `matching(identifier: "…")`. The UI tests today use buttons, staticTexts, textFields,
+# navigationBars, otherElements, switches, `descendants(matching:)` and `matching(identifier:)`.
+# Not covered: predicate queries (`NSPredicate(format: "label …")`) and non-literal subscripts.
+#
+# The violations that existed when the lint was added are in the baseline, scripts/ui-test-queries.baseline,
+# keyed on file and query text with a count, so edits elsewhere in a file don't disturb it. The lint
+# fails on a flagged query the baseline doesn't allow (naming each as file:line) and says when the
+# baseline can shrink. Growing the baseline is a deliberate act: `--update-baseline`.
+#
+# Exits 0 when clean, 1 when it found violations, 2 for a usage error.
+set -euo pipefail
+
+usage() {
+  echo "usage: scripts/lint-ui-tests [--update-baseline]" >&2
+  exit 2
+}
+
+update=0
+case "${1:-}" in
+  "") ;;
+  --update-baseline) update=1 ;;
+  *) usage ;;
+esac
+[[ $# -le 1 ]] || usage
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+baseline="scripts/ui-test-queries.baseline"
+
+work="$(mktemp -d "${TMPDIR:-/tmp}/kyo-lint-ui-tests.XXXXXX")"
+trap 'rm -rf "$work"' EXIT
+found="$work/found"       # file <tab> line <tab> query, one per flagged query
+unreasoned="$work/marker" # file <tab> line, one per opt-out comment with no reason
+: >"$found"
+: >"$unreasoned"
+
+files="$(/usr/bin/find KyoUITests KyoWatchUITests -name '*.swift' | LC_ALL=C /usr/bin/sort)"
+
+# Scan each file for flagged queries and unexplained opt-outs.
+# shellcheck disable=SC2016
+scan='
+BEGIN {
+  types = "buttons|staticTexts|textFields|secureTextFields|textViews|searchFields|switches|toggles|sliders|steppers|pickers|pickerWheels|datePickers|segmentedControls|images|icons|cells|tables|collectionViews|scrollViews|otherElements|navigationBars|tabBars|toolbars|alerts|sheets|popovers|menus|menuItems|links|windows|webViews|progressIndicators"
+  lit = "\"[^\"]*\""
+  re = "(" types ")\\[" lit "\\]|(descendants|children)\\(matching: *\\.[A-Za-z]+\\)\\[" lit "\\]|matching\\(identifier: *" lit "\\)"
+  interp = "\\\\\\(([^()]|\\([^()]*\\))*\\)"
+}
+{
+  line = $0
+  # An opt-out comment ends the code part; its reason is whatever follows the colon.
+  if (match(line, /\/\/ *label-query:/)) {
+    reason = substr(line, RSTART + RLENGTH)
+    gsub(/^[ \t]+|[ \t]+$/, "", reason)
+    if (reason == "") print FILENAME "\t" FNR > unreasoned
+    next
+  }
+  if (match(line, /(^|[ \t])\/\/.*/)) line = substr(line, 1, RSTART - 1)
+  rest = line
+  offset = 0
+  while (match(rest, re)) {
+    start = RSTART; len = RLENGTH
+    query = substr(rest, start, len)
+    prev = (offset + start > 1) ? substr(line, offset + start - 1, 1) : ""
+    rest = substr(rest, start + len)
+    offset += start + len - 1
+    if (prev ~ /[A-Za-z0-9_]/) continue
+    i = index(query, "\"")
+    text = substr(query, i + 1)
+    sub(/"(\]|\))$/, "", text)
+    gsub(interp, "@", text)
+    if (text ~ /^[a-z0-9@-]+$/ && text ~ /[a-z0-9]/ && text !~ /^-/) continue
+    print FILENAME "\t" FNR "\t" query > found
+  }
+}'
+if [[ -n "$files" ]]; then
+  # shellcheck disable=SC2086
+  /usr/bin/awk -v found="$found" -v unreasoned="$unreasoned" "$scan" $files
+fi
+
+# Baseline lines are `file <tab> count <tab> query`; `#` lines are comments.
+counts() {
+  /usr/bin/awk -F'\t' '{ n[$1 "\t" $3]++ } END { for (k in n) { split(k, p, "\t"); print p[1] "\t" n[k] "\t" p[2] } }' "$1" \
+    | LC_ALL=C /usr/bin/sort
+}
+
+if [[ $update -eq 1 ]]; then
+  counts "$found" >"$work/new"
+  [[ -f "$baseline" ]] && /usr/bin/grep -v '^#' "$baseline" | LC_ALL=C /usr/bin/sort >"$work/old" || : >"$work/old"
+  {
+    echo "# Label-style UI test queries that existed when scripts/lint-ui-tests was added."
+    echo "# file <tab> count <tab> query. Don't edit by hand; shrink it with scripts/lint-ui-tests --update-baseline."
+    cat "$work/new"
+  } >"$baseline"
+  /usr/bin/awk -F'\t' '
+    FILENAME == ARGV[1] { old[$1 "\t" $3] = $2; next }
+    { cur[$1 "\t" $3] = $2
+      o = ($1 "\t" $3) in old ? old[$1 "\t" $3] : 0
+      if ($2 > o) printf "added   %s x%d (was %d)  %s\n", $1, $2, o, $3 }
+    END { for (k in old) if (!(k in cur)) { split(k, p, "\t"); printf "removed %s  %s\n", p[1], p[2] }
+          for (k in cur) if ((k in old) && cur[k] < old[k]) { split(k, p, "\t"); printf "shrank  %s x%d (was %d)  %s\n", p[1], cur[k], old[k], p[2] } }
+  ' "$work/old" "$work/new" | LC_ALL=C /usr/bin/sort
+  echo "scripts/lint-ui-tests: wrote $baseline ($(/usr/bin/awk -F'\t' '!/^#/ { n += $2 } END { print n + 0 }' "$baseline") queries)"
+  [[ ! -s "$unreasoned" ]] || { echo "scripts/lint-ui-tests: note: opt-out comments without a reason are not baselined; fix them" >&2; }
+  exit 0
+fi
+
+[[ -f "$baseline" ]] || : >"$work/empty"
+base_file="$baseline"
+[[ -f "$baseline" ]] || base_file="$work/empty"
+
+# Flag a query the baseline doesn't allow: each occurrence of a new one, and for a baselined one that
+# now occurs more often, every line it occurs on (which occurrence is the new one can't be known).
+# Note the baseline entries the tree no longer fully uses.
+/usr/bin/awk -F'\t' '
+  FILENAME == ARGV[1] { if ($0 !~ /^#/ && NF >= 3) base[$1 "\t" $3] = $2; next }
+  { k = $1 "\t" $3; seen[k]++; at[k] = at[k] (seen[k] > 1 ? " " : "") $2 }
+  END {
+    for (k in seen) {
+      split(k, p, "\t"); n = split(at[k], l, " ")
+      allowed = (k in base) ? base[k] : 0
+      if (seen[k] <= allowed) continue
+      if (allowed == 0) { for (i = 1; i <= n; i++) printf "V\t%s:%s\t%s\n", p[1], l[i], p[2] }
+      else { list = at[k]; gsub(/ /, ", ", list)
+             printf "V\t%s:%s\t%s appears %d times, the baseline allows %d (lines %s)\n", p[1], l[1], p[2], seen[k], allowed, list }
+    }
+    for (k in base) if (seen[k] + 0 < base[k]) { split(k, p, "\t"); printf "S\t%s\t%d\t%s\n", p[1], base[k] - seen[k], p[2] }
+  }
+' "$base_file" "$found" | LC_ALL=C /usr/bin/sort >"$work/report"
+
+status=0
+while IFS=$'\t' read -r file line; do
+  echo "$file:$line: label-query opt-out needs a reason: // label-query: <reason>" >&2
+  status=1
+done <"$unreasoned"
+while IFS=$'\t' read -r kind where query; do
+  [[ "$kind" == "V" ]] || continue
+  echo "$where: query on label text: $query" >&2
+  status=1
+done <"$work/report"
+if [[ $status -eq 1 ]]; then
+  echo "scripts/lint-ui-tests: find the element by its kebab-case accessibility identifier, or, for a test whose subject is the text, end the line with // label-query: <reason>" >&2
+fi
+
+shrink="$(/usr/bin/grep '^S' "$work/report" || true)"
+if [[ -n "$shrink" ]]; then
+  echo "scripts/lint-ui-tests: the baseline can shrink; these baselined queries are gone:"
+  while IFS=$'\t' read -r kind file gone query; do
+    echo "  $file: $gone fewer: $query"
+  done <<<"$shrink"
+  echo "scripts/lint-ui-tests: run scripts/lint-ui-tests --update-baseline and commit the result"
+fi
+
+total="$(/usr/bin/awk 'END { print NR }' "$found")"
+if [[ $status -eq 0 ]]; then
+  echo "scripts/lint-ui-tests: no new label queries ($total baselined)"
+  echo "** LINT SUCCEEDED **"
+else
+  echo "** LINT FAILED **"
+fi
+exit $status

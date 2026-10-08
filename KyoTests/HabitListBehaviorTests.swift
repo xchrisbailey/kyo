@@ -76,7 +76,7 @@ final class HabitListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.doneCount, 0)
     }
 
-    func testEachGroupKeepsManagerOrder() throws {
+    func testEachGroupKeepsHabitOrder() throws {
         let list = HabitListStore(
             userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )

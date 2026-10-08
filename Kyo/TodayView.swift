@@ -899,29 +899,10 @@ private struct HabitRow: View {
         .frame(minHeight: 55)
     }
 
-    /// Week progress (weekly targets) then the streak flame, hidden at 0.
-    @ViewBuilder
     private var trailingStatus: some View {
-        let style = entry.isDone ? Color.secondary : Color.primary
-        HStack(spacing: 6) {
-            if let progress = entry.weekProgress {
-                Text("\(progress.count)/\(progress.target)")
-                    .font(.subheadline.monospacedDigit())
-                if entry.streak >= 1 { Text("·") }
-            }
-            if entry.streak >= 1 {
-                Label {
-                    Text(entry.weekProgress == nil ? "\(entry.streak)" : "\(entry.streak)w")
-                        .font(.subheadline.monospacedDigit())
-                } icon: {
-                    Image(systemName: "flame.fill")
-                        .font(.caption)
-                }
-                .labelStyle(.titleAndIcon)
-            }
-        }
-        .foregroundStyle(style)
-        .accessibilityHidden(true)
+        HabitStatusLabel(weekProgress: entry.weekProgress, streak: entry.streak)
+            .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+            .accessibilityHidden(true)
     }
 
     /// "Completed" only when Today has a check-off; week progress and the streak follow.

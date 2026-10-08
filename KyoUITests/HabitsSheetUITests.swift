@@ -31,8 +31,8 @@ final class HabitsSheetUITests: XCTestCase {
         // See all opens the sheet, which lists every habit.
         openHabitsSheet(in: app)
 
-        let stretch = managerRow("Stretch", in: app)
-        let elsewhere = managerRow("Elsewhere", in: app)
+        let stretch = habitRow("Stretch", in: app)
+        let elsewhere = habitRow("Elsewhere", in: app)
         XCTAssertTrue(stretch.waitForExistence(timeout: 10))
         XCTAssertEqual(stretch.value as? String, "Every day")
         XCTAssertTrue(elsewhere.exists)
@@ -50,9 +50,9 @@ final class HabitsSheetUITests: XCTestCase {
         app.buttons["Weekly target"].tap()
         tapSaveWhenEnabled(in: app)
 
-        let journal = managerRow("Journal", in: app)
+        let journal = habitRow("Journal", in: app)
         XCTAssertTrue(journal.waitForExistence(timeout: 10))
-        XCTAssertEqual(journal.value as? String, "3× a week")
+        XCTAssertEqual(journal.value as? String, "3× a week, 0 of 3 this week")
 
         // Edit it: the form is prefilled, and renaming and rescheduling shows in the sheet.
         journal.tap()
@@ -65,10 +65,10 @@ final class HabitsSheetUITests: XCTestCase {
         app.buttons["Every day"].tap()
         tapSaveWhenEnabled(in: app)
 
-        let renamed = managerRow("Journal daily", in: app)
+        let renamed = habitRow("Journal daily", in: app)
         XCTAssertTrue(renamed.waitForExistence(timeout: 10))
         XCTAssertEqual(renamed.value as? String, "Every day")
-        XCTAssertTrue(managerRow("Journal", in: app).waitForNonExistence(timeout: 10))
+        XCTAssertTrue(habitRow("Journal", in: app).waitForNonExistence(timeout: 10))
 
         // Edit mode offers a reorder handle on every habit. Its Done replaces the sheet's, so there is only one;
         // tapping it ends Edit mode and leaves the sheet open, with its own Done back.
@@ -85,20 +85,20 @@ final class HabitsSheetUITests: XCTestCase {
 
         // Swipe-delete asks first. The dialog is a centered popover with no Cancel button; tapping outside
         // dismisses it and keeps the habit.
-        managerRow("Stretch", in: app).swipeLeft()
+        habitRow("Stretch", in: app).swipeLeft()
         app.buttons["Delete habit: Stretch"].tap()
         XCTAssertTrue(app.staticTexts["Delete this habit?"].waitForExistence(timeout: 10))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.4)).tap()
         XCTAssertTrue(app.staticTexts["Delete this habit?"].waitForNonExistence(timeout: 10))
-        XCTAssertTrue(managerRow("Stretch", in: app).waitForExistence(timeout: 10), "cancelling keeps the habit")
+        XCTAssertTrue(habitRow("Stretch", in: app).waitForExistence(timeout: 10), "cancelling keeps the habit")
 
-        managerRow("Stretch", in: app).swipeLeft()
+        habitRow("Stretch", in: app).swipeLeft()
         app.buttons["Delete habit: Stretch"].tap()
         XCTAssertTrue(app.buttons["Delete habit and log"].waitForExistence(timeout: 10))
         app.buttons["Delete habit and log"].tap()
-        XCTAssertTrue(managerRow("Stretch", in: app).waitForNonExistence(timeout: 10))
-        XCTAssertTrue(managerRow("Elsewhere", in: app).exists)
-        XCTAssertTrue(managerRow("Journal daily", in: app).exists)
+        XCTAssertTrue(habitRow("Stretch", in: app).waitForNonExistence(timeout: 10))
+        XCTAssertTrue(habitRow("Elsewhere", in: app).exists)
+        XCTAssertTrue(habitRow("Journal daily", in: app).exists)
 
         // Done closes the sheet.
         app.navigationBars["Habits"].buttons["Done"].tap()
@@ -112,7 +112,7 @@ final class HabitsSheetUITests: XCTestCase {
         addHabitOnToday("Journal", in: app)
         openHabitsSheet(in: app)
 
-        let stretch = managerRow("Stretch", in: app)
+        let stretch = habitRow("Stretch", in: app)
         XCTAssertTrue(stretch.waitForExistence(timeout: 10))
         stretch.tap()
         XCTAssertTrue(app.navigationBars["Edit Habit"].waitForExistence(timeout: 10))
@@ -122,8 +122,24 @@ final class HabitsSheetUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Edit Habit"].waitForNonExistence(timeout: 10), "the form pops after deleting")
         XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
-        XCTAssertTrue(managerRow("Stretch", in: app).waitForNonExistence(timeout: 10))
-        XCTAssertTrue(managerRow("Journal", in: app).exists)
+        XCTAssertTrue(habitRow("Stretch", in: app).waitForNonExistence(timeout: 10))
+        XCTAssertTrue(habitRow("Journal", in: app).exists)
+    }
+
+    /// A check-off on Today shows as a streak on the habit's row in the Habits sheet, whose rows have no check circle.
+    func testARowShowsItsStreakAfterACheckOffOnToday() throws {
+        let app = launchIsolatedApp()
+        addHabitOnToday("Stretch", in: app)
+        let circle = app.buttons["Stretch"]
+        circle.tap()
+        let checked = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Completed, 1 day streak"), object: circle)
+        XCTAssertEqual(XCTWaiter.wait(for: [checked], timeout: 10), .completed, "the check-off never registered")
+
+        openHabitsSheet(in: app)
+        let row = habitRow("Stretch", in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertEqual(row.value as? String, "Every day, 1 day streak")
+        XCTAssertEqual(app.cells.buttons.count, 1, "one row button per habit: no check circle")
     }
 
     // MARK: Helpers
@@ -136,7 +152,7 @@ final class HabitsSheetUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
     }
 
-    private func managerRow(_ name: String, in app: XCUIApplication) -> XCUIElement {
+    private func habitRow(_ name: String, in app: XCUIApplication) -> XCUIElement {
         app.cells.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 

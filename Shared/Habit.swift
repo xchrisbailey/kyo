@@ -71,7 +71,7 @@ struct HabitWeekProgress: Equatable, Sendable {
 struct Habit: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
-    /// Position in the manager's order; Today follows it. New habits go to the end.
+    /// Position in the habit order; Today follows it. New habits go to the end.
     let order: Int64
     /// Every schedule the habit has had, oldest first, each with the day it took effect. Never
     /// empty; the first entry starts at the creation day. An edit appends an entry for Today
@@ -358,13 +358,32 @@ struct TodayHabit: Identifiable, Equatable, Sendable {
     var id: UUID { habit.id }
 }
 
+/// A habit on the Habits sheet: every habit is listed, with the streak and week progress Today
+/// shows for it.
+struct HabitEntry: Identifiable, Equatable, Sendable {
+    let habit: Habit
+    /// Whether the habit is on Today's list: due today, or made not due by an edit but already
+    /// checked off today. The sheet marks the habit "not due today" when this is `false`.
+    let isDueToday: Bool
+    /// This week's progress; `nil` unless the habit has a weekly target.
+    let weekProgress: HabitWeekProgress?
+    /// The habit's streak: days for day-based habits, weeks for weekly-target habits.
+    let streak: Int
+
+    var id: UUID { habit.id }
+}
+
 @MainActor
 protocol HabitListBehavior: AnyObject {
     /// Every habit, in habit order.
     var habits: [Habit] { get }
     /// `true` when any habit exists, due today or not: whether **See all** shows.
     var hasHabits: Bool { get }
-    /// Habits on Today's list: still to do first, then the done group; each keeps manager order.
+    /// Every habit in habit order, with its streak, week progress and whether it is on Today's
+    /// list: what the Habits sheet shows. Computed with the same rules, and refreshed at the
+    /// same moments, as `todayHabits`.
+    var habitEntries: [HabitEntry] { get }
+    /// Habits on Today's list: still to do first, then the done group; each keeps habit order.
     var todayHabits: [TodayHabit] { get }
     /// Habits on Today's list (the denominator of the "Habits done" summary).
     var todayCount: Int { get }
@@ -373,7 +392,7 @@ protocol HabitListBehavior: AnyObject {
     /// What a collapsed Habits header shows: "1 of 3 done" for the habits on Today's list,
     /// "No habits" when none exist, "Nothing due today" when none are due.
     var collapsedSummary: String { get }
-    /// Adds a habit at the end of the manager's order. Returns `nil` for a blank name or an
+    /// Adds a habit at the end of the habit order. Returns `nil` for a blank name or an
     /// invalid schedule (no weekdays, or a weekly target outside 1...6).
     @discardableResult func addHabit(name: String, schedule: HabitSchedule) -> Habit?
     /// Renames the habit and/or replaces its schedule, from Today on (past days keep the schedule
@@ -386,7 +405,7 @@ protocol HabitListBehavior: AnyObject {
     /// list can be toggled. On the Watch the change shows immediately and reaches the phone as
     /// a set check-off command.
     @discardableResult func toggleCheckOff(id: UUID) -> Habit?
-    /// Reorders the manager's list with the same offset semantics as SwiftUI's `onMove`: the
+    /// Reorders the habits with the same offset semantics as SwiftUI's `onMove`: the
     /// habits at `source` end up before the habit that was at `destination`. Rewrites every
     /// habit's `order` and saves; Today follows. Out-of-range offsets are ignored.
     func moveHabits(fromOffsets source: IndexSet, toOffset destination: Int)
@@ -402,9 +421,10 @@ extension HabitListBehavior {
 final class HabitListStore: ObservableObject, HabitListBehavior {
     static let storageKey = "kyo.habits.v1"
 
-    /// Every habit, in manager order. For a Watch mirror, `baseHabits` with the outbox replayed.
+    /// Every habit, in habit order. For a Watch mirror, `baseHabits` with the outbox replayed.
     @Published private(set) var habits: [Habit] = []
     @Published private(set) var todayHabits: [TodayHabit] = []
+    @Published private(set) var habitEntries: [HabitEntry] = []
 
     /// A `.mirror` (Watch) store's habits as of the last applied snapshot, before replaying its
     /// own unacknowledged commands. Stored under `storageKey`. Unused by other stores.
@@ -733,21 +753,28 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         persist()
     }
 
-    /// Re-evaluates Today's list against the clock. Check-offs are keyed to calendar days, so
-    /// after midnight yesterday's check-offs no longer put a habit in the done group.
+    /// Re-evaluates Today's list and the Habits sheet's entries against the clock. Check-offs are
+    /// keyed to calendar days, so after midnight yesterday's check-offs no longer put a habit in
+    /// the done group. Every change to the habits, the clock or the outbox meets here.
     func refreshForCurrentDay() {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
         let date = now()
-        let onToday = habits.filter { $0.isDue(on: date, calendar: calendar) || $0.checkOffs.contains(today) }
-        let entries = onToday.map { habit -> TodayHabit in
-            let isCheckedOffToday = habit.checkOffs.contains(today)
-            let progress = habit.weekProgress(on: date, calendar: calendar)
-            return TodayHabit(
+        habitEntries = habits.map { habit in
+            HabitEntry(
                 habit: habit,
-                isDone: isCheckedOffToday || progress?.isTargetMet == true,
-                isCheckedOffToday: isCheckedOffToday,
-                weekProgress: progress,
+                isDueToday: habit.isDue(on: date, calendar: calendar) || habit.checkOffs.contains(today),
+                weekProgress: habit.weekProgress(on: date, calendar: calendar),
                 streak: habit.streak(on: date, calendar: calendar)
+            )
+        }
+        let entries = habitEntries.filter(\.isDueToday).map { entry -> TodayHabit in
+            let isCheckedOffToday = entry.habit.checkOffs.contains(today)
+            return TodayHabit(
+                habit: entry.habit,
+                isDone: isCheckedOffToday || entry.weekProgress?.isTargetMet == true,
+                isCheckedOffToday: isCheckedOffToday,
+                weekProgress: entry.weekProgress,
+                streak: entry.streak
             )
         }
         todayHabits = entries.filter { !$0.isDone } + entries.filter(\.isDone)

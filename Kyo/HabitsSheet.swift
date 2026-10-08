@@ -22,26 +22,26 @@ private struct HabitsList: View {
 
     var body: some View {
         List {
-            ForEach(habitList.habits) { habit in
+            ForEach(habitList.habitEntries) { entry in
                 NavigationLink {
                     HabitForm(
-                        habit: habit,
-                        onSave: { name, schedule in habitList.editHabit(id: habit.id, name: name, schedule: schedule) != nil },
-                        onDelete: { habitList.deleteHabit(id: habit.id) }
+                        habit: entry.habit,
+                        onSave: { name, schedule in habitList.editHabit(id: entry.id, name: name, schedule: schedule) != nil },
+                        onDelete: { habitList.deleteHabit(id: entry.id) }
                     )
                 } label: {
-                    HabitsSheetRow(habit: habit)
+                    HabitsSheetRow(entry: entry)
                 }
                 .accessibilityHint("Edits this habit")
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Delete", role: .destructive) { pendingDelete = habit }
-                        .accessibilityLabel("Delete habit: \(habit.name)")
+                    Button("Delete", role: .destructive) { pendingDelete = entry.habit }
+                        .accessibilityLabel("Delete habit: \(entry.habit.name)")
                 }
             }
             .onMove { habitList.moveHabits(fromOffsets: $0, toOffset: $1) }
         }
         .overlay {
-            if habitList.habits.isEmpty {
+            if habitList.habitEntries.isEmpty {
                 Text("No habits yet")
                     .foregroundStyle(.secondary)
             }
@@ -87,27 +87,41 @@ private struct HabitsList: View {
 }
 
 private struct HabitsSheetRow: View {
-    let habit: Habit
+    let entry: HabitEntry
 
     var body: some View {
-        let calendar = Calendar.current
-        let isDueToday = habit.isDue(on: .now, calendar: calendar)
-        let summary = habit.schedule.summary(calendar: calendar)
-        VStack(alignment: .leading, spacing: 2) {
-            Text(habit.name)
-                .font(.body)
-            HStack(spacing: 6) {
-                Text(summary)
-                if !isDueToday {
-                    Text("·")
-                    Text("Not today")
+        let summary = entry.habit.schedule.summary(calendar: .current)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.habit.name)
+                    .font(.body)
+                HStack(spacing: 6) {
+                    Text(summary)
+                    if !entry.isDueToday {
+                        Text("·")
+                        Text("Not today")
+                    }
                 }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            HabitStatusLabel(weekProgress: entry.weekProgress, streak: entry.streak)
+                .foregroundStyle(Color.primary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(habit.name)
-        .accessibilityValue(isDueToday ? summary : "\(summary), not due today")
+        .accessibilityLabel(entry.habit.name)
+        .accessibilityValue(accessibilityValue(summary: summary))
+    }
+
+    /// The schedule summary, "not due today" where it applies, then week progress and the streak.
+    private func accessibilityValue(summary: String) -> String {
+        var parts = [summary]
+        if !entry.isDueToday { parts.append("not due today") }
+        if let progress = entry.weekProgress { parts.append("\(progress.count) of \(progress.target) this week") }
+        if entry.streak >= 1 {
+            parts.append(entry.weekProgress == nil ? "\(entry.streak) day streak" : "\(entry.streak) week streak")
+        }
+        return parts.joined(separator: ", ")
     }
 }

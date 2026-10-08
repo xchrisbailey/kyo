@@ -50,10 +50,7 @@ struct WatchTodayView: View {
                 .scrollIndicators(.hidden)
                 .frame(height: max(0, geometry.size.height - 54), alignment: .top)
 
-                WatchActionBar(
-                    openAdd: { activeSheet = .add },
-                    openCalendar: { activeSheet = .calendar }
-                )
+                WatchActionBar(openAdd: { activeSheet = .add })
             }
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
@@ -78,8 +75,6 @@ struct WatchTodayView: View {
                     buttonHint: "Saves your changes to this task",
                     save: { text in _ = taskList.editTask(id: task.id, text: text) }
                 )
-            case .calendar:
-                WatchCalendarPreviewSheet()
             }
         }
         .sheet(isPresented: $isRecording) {
@@ -359,13 +354,11 @@ struct WatchTodayView: View {
 private enum WatchPreviewSheet: Identifiable {
     case add
     case edit(DailyTask)
-    case calendar
 
     var id: String {
         switch self {
         case .add: "add"
         case .edit(let task): "edit-\(task.id.uuidString)"
-        case .calendar: "calendar"
         }
     }
 }
@@ -423,7 +416,6 @@ private struct WatchTaskRowBackground: View {
 
 private struct WatchActionBar: View {
     let openAdd: () -> Void
-    let openCalendar: () -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -437,17 +429,6 @@ private struct WatchActionBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Add an item")
             .accessibilityHint("Opens the add preview")
-
-            Button(action: openCalendar) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Calendar")
-            .accessibilityHint("Opens the past days preview")
         }
         .padding(2)
         .background(.regularMaterial, in: Capsule())
@@ -736,44 +717,6 @@ private struct WatchTaskTextSheet: View {
     private func commit() {
         save(draft)
         dismiss()
-    }
-}
-
-private struct WatchCalendarPreviewSheet: View {
-    @State private var selectedDate = Calendar(identifier: .gregorian).date(
-        from: DateComponents(year: 2026, month: 9, day: 23)
-    ) ?? .now
-    private let latestDate = Calendar(identifier: .gregorian).date(
-        from: DateComponents(year: 2026, month: 9, day: 24)
-    ) ?? .now
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Past days").font(.headline)
-                }
-
-                DatePicker("Choose a day", selection: $selectedDate, in: ...latestDate, displayedComponents: .date)
-                    .font(.footnote)
-                    .tint(.green)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.footnote.weight(.semibold))
-                    Text("No entries in this sketch.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
-        }
-        .scrollIndicators(.hidden)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Calendar preview")
     }
 }
 

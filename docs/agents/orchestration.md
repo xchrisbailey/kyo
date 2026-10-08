@@ -23,7 +23,7 @@
   - the build and test commands;
   - what to report back: the branch, a summary, and anything left open.
 - Coders don't widen scope or make product or architecture decisions. They stop and report any open question to Opus.
-- A coder that goes idle with checks still running may never wake to report. When one says it is waiting on a run, Opus watches the branch head or the run's output itself, with a background wait, and doesn't wait on the coder's message alone.
+- A coder that goes idle with checks still running may never wake to report. When one says it is waiting on a run, Opus sets a background wait on the check record for the coder's head commit (`scripts/check --show <commit>` exits 2 until one exists) and acts on the record when it lands.
 
 **Agent teams.**
 
@@ -36,6 +36,7 @@
   - `#<issue> review`, for the reviewer;
   - `#<issue> verify`, for the shepherd.
   A ticket's `code` task also depends on the `code` task of each ticket that blocks it.
+- When the session has no shared task list, keep the same three steps per ticket and drive them by message: spawn `reviewer` and `shepherd` once as named agents, brief each with the ticket and the coder's branch, and have the coder message `reviewer` and the lead message `shepherd` when a branch is ready.
 - The coder and reviewer settle first-pass findings between themselves. A question about the spec, an ADR, or product behaviour comes to the lead from either of them.
 - Teammates don't survive `/resume`, so GitHub holds everything that matters: coders push their branch early, and the reviewer posts findings as a comment on the ticket. Brief a replacement teammate from the branch and the ticket's comments.
 - Shut a teammate down once its tasks are completed.
@@ -45,7 +46,7 @@
 - Run the `adversary` subagent at two points:
   - on the ticket breakdown, before delegating work that spans two or more tickets;
   - on a ticket's branch, before the Opus review, when it touches watch and phone sync, SwiftData or CloudKit storage, or a shipped `UserDefaults` key.
-- Give it the tickets or the branch and the spec. Keep your own conclusions and the reviewer's pass out of the brief, so its read isn't anchored on them.
+- Give it the tickets or the branch, the spec, and a path outside the repo for its report. Keep your own conclusions and the reviewer's pass out of the brief, so its read isn't anchored on them.
 - A finding counts when it comes with a scenario that reproduces it. Opus decides each one: fix the breakdown, send it to the coder, or set it aside with the reason on the ticket.
 
 **Review.**
@@ -55,7 +56,7 @@
   - the spec and ADRs;
   - the glossary;
   - `CODING_STANDARDS.md` and `AGENTS.md`.
-- Opus also confirms that both app schemes build and the tests pass. The CI test workflows are paused (see the CI section of `docs/development.md`), so the checks are local: the coder runs the checks listed there and quotes the final `** TEST SUCCEEDED **` or `** BUILD SUCCEEDED **` line of each, and Opus reruns the builds and `scripts/test KyoTests` on the ticket's branch before merging it, or on a team reads the shepherd's `verify` result for the branch's current head. A report without those lines doesn't count.
+- Opus also confirms that both app schemes build and the tests pass. The CI test workflows are paused (see the CI section of `docs/development.md`), so the checks are local: `scripts/check` runs the ones a branch's changed paths call for and records the result against the commit. Before merging a branch, Opus reads the record for its current head with `scripts/check --show <commit>`; anything other than `RESULT: PASS` goes to the shepherd to run, or back to the coder. A report with no passing record for the head doesn't count.
 - On a team, the `reviewer` passes a branch before Opus reviews it. Its pass covers the coding standards, the glossary, and the acceptance criteria; the spec, the ADRs, and the verdict stay with Opus.
 - Review findings go back to the same coder, which keeps its context, until the review passes.
 - Opus reports the result to the user.

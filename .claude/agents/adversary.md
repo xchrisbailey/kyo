@@ -38,4 +38,4 @@ Report each finding as a scenario someone could reproduce:
 - the `path:line` where it goes wrong, or the ticket where the gap sits;
 - a sketch of the test that would fail today, where one can be written.
 
-Rank the findings by how much user data or trust each one costs. Keep a suspicion you could not turn into a scenario in a separate, short list, labelled as unconfirmed. If you found nothing after a real attempt, say that and say what you tried. The orchestrator decides what happens to each finding.
+Save the full report with a shell heredoc to the path your brief names, outside the repo, and reply with that path and a one-line count of findings; a long report sent as a message arrives cut off. Rank the findings by how much user data or trust each one costs. Keep a suspicion you could not turn into a scenario in a separate, short list, labelled as unconfirmed. If you found nothing after a real attempt, say that and say what you tried. The orchestrator decides what happens to each finding.

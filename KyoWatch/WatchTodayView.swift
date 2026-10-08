@@ -621,7 +621,7 @@ private struct WatchHabitRow: View {
     }
 
     private var accessibilityValue: String {
-        var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
+        var value = entry.isCheckedOffToday ? "Checked off" : "Not checked off"
         if let progress = entry.weekProgress {
             value += ", \(progress.count) of \(progress.target) this week"
         } else if entry.streak >= 1 {

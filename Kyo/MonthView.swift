@@ -4,6 +4,8 @@ import SwiftUI
 /// It shows what `MonthModel` reports and changes nothing but the selection.
 struct MonthView: View {
     @ObservedObject var model: MonthModel
+    /// Called when a Day summary row that has a target is tapped.
+    var onOpen: (MonthSummaryTarget) -> Void = { _ in }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -40,7 +42,7 @@ struct MonthView: View {
             legend
                 .padding(.top, 12)
 
-            MonthDaySummaryView(summary: model.selectedSummary)
+            MonthDaySummaryView(summary: model.selectedSummary, onOpen: onOpen)
                 .padding(.top, 24)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,6 +226,7 @@ private struct MarkSlot: View {
 
 private struct MonthDaySummaryView: View {
     let summary: MonthDaySummary
+    let onOpen: (MonthSummaryTarget) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -250,6 +253,7 @@ private struct MonthDaySummaryView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(section.rows) { row in
                             MonthSummaryRowView(row: row)
+                                .opening(row, with: onOpen)
                         }
                     }
                     .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -282,6 +286,21 @@ private struct MonthSummaryRowView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.text)
         .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
+    }
+}
+
+private extension View {
+    /// Makes a Day summary row a button that opens its target. A row with no target stays as it is.
+    @ViewBuilder
+    func opening(_ row: MonthSummaryRow, with open: @escaping (MonthSummaryTarget) -> Void) -> some View {
+        if let target = row.target {
+            Button { open(target) } label: { contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("month-summary-row-\(row.id)")
+        } else {
+            self
+        }
     }
 }
 

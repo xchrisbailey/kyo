@@ -16,12 +16,18 @@ enum MonthMark: Equatable, Sendable {
     case hollow
 }
 
-/// One plain line in the Day summary.
+/// What tapping a Day summary row opens.
+enum MonthSummaryTarget: Equatable, Sendable {
+    case memo(UUID)
+}
+
+/// One line in the Day summary. A row with a target can be tapped; one without is plain.
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     let id: String
     let text: String
     /// Whether a habit was checked off that day. Absent on rows of other kinds.
     var isChecked: Bool? = nil
+    var target: MonthSummaryTarget? = nil
 }
 
 /// What one kind holds on one day: its mark, the phrase a day cell reads aloud for it (such as

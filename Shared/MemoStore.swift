@@ -16,6 +16,12 @@ protocol MemoStoreBehavior: AnyObject, VoiceMemoSaving {
 
     /// Any memo, from any day, by id.
     func memo(id: UUID) -> Memo?
+    /// The memos whose local day is the one holding `date`, newest first. Reads text only, never
+    /// photo or audio bytes.
+    func memos(on date: Date) -> [Memo]
+    /// The local days from `first` through `last` (any moment of each) that have at least one
+    /// memo, each as that day's start. Reads no text, photos or audio.
+    func daysWithMemos(from first: Date, through last: Date) -> Set<Date>
     /// The Memos sheet's content: memos grouped by local calendar day, newest day first (Today,
     /// then **Memo history**) and newest first within a day, up to `limit` memos. A non-empty
     /// `query` keeps the memos whose title, written text or transcript contains it, ignoring
@@ -203,6 +209,31 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     func memo(id: UUID) -> Memo? {
         records(withID: id).first?.memo
+    }
+
+    func memos(on date: Date) -> [Memo] {
+        let day = TaskCompletionDay(date: date, calendar: calendar)
+        let year = day.year
+        let month = day.month
+        let dayOfMonth = day.day
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate { $0.dayYear == year && $0.dayMonth == month && $0.dayDay == dayOfMonth }
+        )
+        let fetched = ((try? context.fetch(descriptor)) ?? []).filter { $0.dayEra == day.era }
+        return uniqueByID(fetched).map(\.memo).sorted(by: Self.isNewer)
+    }
+
+    func daysWithMemos(from first: Date, through last: Date) -> Set<Date> {
+        let lower = Self.dayKey(TaskCompletionDay(date: first, calendar: calendar))
+        let upper = Self.dayKey(TaskCompletionDay(date: last, calendar: calendar))
+        guard lower <= upper else { return [] }
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate { $0.dayYear * 10_000 + $0.dayMonth * 100 + $0.dayDay >= lower && $0.dayYear * 10_000 + $0.dayMonth * 100 + $0.dayDay <= upper }
+        )
+        let days = ((try? context.fetch(descriptor)) ?? []).map(\.day)
+        return Set(days.compactMap { day in
+            calendar.date(from: DateComponents(era: day.era, year: day.year, month: day.month, day: day.day)).map(calendar.startOfDay(for:))
+        })
     }
 
     func memoGroups(matching query: String, limit: Int) -> MemoGroupsPage {
@@ -804,6 +835,11 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             return (left.era ?? 0, left.year, left.month, left.day) > (right.era ?? 0, right.year, right.month, right.day)
         }
         return isNewer(lhs, rhs)
+    }
+
+    /// A day as one number that orders like the calendar: 20261006.
+    private static func dayKey(_ day: TaskCompletionDay) -> Int {
+        day.year * 10_000 + day.month * 100 + day.day
     }
 
     private static func isNewer(_ lhs: Memo, _ rhs: Memo) -> Bool {

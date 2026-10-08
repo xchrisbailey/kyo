@@ -26,3 +26,8 @@ Names, comments, test names, and on-screen text use the terms in `GLOSSARY.md`. 
 - One selection type per seam reads the variable and returns the real or the test dependency. Views ask the selection type and stay unaware of the variable.
 - A launch with `KYO_IN_MEMORY_STORE` set starts from clean state and writes nothing to the device's real store or standard defaults.
 - A test that relaunches to check persistence names its own suite or store, so each launch of that test sees the same state and no other test does.
+
+## Stores in a view's initializer
+
+- A store whose initializer has side effects (registering a handler with a transport, publishing a snapshot, starting observation) is built at most once for the life of the view: inside the autoclosure of `StateObject(wrappedValue:)`, or as a local `lazy var` when a second state object needs the same instance, as `TodayView` does for the stores Month reads.
+- A plain `let store = Store(...)` in a view's `init` is a finding. SwiftUI may run that initializer again, and the extra store would take over from the live one and then be discarded.

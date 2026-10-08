@@ -152,6 +152,17 @@ final class MonthUITests: XCTestCase {
         XCTAssertFalse(app.buttons[dayIdentifier()].exists, "Today's cell is in the other month")
         XCTAssertTrue(app.buttons[dayIdentifier(inMonthOffset: 1, day: 1)].isSelected, "the 1st stands in for a selection outside the month")
 
+        // Away from the current month, switching to Today and back opens Month on the current month again.
+        app.buttons["main-view-today"].tap()
+        XCTAssertTrue(app.buttons["main-view-today"].isSelected)
+        month.tap()
+        XCTAssertTrue(header.waitForExistence(timeout: 10))
+        XCTAssertEqual(header.label, currentHeader)
+        XCTAssertFalse(jumpBack.exists)
+        XCTAssertTrue(app.buttons[dayIdentifier()].isSelected)
+        next.tap()
+        XCTAssertTrue(jumpBack.waitForExistence(timeout: 10))
+
         // A swipe on the grid moves a month too: left is forward, right is back.
         let grid = app.descendants(matching: .any)["month-grid"]
         XCTAssertTrue(grid.exists)

@@ -281,7 +281,7 @@ private struct MonthSummaryRowView: View {
         .padding(.horizontal, 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.text)
-        .accessibilityValue(row.isChecked.map { $0 ? "Completed" : "Not completed" } ?? "")
+        .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
     }
 }
 

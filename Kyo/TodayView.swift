@@ -39,7 +39,8 @@ struct TodayView: View {
         // real WatchConnectivity delivery.
         let isInMemory = KyoModelContainer.isInMemoryRequested
         let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        let taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
+        // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
+        lazy var taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
         _taskList = StateObject(wrappedValue: taskList)
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))

@@ -274,15 +274,15 @@ final class HabitEditDeleteBehaviorTests: XCTestCase {
         _ = list.editHabit(id: checked.id, name: "Read", schedule: .weekdays([monday]))
         _ = list.editHabit(id: unchecked.id, name: "Stretch", schedule: .weekdays([monday]))
 
-        let onToday = try XCTUnwrap(list.habitEntries.first { $0.id == checked.id })
-        XCTAssertTrue(onToday.isDueToday, "it stays on Today's list, so the sheet doesn't mark it not due")
+        let onToday = try XCTUnwrap(list.habitOverviews.first { $0.id == checked.id })
+        XCTAssertTrue(onToday.isOnToday, "it stays on Today's list, so the sheet doesn't mark it not due")
         XCTAssertEqual(onToday.streak, 0)
-        let off = try XCTUnwrap(list.habitEntries.first { $0.id == unchecked.id })
-        XCTAssertFalse(off.isDueToday)
-        XCTAssertEqual(list.habitEntries.count, 2, "both stay listed")
+        let off = try XCTUnwrap(list.habitOverviews.first { $0.id == unchecked.id })
+        XCTAssertFalse(off.isOnToday)
+        XCTAssertEqual(list.habitOverviews.count, 2, "both stay listed")
 
         go(list, to: 9)
-        XCTAssertFalse(try XCTUnwrap(list.habitEntries.first { $0.id == checked.id }).isDueToday)
+        XCTAssertFalse(try XCTUnwrap(list.habitOverviews.first { $0.id == checked.id }).isOnToday)
     }
 
     func testAHabitMadeNotDueLeavesTheListOnceTheDayEnds() throws {

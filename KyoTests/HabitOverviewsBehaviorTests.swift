@@ -1,11 +1,11 @@
 import SwiftData
 import XCTest
 
-/// Every habit with its streak, week progress and whether it is due today, seen through the habit
+/// Every habit with its streak, week progress and whether it is on Today's list, seen through the habit
 /// list: what the Habits sheet rows show. September 2026 starts on a Tuesday: Sundays fall on the
 /// 6th, 13th and 20th; Mondays on the 7th, 14th and 21st.
 @MainActor
-final class HabitEntriesBehaviorTests: XCTestCase {
+final class HabitOverviewsBehaviorTests: XCTestCase {
     private let monday = 2
     private let wednesday = 4
     private let friday = 6
@@ -40,12 +40,12 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         }
     }
 
-    private func entry(_ list: HabitListStore, _ habit: Habit) throws -> HabitEntry {
-        try XCTUnwrap(list.habitEntries.first { $0.id == habit.id })
+    private func overview(_ list: HabitListStore, _ habit: Habit) throws -> HabitOverview {
+        try XCTUnwrap(list.habitOverviews.first { $0.id == habit.id })
     }
 
     private func makeDefaults() throws -> UserDefaults {
-        let suiteName = "HabitEntriesBehaviorTests.\(UUID().uuidString)"
+        let suiteName = "HabitOverviewsBehaviorTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
@@ -59,8 +59,8 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         let wednesdays = try XCTUnwrap(list.addHabit(name: "Gym", schedule: .weekdays([wednesday])))
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(2)))
 
-        XCTAssertEqual(list.habitEntries.map(\.id), [daily.id, wednesdays.id, weekly.id])
-        XCTAssertEqual(list.habitEntries.map(\.isDueToday), [true, false, true])
+        XCTAssertEqual(list.habitOverviews.map(\.id), [daily.id, wednesdays.id, weekly.id])
+        XCTAssertEqual(list.habitOverviews.map(\.isOnToday), [true, false, true])
         XCTAssertEqual(list.todayHabits.map(\.id), [daily.id, weekly.id], "Today still lists only the due ones")
     }
 
@@ -72,23 +72,23 @@ final class HabitEntriesBehaviorTests: XCTestCase {
 
         list.moveHabits(fromOffsets: IndexSet(integer: 2), toOffset: 0)
 
-        XCTAssertEqual(list.habitEntries.map(\.id), [third.id, first.id, second.id])
+        XCTAssertEqual(list.habitOverviews.map(\.id), [third.id, first.id, second.id])
     }
 
     func testAnAddAnEditAndADeleteUpdateTheList() throws {
         let list = try makeList(on: 8)
-        XCTAssertTrue(list.habitEntries.isEmpty)
+        XCTAssertTrue(list.habitOverviews.isEmpty)
 
         let habit = try XCTUnwrap(list.addHabit(name: "Read"))
-        XCTAssertEqual(list.habitEntries.map(\.habit.name), ["Read"])
+        XCTAssertEqual(list.habitOverviews.map(\.habit.name), ["Read"])
 
         _ = list.editHabit(id: habit.id, name: "Read more", schedule: .weeklyTarget(3))
-        let edited = try entry(list, habit)
+        let edited = try overview(list, habit)
         XCTAssertEqual(edited.habit.name, "Read more")
         XCTAssertEqual(edited.weekProgress, HabitWeekProgress(count: 0, target: 3))
 
         _ = list.deleteHabit(id: habit.id)
-        XCTAssertTrue(list.habitEntries.isEmpty)
+        XCTAssertTrue(list.habitOverviews.isEmpty)
     }
 
     // MARK: Streaks
@@ -99,28 +99,28 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         check(list, habit, on: [7, 9, 11])
 
         go(list, to: 12) // Saturday: not due
-        XCTAssertFalse(try entry(list, habit).isDueToday)
-        XCTAssertEqual(try entry(list, habit).streak, 3)
+        XCTAssertFalse(try overview(list, habit).isOnToday)
+        XCTAssertEqual(try overview(list, habit).streak, 3)
 
         go(list, to: 14) // Monday, still unchecked: due, and the open day doesn't break it
-        XCTAssertTrue(try entry(list, habit).isDueToday)
-        XCTAssertEqual(try entry(list, habit).streak, 3)
+        XCTAssertTrue(try overview(list, habit).isOnToday)
+        XCTAssertEqual(try overview(list, habit).streak, 3)
 
         _ = list.toggleCheckOff(id: habit.id)
-        XCTAssertEqual(try entry(list, habit).streak, 4)
+        XCTAssertEqual(try overview(list, habit).streak, 4)
     }
 
     func testAMissedDueDayBreaksTheStreakAfterMidnight() throws {
         let list = try makeList(on: 7)
         let habit = try XCTUnwrap(list.addHabit(name: "Read"))
         check(list, habit, on: [7, 8])
-        XCTAssertEqual(try entry(list, habit).streak, 2)
+        XCTAssertEqual(try overview(list, habit).streak, 2)
 
         go(list, to: 9) // the 9th is open: the streak stands
-        XCTAssertEqual(try entry(list, habit).streak, 2)
+        XCTAssertEqual(try overview(list, habit).streak, 2)
 
         go(list, to: 10) // the 9th was missed
-        XCTAssertEqual(try entry(list, habit).streak, 0)
+        XCTAssertEqual(try overview(list, habit).streak, 0)
     }
 
     // MARK: Week progress
@@ -130,30 +130,30 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         let habit = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
 
         check(list, habit, on: [7, 8])
-        XCTAssertEqual(try entry(list, habit).weekProgress, HabitWeekProgress(count: 2, target: 3))
-        XCTAssertEqual(try entry(list, habit).streak, 0, "the week in progress doesn't count yet")
+        XCTAssertEqual(try overview(list, habit).weekProgress, HabitWeekProgress(count: 2, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 0, "the week in progress doesn't count yet")
 
         check(list, habit, on: [9])
-        XCTAssertEqual(try entry(list, habit).weekProgress, HabitWeekProgress(count: 3, target: 3))
-        XCTAssertEqual(try entry(list, habit).streak, 1)
+        XCTAssertEqual(try overview(list, habit).weekProgress, HabitWeekProgress(count: 3, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 1)
 
         check(list, habit, on: [10])
-        XCTAssertEqual(try entry(list, habit).weekProgress, HabitWeekProgress(count: 4, target: 3))
-        XCTAssertEqual(try entry(list, habit).streak, 1, "check-offs past the target add nothing")
+        XCTAssertEqual(try overview(list, habit).weekProgress, HabitWeekProgress(count: 4, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 1, "check-offs past the target add nothing")
 
         go(list, to: 13) // Sunday: still the week of the 7th when weeks start on Monday
-        XCTAssertEqual(try entry(list, habit).weekProgress, HabitWeekProgress(count: 4, target: 3))
+        XCTAssertEqual(try overview(list, habit).weekProgress, HabitWeekProgress(count: 4, target: 3))
 
         go(list, to: 14) // a new week: progress starts over and the week streak stands
-        XCTAssertEqual(try entry(list, habit).weekProgress, HabitWeekProgress(count: 0, target: 3))
-        XCTAssertEqual(try entry(list, habit).streak, 1)
+        XCTAssertEqual(try overview(list, habit).weekProgress, HabitWeekProgress(count: 0, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 1)
     }
 
     func testADayBasedHabitHasNoWeekProgress() throws {
         let list = try makeList(on: 8)
         let habit = try XCTUnwrap(list.addHabit(name: "Read"))
 
-        XCTAssertNil(try entry(list, habit).weekProgress)
+        XCTAssertNil(try overview(list, habit).weekProgress)
     }
 
     // MARK: Zero values
@@ -163,30 +163,30 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         let daily = try XCTUnwrap(list.addHabit(name: "Read"))
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
 
-        XCTAssertEqual(try entry(list, daily).streak, 0)
-        XCTAssertEqual(try entry(list, weekly).streak, 0)
-        XCTAssertEqual(try entry(list, weekly).weekProgress, HabitWeekProgress(count: 0, target: 3))
+        XCTAssertEqual(try overview(list, daily).streak, 0)
+        XCTAssertEqual(try overview(list, weekly).streak, 0)
+        XCTAssertEqual(try overview(list, weekly).weekProgress, HabitWeekProgress(count: 0, target: 3))
     }
 
     // MARK: Updates
 
-    func testACheckOffOnTodayUpdatesTheEntryAtOnce() throws {
+    func testACheckOffOnTodayUpdatesTheOverviewAtOnce() throws {
         let list = try makeList(on: 8)
         let habit = try XCTUnwrap(list.addHabit(name: "Read"))
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(3)))
 
         _ = list.toggleCheckOff(id: habit.id)
         _ = list.toggleCheckOff(id: weekly.id)
-        XCTAssertEqual(try entry(list, habit).streak, 1)
-        XCTAssertEqual(try entry(list, weekly).weekProgress, HabitWeekProgress(count: 1, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 1)
+        XCTAssertEqual(try overview(list, weekly).weekProgress, HabitWeekProgress(count: 1, target: 3))
 
         _ = list.toggleCheckOff(id: habit.id)
         _ = list.toggleCheckOff(id: weekly.id)
-        XCTAssertEqual(try entry(list, habit).streak, 0)
-        XCTAssertEqual(try entry(list, weekly).weekProgress, HabitWeekProgress(count: 0, target: 3))
+        XCTAssertEqual(try overview(list, habit).streak, 0)
+        XCTAssertEqual(try overview(list, weekly).weekProgress, HabitWeekProgress(count: 0, target: 3))
     }
 
-    func testAnEntryAgreesWithTodaysRowForTheSameHabit() throws {
+    func testAnOverviewAgreesWithTodaysRowForTheSameHabit() throws {
         let list = try makeList(on: 7)
         let daily = try XCTUnwrap(list.addHabit(name: "Read"))
         let weekly = try XCTUnwrap(list.addHabit(name: "Run", schedule: .weeklyTarget(2)))
@@ -194,7 +194,7 @@ final class HabitEntriesBehaviorTests: XCTestCase {
         check(list, weekly, on: [7, 8])
 
         for today in list.todayHabits {
-            let listed = try XCTUnwrap(list.habitEntries.first { $0.id == today.id })
+            let listed = try XCTUnwrap(list.habitOverviews.first { $0.id == today.id })
             XCTAssertEqual(listed.streak, today.streak, today.habit.name)
             XCTAssertEqual(listed.weekProgress, today.weekProgress, today.habit.name)
         }

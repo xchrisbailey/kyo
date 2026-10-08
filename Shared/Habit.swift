@@ -358,13 +358,13 @@ struct TodayHabit: Identifiable, Equatable, Sendable {
     var id: UUID { habit.id }
 }
 
-/// A habit on the Habits sheet: every habit is listed, with the streak and week progress Today
-/// shows for it.
-struct HabitEntry: Identifiable, Equatable, Sendable {
+/// A habit as the Habits sheet lists it: every habit appears, with the streak and week progress
+/// Today shows for it and whether it is on Today's list.
+struct HabitOverview: Identifiable, Equatable, Sendable {
     let habit: Habit
     /// Whether the habit is on Today's list: due today, or made not due by an edit but already
     /// checked off today. The sheet marks the habit "not due today" when this is `false`.
-    let isDueToday: Bool
+    let isOnToday: Bool
     /// This week's progress; `nil` unless the habit has a weekly target.
     let weekProgress: HabitWeekProgress?
     /// The habit's streak: days for day-based habits, weeks for weekly-target habits.
@@ -382,7 +382,7 @@ protocol HabitListBehavior: AnyObject {
     /// Every habit in habit order, with its streak, week progress and whether it is on Today's
     /// list: what the Habits sheet shows. Computed with the same rules, and refreshed at the
     /// same moments, as `todayHabits`.
-    var habitEntries: [HabitEntry] { get }
+    var habitOverviews: [HabitOverview] { get }
     /// Habits on Today's list: still to do first, then the done group; each keeps habit order.
     var todayHabits: [TodayHabit] { get }
     /// Habits on Today's list (the denominator of the "Habits done" summary).
@@ -424,7 +424,7 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
     /// Every habit, in habit order. For a Watch mirror, `baseHabits` with the outbox replayed.
     @Published private(set) var habits: [Habit] = []
     @Published private(set) var todayHabits: [TodayHabit] = []
-    @Published private(set) var habitEntries: [HabitEntry] = []
+    @Published private(set) var habitOverviews: [HabitOverview] = []
 
     /// A `.mirror` (Watch) store's habits as of the last applied snapshot, before replaying its
     /// own unacknowledged commands. Stored under `storageKey`. Unused by other stores.
@@ -753,31 +753,31 @@ final class HabitListStore: ObservableObject, HabitListBehavior {
         persist()
     }
 
-    /// Re-evaluates Today's list and the Habits sheet's entries against the clock. Check-offs are
+    /// Re-evaluates Today's list and the Habits sheet's overviews against the clock. Check-offs are
     /// keyed to calendar days, so after midnight yesterday's check-offs no longer put a habit in
     /// the done group. Every change to the habits, the clock or the outbox meets here.
     func refreshForCurrentDay() {
         let today = TaskCompletionDay(date: now(), calendar: calendar)
         let date = now()
-        habitEntries = habits.map { habit in
-            HabitEntry(
+        habitOverviews = habits.map { habit in
+            HabitOverview(
                 habit: habit,
-                isDueToday: habit.isDue(on: date, calendar: calendar) || habit.checkOffs.contains(today),
+                isOnToday: habit.isDue(on: date, calendar: calendar) || habit.checkOffs.contains(today),
                 weekProgress: habit.weekProgress(on: date, calendar: calendar),
                 streak: habit.streak(on: date, calendar: calendar)
             )
         }
-        let entries = habitEntries.filter(\.isDueToday).map { entry -> TodayHabit in
-            let isCheckedOffToday = entry.habit.checkOffs.contains(today)
+        let onToday = habitOverviews.filter(\.isOnToday).map { overview -> TodayHabit in
+            let isCheckedOffToday = overview.habit.checkOffs.contains(today)
             return TodayHabit(
-                habit: entry.habit,
-                isDone: isCheckedOffToday || entry.weekProgress?.isTargetMet == true,
+                habit: overview.habit,
+                isDone: isCheckedOffToday || overview.weekProgress?.isTargetMet == true,
                 isCheckedOffToday: isCheckedOffToday,
-                weekProgress: entry.weekProgress,
-                streak: entry.streak
+                weekProgress: overview.weekProgress,
+                streak: overview.streak
             )
         }
-        todayHabits = entries.filter { !$0.isDone } + entries.filter(\.isDone)
+        todayHabits = onToday.filter { !$0.isDone } + onToday.filter(\.isDone)
     }
 
     /// Refreshes now, then again at every local midnight until cancelled.

@@ -22,26 +22,26 @@ private struct HabitsList: View {
 
     var body: some View {
         List {
-            ForEach(habitList.habitEntries) { entry in
+            ForEach(habitList.habitOverviews) { overview in
                 NavigationLink {
                     HabitForm(
-                        habit: entry.habit,
-                        onSave: { name, schedule in habitList.editHabit(id: entry.id, name: name, schedule: schedule) != nil },
-                        onDelete: { habitList.deleteHabit(id: entry.id) }
+                        habit: overview.habit,
+                        onSave: { name, schedule in habitList.editHabit(id: overview.id, name: name, schedule: schedule) != nil },
+                        onDelete: { habitList.deleteHabit(id: overview.id) }
                     )
                 } label: {
-                    HabitsSheetRow(entry: entry)
+                    HabitsSheetRow(overview: overview)
                 }
                 .accessibilityHint("Edits this habit")
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Delete", role: .destructive) { pendingDelete = entry.habit }
-                        .accessibilityLabel("Delete habit: \(entry.habit.name)")
+                    Button("Delete", role: .destructive) { pendingDelete = overview.habit }
+                        .accessibilityLabel("Delete habit: \(overview.habit.name)")
                 }
             }
             .onMove { habitList.moveHabits(fromOffsets: $0, toOffset: $1) }
         }
         .overlay {
-            if habitList.habitEntries.isEmpty {
+            if habitList.habitOverviews.isEmpty {
                 Text("No habits yet")
                     .foregroundStyle(.secondary)
             }
@@ -87,17 +87,17 @@ private struct HabitsList: View {
 }
 
 private struct HabitsSheetRow: View {
-    let entry: HabitEntry
+    let overview: HabitOverview
 
     var body: some View {
-        let summary = entry.habit.schedule.summary(calendar: .current)
+        let summary = overview.habit.schedule.summary(calendar: .current)
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.habit.name)
+                Text(overview.habit.name)
                     .font(.body)
                 HStack(spacing: 6) {
                     Text(summary)
-                    if !entry.isDueToday {
+                    if !overview.isOnToday {
                         Text("·")
                         Text("Not today")
                     }
@@ -106,21 +106,22 @@ private struct HabitsSheetRow: View {
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            HabitStatusLabel(weekProgress: entry.weekProgress, streak: entry.streak)
+            HabitStatusLabel(weekProgress: overview.weekProgress, streak: overview.streak)
                 .foregroundStyle(Color.primary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.habit.name)
+        .accessibilityLabel(overview.habit.name)
         .accessibilityValue(accessibilityValue(summary: summary))
+        .accessibilityIdentifier("habit-row-\(overview.id.uuidString)")
     }
 
     /// The schedule summary, "not due today" where it applies, then week progress and the streak.
     private func accessibilityValue(summary: String) -> String {
         var parts = [summary]
-        if !entry.isDueToday { parts.append("not due today") }
-        if let progress = entry.weekProgress { parts.append("\(progress.count) of \(progress.target) this week") }
-        if entry.streak >= 1 {
-            parts.append(entry.weekProgress == nil ? "\(entry.streak) day streak" : "\(entry.streak) week streak")
+        if !overview.isOnToday { parts.append("not due today") }
+        if let progress = overview.weekProgress { parts.append(HabitStatusLabel.spokenWeekProgress(progress)) }
+        if overview.streak >= 1 {
+            parts.append(HabitStatusLabel.spokenStreak(overview.streak, isWeekly: overview.weekProgress != nil))
         }
         return parts.joined(separator: ", ")
     }

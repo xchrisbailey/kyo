@@ -909,11 +909,11 @@ private struct HabitRow: View {
     private var accessibilityValue: String {
         var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
         if let progress = entry.weekProgress {
-            value += ", \(progress.count) of \(progress.target) this week"
+            value += ", " + HabitStatusLabel.spokenWeekProgress(progress)
             if progress.isTargetMet && !entry.isCheckedOffToday { value += ", target met" }
         }
         if entry.streak >= 1 {
-            value += entry.weekProgress == nil ? ", \(entry.streak) day streak" : ", \(entry.streak) week streak"
+            value += ", " + HabitStatusLabel.spokenStreak(entry.streak, isWeekly: entry.weekProgress != nil)
         }
         return value
     }

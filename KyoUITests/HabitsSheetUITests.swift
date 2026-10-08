@@ -139,7 +139,8 @@ final class HabitsSheetUITests: XCTestCase {
         let row = habitRow("Stretch", in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertEqual(row.value as? String, "Every day, 1 day streak")
-        XCTAssertEqual(app.cells.buttons.count, 1, "one row button per habit: no check circle")
+        let cell = app.cells.containing(NSPredicate(format: "identifier == %@", row.identifier)).firstMatch
+        XCTAssertEqual(cell.buttons.count, 1, "the row's own button is all its cell holds: no check circle")
     }
 
     // MARK: Helpers
@@ -153,7 +154,7 @@ final class HabitsSheetUITests: XCTestCase {
     }
 
     private func habitRow(_ name: String, in app: XCUIApplication) -> XCUIElement {
-        app.cells.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'habit-row-' AND label == %@", name)).firstMatch
     }
 
     /// Adds a habit from Today's Add menu. Without `weekday` it's a daily habit, due today, so it waits for its row.

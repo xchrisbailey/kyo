@@ -153,13 +153,13 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(app.buttons[dayIdentifier(inMonthOffset: 1, day: 1)].isSelected, "the 1st stands in for a selection outside the month")
 
         // A swipe on the grid moves a month too: left is forward, right is back.
-        let grid = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'month-day-'")).firstMatch
+        let grid = app.descendants(matching: .any)["month-grid"]
         XCTAssertTrue(grid.exists)
         let shownAfterNext = header.label
         grid.swipeLeft()
-        XCTAssertNotEqual(header.label, shownAfterNext)
-        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'month-day-'")).firstMatch.swipeRight()
-        XCTAssertEqual(header.label, shownAfterNext)
+        XCTAssertTrue(waitForLabel(of: header, toDiffer: shownAfterNext))
+        grid.swipeRight()
+        XCTAssertTrue(waitForLabel(of: header, toEqual: shownAfterNext))
 
         previous.tap()
         XCTAssertEqual(header.label, currentHeader)
@@ -171,6 +171,16 @@ final class MonthUITests: XCTestCase {
         XCTAssertEqual(header.label, currentHeader)
         XCTAssertFalse(jumpBack.exists)
         XCTAssertTrue(app.buttons[dayIdentifier()].isSelected)
+    }
+
+    private func waitForLabel(of element: XCUIElement, toDiffer label: String) -> Bool {
+        let changed = NSPredicate(format: "label != %@", label)
+        return XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: changed, object: element)], timeout: 10) == .completed
+    }
+
+    private func waitForLabel(of element: XCUIElement, toEqual label: String) -> Bool {
+        let matches = NSPredicate(format: "label == %@", label)
+        return XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: matches, object: element)], timeout: 10) == .completed
     }
 
     private func addTask(_ title: String, to app: XCUIApplication) {

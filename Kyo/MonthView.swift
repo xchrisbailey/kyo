@@ -34,6 +34,8 @@ struct MonthView: View {
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .contentShape(Rectangle())
             .simultaneousGesture(swipe)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("month-grid")
 
             legend
                 .padding(.top, 12)

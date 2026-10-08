@@ -39,9 +39,13 @@ struct TodayView: View {
         // real WatchConnectivity delivery.
         let isInMemory = KyoModelContainer.isInMemoryRequested
         let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
+        // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
+        lazy var taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
+        _taskList = StateObject(wrappedValue: taskList)
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
+        // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
+        lazy var habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
+        _habitList = StateObject(wrappedValue: habits)
         // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
         let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)
         // UI tests have no Apple Intelligence, so Memo → Task takes its manual path and a Voice
@@ -60,7 +64,9 @@ struct TodayView: View {
         _schedule = StateObject(wrappedValue: schedule)
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
         _month = StateObject(wrappedValue: MonthModel(sources: [
+            TaskMonthContent(taskList: taskList),
             MemoMonthContent(store: memoStore),
+            HabitMonthContent(habits: habits),
             EventMonthContent(schedule: schedule, calendar: .current),
         ]))
         self.languageModel = languageModel

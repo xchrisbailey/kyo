@@ -175,6 +175,8 @@ targets:
       - Kyo/ScheduleStore.swift
       - Kyo/FakeCalendarService.swift
       - Kyo/MonthModel.swift
+      - Kyo/HabitMonthContent.swift
+      - Kyo/TaskMonthContent.swift
       - Kyo/MemoMonthContent.swift
       - Kyo/EventMonthContent.swift
     settings:

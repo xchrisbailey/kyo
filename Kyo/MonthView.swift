@@ -252,9 +252,7 @@ private struct MonthDaySummaryView: View {
                         .accessibilityAddTraits(.isHeader)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(section.rows) { row in
-                            MonthSummaryRowContent(row: row)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                .padding(.horizontal, 14)
+                            MonthSummaryRowView(row: row)
                                 .opening(row, with: onOpen)
                         }
                     }
@@ -268,13 +266,14 @@ private struct MonthDaySummaryView: View {
     }
 }
 
-/// A row's text, or for an event its calendar dot, time and title as the Schedule draws them.
-private struct MonthSummaryRowContent: View {
+/// One line of the Day summary. A habit's line carries its checked state as an indicator, not a control;
+/// an event's carries its calendar dot and its time as the Schedule draws them.
+private struct MonthSummaryRowView: View {
     let row: MonthSummaryRow
 
     var body: some View {
-        if let event = row.event {
-            HStack(spacing: 10) {
+        HStack(spacing: 10) {
+            if let event = row.event {
                 Circle()
                     .fill(Color(.sRGB, red: event.color.red, green: event.color.green, blue: event.color.blue, opacity: event.color.alpha))
                     .opacity(event.isDimmed ? 0.4 : 1)
@@ -292,17 +291,22 @@ private struct MonthSummaryRowContent: View {
                         .lineLimit(1)
                         .fixedSize()
                 }
-                Text(row.text)
-                    .font(.body)
-                    .foregroundStyle(event.isDimmed ? .secondary : .primary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let isChecked = row.isChecked {
+                Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isChecked ? KyoPalette.accent : Color.secondary)
+                    .accessibilityHidden(true)
             }
-        } else {
             Text(row.text)
                 .font(.body)
-                .foregroundStyle(.primary)
+                .foregroundStyle(row.event?.isDimmed == true ? .secondary : .primary)
+                .lineLimit(row.event == nil ? nil : 2)
         }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.horizontal, 14)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(row.accessibilityLabel ?? row.text)
+        .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
+        .accessibilityHint(row.event == nil ? "" : "Shows event details")
     }
 }
 
@@ -311,21 +315,10 @@ private extension View {
     @ViewBuilder
     func opening(_ row: MonthSummaryRow, with open: @escaping (MonthSummaryTarget) -> Void) -> some View {
         if let target = row.target {
-            let button = Button { open(target) } label: { contentShape(Rectangle()) }
+            Button { open(target) } label: { contentShape(Rectangle()) }
                 .buttonStyle(.plain)
-            // A row that reads as more than its text, such as an event, is one element with its own label.
-            if let label = row.accessibilityLabel {
-                button
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(label)
-                    .accessibilityHint(row.event == nil ? "" : "Shows event details")
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityIdentifier("month-summary-row-\(row.id)")
-            } else {
-                button
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityIdentifier("month-summary-row-\(row.id)")
-            }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityIdentifier("month-summary-row-\(row.id)")
         } else {
             self
         }

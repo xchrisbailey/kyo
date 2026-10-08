@@ -26,6 +26,8 @@ enum MonthSummaryTarget: Equatable, Sendable {
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     let id: String
     let text: String
+    /// Whether a habit was checked off that day. Absent on rows of other kinds.
+    var isChecked: Bool? = nil
     var target: MonthSummaryTarget? = nil
     /// What VoiceOver reads instead of `text`, when the row reads as more than it shows.
     var accessibilityLabel: String? = nil

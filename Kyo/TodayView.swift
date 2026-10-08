@@ -1031,6 +1031,7 @@ private struct TaskRow: View {
                 .accessibilityLabel(task.text)
                 .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
                 .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
+                .accessibilityAction { onToggle() }
                 .accessibilityAction(named: "Share", share)
 
             if isEditing {
@@ -1056,6 +1057,7 @@ private struct TaskRow: View {
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("Edit task: \(task.text)")
                     .accessibilityHint("Edits this task")
+                    .accessibilityAction { isEditing = true }
                     .accessibilityAction(named: "Share", share)
             }
         }

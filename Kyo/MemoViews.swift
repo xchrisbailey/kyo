@@ -140,6 +140,7 @@ struct MemoRow: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Opens this memo")
+        .accessibilityAction { onOpen() }
         .accessibilityActions {
             if canShare {
                 Button("Share", action: share)

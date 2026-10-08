@@ -21,6 +21,8 @@ Run `xcodegen generate` after changing `project.yml`. Make lasting build-setting
 
 ## Build checks
 
+`scripts/check` runs these as part of the pre-merge checks (see Tests below). To run one alone:
+
 ```sh
 xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' CODE_SIGNING_ALLOWED=NO build
@@ -28,13 +30,31 @@ xcodebuild -project Kyo.xcodeproj -scheme KyoWatch -sdk watchsimulator -destinat
 
 ## Tests
 
+Run the pre-merge checks through `scripts/check`. It runs everything the change needs, one check at a time, and records the result against the commit; see the CI section for the rules and the record. The rest of this section is about running one suite.
+
 Run tests through `scripts/test <scheme> [extra xcodebuild arguments]`, for example `scripts/test KyoTests`, `scripts/test KyoUITests -only-testing:KyoUITests/SectionCollapseUITests`, or `scripts/test KyoWatchUITests`. Each run gets its own simulator and derived data, so runs from separate worktrees can't interfere, and both are removed afterwards. The script picks an iPhone or Apple Watch simulator from the scheme's test targets, so `--platform` is only an override. Don't call `xcodebuild test` directly.
+
+UI suites queue. `scripts/test KyoUITests` and `scripts/test KyoWatchUITests` (a narrow `-only-testing` run included) take a lock shared by every worktree on the machine before they create their simulator, so only one UI suite runs at a time; several at once each run far slower and can time out under the load. A run that has to wait prints one line naming the holder (worktree and scheme) and starts when the lock is free. The lock is released when the run ends, however it ends. A lock whose holder process is gone is stale, and the next run takes it over. `KyoTests` and the build checks don't take the lock. The lock is the symlink `kyo-ui-lock` in `${TMPDIR:-/tmp}`; its target names the holder.
 
 Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the `KyoWatchWidgets` extension a linker signature whose identifier is `KyoWatchWidgets` instead of its bundle identifier. The Shortcuts daemon then rejects the extension, WidgetKit asserts in `WatchRecordMemoControl`, and the extension is killed when the Watch app first launches on a fresh simulator (#150). `scripts/test` builds signed for the simulator, which needs no account. The build checks above can stay unsigned because they never launch the app.
 
 ## CI
 
-**The test workflows are paused.** `CI`, `UI Tests` and `Watch UI Tests` are disabled in GitHub Actions (`gh workflow disable`), so pull requests and pushes to `main` run nothing but TestFlight. Their files stay in `.github/workflows/` as described below; turn them back on with `gh workflow enable "CI"`, `gh workflow enable "UI Tests"` and `gh workflow enable "Watch UI Tests"`. While they're paused, every PR is checked locally before it merges:
+**The test workflows are paused.** `CI`, `UI Tests` and `Watch UI Tests` are disabled in GitHub Actions (`gh workflow disable`), so pull requests and pushes to `main` run nothing but TestFlight. Their files stay in `.github/workflows/` as described below; turn them back on with `gh workflow enable "CI"`, `gh workflow enable "UI Tests"` and `gh workflow enable "Watch UI Tests"`. While they're paused, every PR is checked locally before it merges, with `scripts/check`:
+
+```sh
+scripts/check                  # the checks the changed paths call for
+scripts/check --base <ref>     # changed paths measured from <ref> instead of the merge-base with origin/main
+scripts/check --all            # every check, whatever changed
+scripts/check --quick          # builds and KyoTests only; the UI suites are recorded as skipped
+scripts/check --show [<commit>]
+```
+
+It refuses to run with uncommitted changes, because it records the result for `HEAD`. It works out the changed paths between the base and `HEAD`, runs the checks below that those paths call for one at a time (the UI suites queue behind the lock described under Tests), and keeps going after a failure so the record is complete. It exits non-zero if any check failed or was skipped.
+
+The record is a plain-text file named by the full commit SHA in `${TMPDIR:-/tmp}/kyo-check/`, so any worktree or agent can read it. It holds the commit, base and branch, when it ran, each check that ran with the reason, its final `** BUILD SUCCEEDED **` or `** TEST SUCCEEDED **` (or FAILED) line, its test count and the path of its log, each check that did not run with the reason, and a last line that is exactly one of `RESULT: PASS`, `RESULT: FAIL` or `RESULT: PARTIAL`. PARTIAL means a run was `--quick`, or a check the paths called for was skipped. A rerun on the same commit replaces the record. `scripts/check --show [<commit>]` prints the record for a commit (default `HEAD`) without running anything and exits 0 for PASS, 1 for FAIL or PARTIAL, and 2 when there is no record. The pre-merge checks have passed when `scripts/check --show` on the PR's head commit prints `RESULT: PASS`.
+
+The checks:
 
 - both build checks above;
 - `scripts/test KyoTests`;

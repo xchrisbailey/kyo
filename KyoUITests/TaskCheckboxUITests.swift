@@ -68,9 +68,21 @@ final class TaskCheckboxUITests: XCTestCase {
         assertValue(app.buttons[second], equals: "Not completed")
         assertValue(taskSummary, equals: counts(done: 1, of: 2))
 
-        app.buttons["Edit task: \(renamed)"].swipeLeft()
+        let editButton = app.buttons["Edit task: \(renamed)"]
         let deleteButton = app.buttons["Delete task: \(renamed)"]
+        // A swipe that starts on the checkbox reveals Delete without toggling the task (#202).
+        let checkboxCentre = checkbox.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        checkboxCentre.press(forDuration: 0.1, thenDragTo: checkboxCentre.withOffset(CGVector(dx: -150, dy: 0)))
         XCTAssertTrue(deleteButton.waitForExistence(timeout: 10))
+        assertValue(checkbox, equals: "Completed")
+        editButton.swipeRight()
+        XCTAssertTrue(deleteButton.waitForNonExistence(timeout: 10))
+
+        editButton.swipeLeft()
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 10))
+        // The swipe that revealed Delete neither opened the inline editor nor toggled the task (#202).
+        XCTAssertFalse(app.textFields["task-editor:\(renamed)"].waitForExistence(timeout: 2)) // label-query: the editor's identifier embeds the task text
+        assertValue(checkbox, equals: "Completed")
         deleteButton.tap()
         let deletedTaskControls = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", first))
         let deletionExpectation = XCTNSPredicateExpectation(

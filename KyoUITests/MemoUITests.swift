@@ -28,6 +28,13 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Memos, 1 memo"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Tap + to add a memo"].exists)
 
+        // Swiping the row left reveals its Delete button without opening the memo (#202); swiping right hides it.
+        row.swipeLeft()
+        XCTAssertTrue(app.buttons["Delete memo: Weekend idea"].waitForExistence(timeout: 10)) // label-query: the Delete button is found by its label
+        XCTAssertFalse(app.buttons["Close memo"].waitForExistence(timeout: 2)) // label-query: asserting the memo sheet did not open
+        row.swipeRight()
+        XCTAssertTrue(app.buttons["Delete memo: Weekend idea"].waitForNonExistence(timeout: 10)) // label-query: the Delete button is found by its label
+
         row.tap()
         let editor = app.textFields["Memo text"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10))

@@ -41,7 +41,8 @@ struct TodayView: View {
         let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        _habitList = StateObject(wrappedValue: HabitListStore(modelContainer: modelContainer, sync: habitSync))
+        let habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
+        _habitList = StateObject(wrappedValue: habits)
         // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
         let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)
         // UI tests have no Apple Intelligence, so Memo → Task takes its manual path and a Voice
@@ -57,7 +58,7 @@ struct TodayView: View {
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
-        _month = StateObject(wrappedValue: MonthModel())
+        _month = StateObject(wrappedValue: MonthModel(sources: [HabitMonthContent(habits: habits)]))
         self.languageModel = languageModel
     }
 

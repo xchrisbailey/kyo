@@ -20,6 +20,8 @@ enum MonthMark: Equatable, Sendable {
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     let id: String
     let text: String
+    /// Whether a habit was checked off that day. Absent on rows of other kinds.
+    var isChecked: Bool? = nil
 }
 
 /// What one kind holds on one day: its mark, the phrase a day cell reads aloud for it (such as

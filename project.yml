@@ -135,41 +135,12 @@ targets:
     platform: iOS
     sources:
       - KyoTests
-      - Shared/DailyTask.swift
-      - Shared/Habit.swift
-      - Shared/HabitSync.swift
-      - Shared/TaskSync.swift
-      - Shared/ApplicationContextEntries.swift
-      - Shared/WatchConnectivityTaskTransport.swift
-      - Shared/KyoSchema.swift
-      - Shared/TaskRecord.swift
-      - Shared/TaskShare.swift
-      - Shared/TaskContentPersistence.swift
-      - Shared/HabitRecord.swift
-      - Shared/HabitContentPersistence.swift
-      - Shared/Memo.swift
-      - Shared/MemoRecord.swift
-      - Shared/MemoAudioRecord.swift
-      - Shared/MemoPhotoRecord.swift
-      - Shared/MemoPhotoEncoding.swift
-      - Shared/MemoStore.swift
-      - Shared/MemoSync.swift
-      - Shared/WatchMemoList.swift
-      - Shared/MemoFileTransfer.swift
-      - Shared/WatchRecordingOutbox.swift
-      - Shared/WatchConnectivityRefresh.swift
-      - Shared/MemoHistory.swift
-      - Shared/MemoShare.swift
-      - Shared/AudioRecording.swift
-      - Shared/VoiceTranscriber.swift
-      - Shared/LiveTranscribing.swift
-      - Shared/OnDeviceLanguageModel.swift
-      - Shared/MemoTaskSuggestions.swift
-      - Shared/VoiceRecordingSession.swift
-      - Shared/QuickCaptureRouter.swift
-      - Shared/UserDefaultsImport.swift
-      - Shared/CollapsedSections.swift
-      - Shared/WatchCollapsedCount.swift
+      # Shared is a folder so a new file there is picked up without an edit here. Every file that
+      # does not compile into the test bundle is excluded by name.
+      - path: Shared
+        excludes:
+          # A placeholder SwiftUI view with no logic to test.
+          - ContentView.swift
       - Kyo/CalendarService.swift
       - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift

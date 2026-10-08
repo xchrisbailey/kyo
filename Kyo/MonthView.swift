@@ -266,26 +266,47 @@ private struct MonthDaySummaryView: View {
     }
 }
 
-/// A plain line of the Day summary. A habit's line carries its checked state as an indicator, not a control.
+/// One line of the Day summary. A habit's line carries its checked state as an indicator, not a control;
+/// an event's carries its calendar dot and its time as the Schedule draws them.
 private struct MonthSummaryRowView: View {
     let row: MonthSummaryRow
 
     var body: some View {
         HStack(spacing: 10) {
-            if let isChecked = row.isChecked {
+            if let event = row.event {
+                Circle()
+                    .fill(Color(.sRGB, red: event.color.red, green: event.color.green, blue: event.color.blue, opacity: event.color.alpha))
+                    .opacity(event.isDimmed ? 0.4 : 1)
+                    .frame(width: 9, height: 9)
+                if event.isInProgress {
+                    Text(event.time)
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(KyoPalette.accent)
+                        .lineLimit(1)
+                        .fixedSize()
+                } else {
+                    Text(event.time)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(event.isDimmed ? .tertiary : .secondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            } else if let isChecked = row.isChecked {
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isChecked ? KyoPalette.accent : Color.secondary)
                     .accessibilityHidden(true)
             }
             Text(row.text)
                 .font(.body)
-                .foregroundStyle(.primary)
+                .foregroundStyle(row.event?.isDimmed == true ? .secondary : .primary)
+                .lineLimit(row.event == nil ? nil : 2)
         }
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .padding(.horizontal, 14)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(row.text)
+        .accessibilityLabel(row.accessibilityLabel ?? row.text)
         .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
+        .accessibilityHint(row.event == nil ? "" : "Shows event details")
     }
 }
 

@@ -53,7 +53,11 @@ final class ScheduleStore: ObservableObject {
 
     /// The clock reading that presentation (Now, past, the compact set) is derived from. It moves
     /// on every refresh and at each event boundary, so views re-render exactly when something changes.
-    @Published private(set) var asOf: Date
+    @Published private(set) var asOf: Date {
+        didSet {
+            if asOf != oldValue { presentationDidChange.send() }
+        }
+    }
     /// Whether the section shows every event. In memory only: it resets on relaunch and at midnight.
     @Published private(set) var isShowingMore = false
 
@@ -64,6 +68,12 @@ final class ScheduleStore: ObservableObject {
     @Published private(set) var presentedDetail: PresentedEventDetail?
     /// Whether the list of all-day events to choose from is on screen.
     @Published private(set) var isChoosingAllDayEvent = false
+
+    /// Fires when what `visibleEvents(from:to:)` would answer may have changed: after a read lands, and
+    /// when Show schedule or the calendar selection changes. Month refetches on it.
+    let visibleEventsDidChange = PassthroughSubject<Void, Never>()
+    /// Fires after the clock reading that "Now" and "ended" are derived from has moved.
+    let presentationDidChange = PassthroughSubject<Void, Never>()
 
     private let service: any CalendarService
     private let now: () -> Date
@@ -176,6 +186,7 @@ final class ScheduleStore: ObservableObject {
         // The list updates before the refetch lands.
         events = Self.sorted(visibleEvents(fetchedEvents))
         showLessIfNothingIsHidden()
+        visibleEventsDidChange.send()
         Task { await refresh() }
     }
 
@@ -207,6 +218,7 @@ final class ScheduleStore: ObservableObject {
             isShowingMore = false
             fetchedEvents = []
             calendars = []
+            visibleEventsDidChange.send()
         }
     }
 
@@ -246,6 +258,20 @@ final class ScheduleStore: ObservableObject {
         return ScheduleRowPresentation(
             event: event, state: state(of: event), timeText: timeText(for: event),
             accessibilityLabel: accessibilityLabel(for: event),
+            location: location?.isEmpty == false ? location : nil
+        )
+    }
+
+    /// A row for `event` as the Day summary shows it on `day` (a start of day). On Today it is the
+    /// Schedule's own row. Now, ended and dimming are relative to Today, so on any other day the row
+    /// is the start time alone and reads as `.upcoming`, which is neither running nor ended.
+    func presentation(of event: ScheduleEvent, on day: Date) -> ScheduleRowPresentation {
+        if day == calendar.startOfDay(for: now()) { return presentation(of: event) }
+        let time = formatted(event.start)
+        let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ScheduleRowPresentation(
+            event: event, state: .upcoming, timeText: time,
+            accessibilityLabel: "\(time), \(event.displayTitle), \(event.calendarTitle) calendar",
             location: location?.isEmpty == false ? location : nil
         )
     }
@@ -358,6 +384,18 @@ final class ScheduleStore: ObservableObject {
         fetchedEvents = fetched
         events = Self.sorted(visibleEvents(fetched))
         showLessIfNothingIsHidden()
+        visibleEventsDidChange.send()
+    }
+
+    /// The events that overlap `start` ..< `end` and should be shown: none unless Show schedule is on and
+    /// access is full, and none from a hidden calendar. In time order. It reads the service without
+    /// touching what the Schedule section shows, and never asks for access.
+    func visibleEvents(from start: Date, to end: Date) async -> [ScheduleEvent] {
+        guard showsSchedule, await service.authorizationStatus() == .fullAccess else { return [] }
+        let fetched = await service.events(from: start, to: end)
+        // Show schedule may have been turned off while the read was in flight.
+        guard showsSchedule else { return [] }
+        return Self.sorted(visibleEvents(fetched))
     }
 
     /// Asks for full access, which shows the system prompt only while it's undecided.

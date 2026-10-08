@@ -178,6 +178,7 @@ targets:
       - Kyo/HabitMonthContent.swift
       - Kyo/TaskMonthContent.swift
       - Kyo/MemoMonthContent.swift
+      - Kyo/EventMonthContent.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.tests

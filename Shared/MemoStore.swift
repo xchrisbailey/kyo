@@ -16,6 +16,9 @@ protocol MemoStoreBehavior: AnyObject, VoiceMemoSaving {
 
     /// Any memo, from any day, by id.
     func memo(id: UUID) -> Memo?
+    /// The memos whose local day is the one holding `date`, newest first. Reads text only, never
+    /// photo or audio bytes.
+    func memos(on date: Date) -> [Memo]
     /// The local days from `first` through `last` (any moment of each) that have at least one
     /// memo, each as that day's start. Reads no text, photos or audio.
     func daysWithMemos(from first: Date, through last: Date) -> Set<Date>
@@ -206,6 +209,18 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
 
     func memo(id: UUID) -> Memo? {
         records(withID: id).first?.memo
+    }
+
+    func memos(on date: Date) -> [Memo] {
+        let day = TaskCompletionDay(date: date, calendar: calendar)
+        let year = day.year
+        let month = day.month
+        let dayOfMonth = day.day
+        let descriptor = FetchDescriptor<MemoRecord>(
+            predicate: #Predicate { $0.dayYear == year && $0.dayMonth == month && $0.dayDay == dayOfMonth }
+        )
+        let fetched = ((try? context.fetch(descriptor)) ?? []).filter { $0.dayEra == day.era }
+        return uniqueByID(fetched).map(\.memo).sorted(by: Self.isNewer)
     }
 
     func daysWithMemos(from first: Date, through last: Date) -> Set<Date> {

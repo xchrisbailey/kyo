@@ -18,8 +18,13 @@ final class MemoMonthContent: MonthContentSource {
 
     func content(on days: [Date]) -> [Date: MonthKindDay] {
         guard let first = days.min(), let last = days.max() else { return [:] }
-        return Dictionary(uniqueKeysWithValues: store.daysWithMemos(from: first, through: last).map {
-            ($0, MonthKindDay(mark: .filled))
+        return Dictionary(uniqueKeysWithValues: store.daysWithMemos(from: first, through: last).map { day in
+            let memos = store.memos(on: day)
+            return (day, MonthKindDay(
+                mark: .filled,
+                phrase: memos.count == 1 ? "1 memo" : "\(memos.count) memos",
+                rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, target: .memo($0.id)) }
+            ))
         })
     }
 }

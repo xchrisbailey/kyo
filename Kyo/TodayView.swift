@@ -41,7 +41,8 @@ struct TodayView: View {
         let sync: TaskListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         _taskList = StateObject(wrappedValue: TaskListStore(modelContainer: modelContainer, sync: sync))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
-        let habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
+        // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
+        lazy var habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
         _habitList = StateObject(wrappedValue: habits)
         // The Simulator can't transcribe, and UI tests shouldn't touch the speech model.
         let transcriber: any VoiceTranscriber = isInMemory ? NoTranscriber() : SpeechVoiceTranscriber(support: .shared)

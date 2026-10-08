@@ -150,6 +150,25 @@ final class MonthEventBehaviorTests: XCTestCase {
         XCTAssertEqual(eventRows(in: f.model), [])
     }
 
+    func testHidingACalendarRemovesItsMarksAndRowsAtOnceWithoutWaitingForTheNextRead() async throws {
+        let f = await makeFixture(events: [
+            timed("Standup", on: 6, from: 13, to: 14, calendarID: "work"),
+            timed("Movie", on: 6, from: 19, to: 21, calendarID: "personal"),
+            timed("Dinner", on: 9, from: 19, to: 21, calendarID: "personal"),
+        ])
+        try await eventually("the marks and rows") {
+            try eventMark(onDay: 9, in: f.model) == .filled && eventRows(in: f.model).count == 2
+        }
+
+        f.schedule.setCalendar("personal", visible: false)
+
+        // Nothing is awaited: the read that setCalendar starts hasn't landed yet.
+        XCTAssertEqual(try eventMark(onDay: 9, in: f.model), .empty)
+        XCTAssertEqual(try eventMark(onDay: 6, in: f.model), .filled, "the visible calendar's event keeps its mark")
+        XCTAssertEqual(eventRows(in: f.model).map(\.text), ["Standup"])
+        XCTAssertEqual(try day(6, in: f.model).accessibilityLabel, "Tuesday, October 6, Today, 1 event")
+    }
+
     func testWithShowScheduleOffThereAreNoMarksNoRowsAndNothingIsRead() async throws {
         let f = await makeFixture(events: [timed("Standup", on: 8, from: 9, to: 10)])
         try await eventually("the mark") { try eventMark(onDay: 8, in: f.model) == .filled }

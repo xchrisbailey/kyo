@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import SwiftData
 
-struct TaskCompletionDay: Codable, Equatable, Sendable {
+struct TaskCompletionDay: Codable, Hashable, Sendable {
     let era: Int?
     let year: Int
     let month: Int
@@ -336,6 +336,21 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let day = TaskCompletionDay(date: now, calendar: calendar)
         tasks = Self.ordered(currentFullTaskList.filter { task in
             !task.isComplete || task.completedOn == day
+        })
+    }
+
+    /// The tasks completed on the day containing `day`, in creation order. Reads the full list, not
+    /// Today's, so it answers for any past day.
+    func tasksCompleted(on day: Date) -> [DailyTask] {
+        let completionDay = TaskCompletionDay(date: day, calendar: calendar)
+        return Self.ordered(currentFullTaskList.filter { $0.isComplete && $0.completedOn == completionDay })
+    }
+
+    /// The start of each day in `days` on which at least one task was completed.
+    func daysWithCompletedTask(in days: [Date]) -> Set<Date> {
+        let completionDays = Set(currentFullTaskList.compactMap { $0.isComplete ? $0.completedOn : nil })
+        return Set(days.map { calendar.startOfDay(for: $0) }.filter {
+            completionDays.contains(TaskCompletionDay(date: $0, calendar: calendar))
         })
     }
 

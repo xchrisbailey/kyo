@@ -37,6 +37,23 @@ final class HabitListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.todayCount, 0)
     }
 
+    func testHasHabitsIsTrueOnlyWhileAnyHabitExistsEvenWhenNoneIsDueToday() throws {
+        let list: any HabitListBehavior = HabitListStore(
+            userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
+        )
+        XCTAssertFalse(list.hasHabits)
+
+        let weekday = calendar.component(.weekday, from: day(29))
+        let otherDay = weekday % 7 + 1
+        let elsewhere = try XCTUnwrap(list.addHabit(name: "Elsewhere", schedule: .weekdays([otherDay])))
+
+        XCTAssertTrue(list.todayHabits.isEmpty)
+        XCTAssertTrue(list.hasHabits)
+
+        list.deleteHabit(id: elsewhere.id)
+        XCTAssertFalse(list.hasHabits)
+    }
+
     func testCheckingOffMovesHabitToDoneGroupAndUncheckingRestoresIt() throws {
         let list: any HabitListBehavior = HabitListStore(
             userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
@@ -59,7 +76,7 @@ final class HabitListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.doneCount, 0)
     }
 
-    func testEachGroupKeepsManagerOrder() throws {
+    func testEachGroupKeepsHabitOrder() throws {
         let list = HabitListStore(
             userDefaults: try makeDefaults(), storageKey: "habits", modelContainer: try makeContainer(), now: { self.day(29) }, calendar: calendar
         )

@@ -91,7 +91,7 @@ final class SectionCollapseUITests: XCTestCase {
         XCTAssertTrue(waitForValue("collapsed", of: memos))
         XCTAssertEqual(memos.label, "Memos, 1 memo")
 
-        let seeAll = app.buttons["See all"]
+        let seeAll = app.buttons["section-link-memos"]
         XCTAssertTrue(seeAll.exists)
         seeAll.tap()
 
@@ -107,6 +107,36 @@ final class SectionCollapseUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [relabelled], timeout: 10), .completed)
         XCTAssertEqual(memos.value as? String, "collapsed")
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Written memo.'")).firstMatch.exists)
+    }
+
+    /// A collapsed Habits header keeps See all, and the Habits sheet opens from it with the section still collapsed.
+    func testACollapsedHabitsSectionKeepsSeeAllAndOpensTheHabitsSheet() throws {
+        let app = launchApp()
+        let habits = app.buttons["section-header-habits"]
+        XCTAssertFalse(app.buttons["section-link-habits"].exists, "no habits, so no See all")
+
+        app.buttons["Add an item"].tap()
+        app.buttons["Habit"].tap()
+        let field = app.textFields["Habit name"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("Stretch")
+        let save = app.buttons["Save"]
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: save)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "Save never became enabled")
+        save.tap()
+        XCTAssertTrue(app.buttons["Stretch"].waitForExistence(timeout: 10))
+
+        habits.tap()
+        XCTAssertTrue(waitForValue("collapsed", of: habits))
+        XCTAssertTrue(app.buttons["Stretch"].waitForNonExistence(timeout: 10))
+        let seeAll = app.buttons["section-link-habits"]
+        XCTAssertTrue(seeAll.exists)
+        seeAll.tap()
+
+        XCTAssertTrue(app.navigationBars["Habits"].waitForExistence(timeout: 10))
+        app.navigationBars["Habits"].buttons["Done"].tap()
+        XCTAssertTrue(app.navigationBars["Habits"].waitForNonExistence(timeout: 10))
+        XCTAssertEqual(habits.value as? String, "collapsed")
     }
 
     /// M5. Starting a task draft expands a collapsed Tasks section; collapsing mid-draft keeps the text, and

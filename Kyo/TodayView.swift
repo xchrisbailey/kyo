@@ -111,7 +111,10 @@ struct TodayView: View {
                             note: "Small steps, daily",
                             collapsedSummary: habitList.collapsedSummary,
                             section: .habits,
-                            sections: sections
+                            sections: sections,
+                            linkTitle: habitList.hasHabits ? "See all" : nil,
+                            linkHint: "Opens the Habits sheet",
+                            linkAction: { activeSheet = .allHabits }
                         ) {
                             VStack(spacing: 0) {
                                 if habitList.habits.isEmpty {
@@ -194,7 +197,7 @@ struct TodayView: View {
                     case .calendar:
                         CalendarPreviewSheet()
                     case .settings:
-                        SettingsSheet(habitList: habitList, schedule: schedule)
+                        SettingsSheet(schedule: schedule)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
@@ -206,6 +209,8 @@ struct TodayView: View {
                         if let memo = memoStore.memo(id: id) {
                             MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
                         }
+                    case .allHabits:
+                        HabitsSheet(habitList: habitList)
                     case .allMemos:
                         MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList)
                     case .editHabit(let id):
@@ -477,6 +482,7 @@ private enum TodayPreviewSheet: Identifiable {
     case composeMemo
     case memo(UUID)
     case allMemos
+    case allHabits
 
     var id: String {
         switch self {
@@ -487,6 +493,7 @@ private enum TodayPreviewSheet: Identifiable {
         case .composeMemo: "composeMemo"
         case .memo(let id): "memo:\(id.uuidString)"
         case .allMemos: "allMemos"
+        case .allHabits: "allHabits"
         }
     }
 }
@@ -697,6 +704,8 @@ struct TodaySection<Content: View>: View {
     @ObservedObject var sections: CollapsedSections
     /// A link at the right of the header, such as **See all**. It stays when the section is collapsed.
     var linkTitle: String?
+    /// What VoiceOver says about where the link leads.
+    var linkHint: String?
     var linkAction: () -> Void = {}
     @ViewBuilder let content: Content
 
@@ -745,6 +754,8 @@ struct TodaySection<Content: View>: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint(linkHint ?? "")
+                    .accessibilityIdentifier("section-link-\(section.rawValue)")
                 }
             }
             .frame(minHeight: 51)
@@ -888,40 +899,21 @@ private struct HabitRow: View {
         .frame(minHeight: 55)
     }
 
-    /// Week progress (weekly targets) then the streak flame, hidden at 0.
-    @ViewBuilder
     private var trailingStatus: some View {
-        let style = entry.isDone ? Color.secondary : Color.primary
-        HStack(spacing: 6) {
-            if let progress = entry.weekProgress {
-                Text("\(progress.count)/\(progress.target)")
-                    .font(.subheadline.monospacedDigit())
-                if entry.streak >= 1 { Text("·") }
-            }
-            if entry.streak >= 1 {
-                Label {
-                    Text(entry.weekProgress == nil ? "\(entry.streak)" : "\(entry.streak)w")
-                        .font(.subheadline.monospacedDigit())
-                } icon: {
-                    Image(systemName: "flame.fill")
-                        .font(.caption)
-                }
-                .labelStyle(.titleAndIcon)
-            }
-        }
-        .foregroundStyle(style)
-        .accessibilityHidden(true)
+        HabitStatusLabel(weekProgress: entry.weekProgress, streak: entry.streak)
+            .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+            .accessibilityHidden(true)
     }
 
     /// "Completed" only when Today has a check-off; week progress and the streak follow.
     private var accessibilityValue: String {
         var value = entry.isCheckedOffToday ? "Completed" : "Not completed"
         if let progress = entry.weekProgress {
-            value += ", \(progress.count) of \(progress.target) this week"
+            value += ", " + HabitStatusLabel.spokenWeekProgress(progress)
             if progress.isTargetMet && !entry.isCheckedOffToday { value += ", target met" }
         }
         if entry.streak >= 1 {
-            value += entry.weekProgress == nil ? ", \(entry.streak) day streak" : ", \(entry.streak) week streak"
+            value += ", " + HabitStatusLabel.spokenStreak(entry.streak, isWeekly: entry.weekProgress != nil)
         }
         return value
     }

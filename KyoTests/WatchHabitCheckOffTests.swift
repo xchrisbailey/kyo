@@ -102,6 +102,26 @@ final class WatchHabitCheckOffTests: XCTestCase {
         XCTAssertEqual(phone.doneCount, 1)   // Read remains
     }
 
+    func testWatchCheckOffUpdatesThePhonesHabitOverviewsRightAway() throws {
+        phoneNow = sep(7); watchNow = sep(7)
+        let transport = ControllableHabitTransport()
+        let phone = try makePhone(transport)
+        let watch = try makeWatch(transport)
+        let walk = try XCTUnwrap(phone.addHabit(name: "Walk"))
+        let read = try XCTUnwrap(phone.addHabit(name: "Read", schedule: .weeklyTarget(3)))
+
+        _ = watch.toggleCheckOff(id: walk.id)
+        _ = watch.toggleCheckOff(id: read.id)
+
+        let walkOverview = try XCTUnwrap(phone.habitOverviews.first { $0.id == walk.id })
+        XCTAssertEqual(walkOverview.streak, 1)
+        let readOverview = try XCTUnwrap(phone.habitOverviews.first { $0.id == read.id })
+        XCTAssertEqual(readOverview.weekProgress, HabitWeekProgress(count: 1, target: 3))
+
+        _ = watch.toggleCheckOff(id: walk.id)
+        XCTAssertEqual(phone.habitOverviews.first { $0.id == walk.id }?.streak, 0)
+    }
+
     func testWatchCheckOffShowsImmediatelyBeforeThePhoneAcknowledgesIt() throws {
         phoneNow = sep(7); watchNow = sep(7)
         let transport = ControllableHabitTransport()

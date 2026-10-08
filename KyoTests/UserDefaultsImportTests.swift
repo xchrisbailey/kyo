@@ -66,7 +66,7 @@ final class UserDefaultsImportTests: XCTestCase {
     /// What the list shows for `legacyTasks`: open tasks in creation order, then completed ones.
     private var expectedTasks: [DailyTask] { [legacyTasks[0], legacyTasks[2], legacyTasks[1]] }
 
-    /// One habit of each schedule kind, saved out of manager order, with check-offs and a
+    /// One habit of each schedule kind, saved out of habit order, with check-offs and a
     /// habit that changed schedule twice.
     private lazy var legacyHabits: [Habit] = {
         let created = day(1)

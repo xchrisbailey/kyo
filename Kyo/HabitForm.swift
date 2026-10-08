@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The habit form's content, for adding (`habit == nil`) or editing. It has no navigation
-/// container of its own, so it works pushed inside a `NavigationStack` (the habit manager) or
+/// container of its own, so it works pushed inside a `NavigationStack` (the Habits sheet) or
 /// wrapped by `HabitFormSheet`. Saving and deleting dismiss it, which pops it when pushed.
 struct HabitForm: View {
     private enum ScheduleKind: String, CaseIterable, Identifiable {

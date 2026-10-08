@@ -1,7 +1,7 @@
 import SwiftData
 import XCTest
 
-/// The manager's order, seen through the habit list. September 2026 starts on a Tuesday.
+/// The habit order, seen through the habit list. September 2026 starts on a Tuesday.
 @MainActor
 final class HabitOrderBehaviorTests: XCTestCase {
     private let calendar = Calendar(identifier: .gregorian)
@@ -84,7 +84,7 @@ final class HabitOrderBehaviorTests: XCTestCase {
         XCTAssertEqual(reopened.todayHabits.map(\.habit.name), ["C", "A", "B", "D"])
     }
 
-    func testTodayFollowsTheManagerOrderWithinEachGroup() throws {
+    func testTodayFollowsTheHabitOrderWithinEachGroup() throws {
         let list = try makeList(container: try makeContainer())
         makeABCD(list)
         let ids = Dictionary(uniqueKeysWithValues: list.habits.map { ($0.name, $0.id) })

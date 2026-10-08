@@ -14,6 +14,9 @@ struct TodayView: View {
     @ObservedObject private var quickCapture: QuickCaptureRouter
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
+    /// Which main view the bottom bar has selected. Kyo always launches into Today.
+    @State private var mainView: MainView = .today
+    @StateObject private var month: MonthModel
     /// Created when Today first appears, once the memo store exists.
     @State private var voiceRecording: VoiceRecordingSession?
     @State private var isShowingRecorder = false
@@ -54,6 +57,7 @@ struct TodayView: View {
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
+        _month = StateObject(wrappedValue: MonthModel())
         self.languageModel = languageModel
     }
 
@@ -62,117 +66,13 @@ struct TodayView: View {
             ScrollViewReader { scrollProxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        header
-                        summaryStats
-                        if schedule.showsSection {
-                            TodaySection(title: "Schedule", note: schedule.sectionNote, section: .schedule, sections: sections) {
-                                ScheduleSectionContent(schedule: schedule)
-                            }
-                        }
-                        TodaySection(
-                            title: "Tasks",
-                            note: "For today",
-                            collapsedSummary: taskList.collapsedSummary,
-                            section: .tasks,
-                            sections: sections
-                        ) {
-                            VStack(spacing: 0) {
-                                if taskList.tasks.isEmpty && !isShowingTaskDraft {
-                                    Text("No tasks yet")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
-                                        .padding(.horizontal, 14)
-                                }
-                                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                                    if index > 0 { rowDivider }
-                                    TaskRow(
-                                        task: task,
-                                        onToggle: { taskList.toggleTask(id: task.id) },
-                                        onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
-                                        onDelete: { _ = taskList.deleteTask(id: task.id) }
-                                    )
-                                }
-                                if isShowingTaskDraft {
-                                    if !taskList.tasks.isEmpty { rowDivider }
-                                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
-                                        .id("task-draft")
-                                        .onAppear {
-                                            guard revealTaskDraftWhenShown else { return }
-                                            revealTaskDraftWhenShown = false
-                                            isTaskDraftFocused = true
-                                            withAnimation { scrollProxy.scrollTo("task-draft", anchor: .center) }
-                                        }
-                                }
-                            }
-                        }
-                        TodaySection(
-                            title: "Habits",
-                            note: "Small steps, daily",
-                            collapsedSummary: habitList.collapsedSummary,
-                            section: .habits,
-                            sections: sections,
-                            linkTitle: habitList.hasHabits ? "See all" : nil,
-                            linkHint: "Opens the Habits sheet",
-                            linkAction: { activeSheet = .allHabits }
-                        ) {
-                            VStack(spacing: 0) {
-                                if habitList.habits.isEmpty {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text("No habits yet")
-                                            .font(.body)
-                                            .foregroundStyle(.secondary)
-                                        Text("Tap + to add one")
-                                            .font(.caption)
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                    .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
-                                    .padding(.horizontal, 14)
-                                    .accessibilityElement(children: .combine)
-                                } else if habitList.todayHabits.isEmpty {
-                                    Text("Nothing due today")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
-                                        .padding(.horizontal, 14)
-                                }
-                                ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
-                                    if index > 0 { rowDivider }
-                                    HabitRow(
-                                        entry: entry,
-                                        onToggle: { habitList.toggleCheckOff(id: entry.id) },
-                                        onEdit: { activeSheet = .editHabit(entry.id) }
-                                    )
-                                }
-                            }
-                        }
-                        TodaySection(
-                            title: "Memos",
-                            note: memoStore.sectionSubtitle,
-                            section: .memos,
-                            sections: sections,
-                            linkTitle: memoStore.hasMemos ? "See all" : nil,
-                            linkAction: { activeSheet = .allMemos }
-                        ) {
-                            VStack(spacing: 0) {
-                                if memoStore.memos.isEmpty {
-                                    Text("Tap + to add a memo")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
-                                        .padding(.horizontal, 14)
-                                }
-                                ForEach(Array(memoStore.memos.enumerated()), id: \.element.id) { index, memo in
-                                    if index > 0 { rowDivider }
-                                    MemoRow(
-                                        memo: memo,
-                                        loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
-                                        loadPhoto: { memoStore.photoData(forPhotoID: $0) },
-                                        onOpen: { activeSheet = .memo(memo.id) },
-                                        onDelete: { requestDelete(of: memo) }
-                                    )
-                                }
-                            }
+                        switch mainView {
+                        case .today:
+                            todaySections(scrollProxy: scrollProxy)
+                        case .month:
+                            topBar
+                                .padding(.bottom, 17)
+                            MonthView(model: month)
                         }
                     }
                     .frame(maxWidth: 680, alignment: .leading)
@@ -184,18 +84,17 @@ struct TodayView: View {
                 .background(Color(uiColor: .systemGroupedBackground))
                 .scrollIndicators(.hidden)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    TodayBottomBar(
+                    MainBottomBar(
+                        selected: mainView,
+                        select: select,
                         addTask: beginTaskDraft,
                         addHabit: { activeSheet = .habitForm },
                         addWrittenMemo: { activeSheet = .composeMemo },
-                        addVoiceMemo: { isShowingRecorder = true },
-                        openCalendar: { activeSheet = .calendar }
+                        addVoiceMemo: { isShowingRecorder = true }
                     )
                 }
                 .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
-                    case .calendar:
-                        CalendarPreviewSheet()
                     case .settings:
                         SettingsSheet(schedule: schedule)
                     case .habitForm:
@@ -323,32 +222,155 @@ struct TodayView: View {
         }
     }
 
+    /// Everything Today shows in the scroll view. It stays a view of the same stores whether or not Month has
+    /// taken its place for a while, so nothing here is recreated by switching.
+    @ViewBuilder
+    private func todaySections(scrollProxy: ScrollViewProxy) -> some View {
+        header
+        summaryStats
+        if schedule.showsSection {
+            TodaySection(title: "Schedule", note: schedule.sectionNote, section: .schedule, sections: sections) {
+                ScheduleSectionContent(schedule: schedule)
+            }
+        }
+        TodaySection(
+            title: "Tasks",
+            note: "For today",
+            collapsedSummary: taskList.collapsedSummary,
+            section: .tasks,
+            sections: sections
+        ) {
+            VStack(spacing: 0) {
+                if taskList.tasks.isEmpty && !isShowingTaskDraft {
+                    Text("No tasks yet")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                        .padding(.horizontal, 14)
+                }
+                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                    if index > 0 { rowDivider }
+                    TaskRow(
+                        task: task,
+                        onToggle: { taskList.toggleTask(id: task.id) },
+                        onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
+                        onDelete: { _ = taskList.deleteTask(id: task.id) }
+                    )
+                }
+                if isShowingTaskDraft {
+                    if !taskList.tasks.isEmpty { rowDivider }
+                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                        .id("task-draft")
+                        .onAppear {
+                            guard revealTaskDraftWhenShown else { return }
+                            revealTaskDraftWhenShown = false
+                            isTaskDraftFocused = true
+                            withAnimation { scrollProxy.scrollTo("task-draft", anchor: .center) }
+                        }
+                }
+            }
+        }
+        TodaySection(
+            title: "Habits",
+            note: "Small steps, daily",
+            collapsedSummary: habitList.collapsedSummary,
+            section: .habits,
+            sections: sections,
+            linkTitle: habitList.hasHabits ? "See all" : nil,
+            linkHint: "Opens the Habits sheet",
+            linkAction: { activeSheet = .allHabits }
+        ) {
+            VStack(spacing: 0) {
+                if habitList.habits.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No habits yet")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                        Text("Tap + to add one")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .accessibilityElement(children: .combine)
+                } else if habitList.todayHabits.isEmpty {
+                    Text("Nothing due today")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                        .padding(.horizontal, 14)
+                }
+                ForEach(Array(habitList.todayHabits.enumerated()), id: \.element.id) { index, entry in
+                    if index > 0 { rowDivider }
+                    HabitRow(
+                        entry: entry,
+                        onToggle: { habitList.toggleCheckOff(id: entry.id) },
+                        onEdit: { activeSheet = .editHabit(entry.id) }
+                    )
+                }
+            }
+        }
+        TodaySection(
+            title: "Memos",
+            note: memoStore.sectionSubtitle,
+            section: .memos,
+            sections: sections,
+            linkTitle: memoStore.hasMemos ? "See all" : nil,
+            linkAction: { activeSheet = .allMemos }
+        ) {
+            VStack(spacing: 0) {
+                if memoStore.memos.isEmpty {
+                    Text("Tap + to add a memo")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                        .padding(.horizontal, 14)
+                }
+                ForEach(Array(memoStore.memos.enumerated()), id: \.element.id) { index, memo in
+                    if index > 0 { rowDivider }
+                    MemoRow(
+                        memo: memo,
+                        loadThumbnail: { memoStore.thumbnailData(forPhotoID: $0) },
+                        loadPhoto: { memoStore.photoData(forPhotoID: $0) },
+                        onOpen: { activeSheet = .memo(memo.id) },
+                        onDelete: { requestDelete(of: memo) }
+                    )
+                }
+            }
+        }
+    }
+
+    /// The wordmark and Settings, which sit above both Today and Month.
+    private var topBar: some View {
+        HStack {
+            Text("kyo")
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .tracking(-0.4)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Kyo")
+            Spacer()
+            Button {
+                activeSheet = .settings
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            // The 44pt tap target overhangs the wordmark's line and the edge, not the layout.
+            .padding(.vertical, -13)
+            .padding(.trailing, -12)
+            .accessibilityLabel("Settings")
+            .accessibilityHint("Opens Settings")
+        }
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("kyo")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .tracking(-0.4)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Kyo")
-                Spacer()
-                Button {
-                    activeSheet = .settings
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 17, weight: .regular))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                // The 44pt tap target overhangs the wordmark's line and the edge, not the layout.
-                .padding(.vertical, -13)
-                .padding(.trailing, -12)
-                .accessibilityLabel("Settings")
-                .accessibilityHint("Opens Settings")
-            }
-            .padding(.bottom, 17)
+            topBar
+                .padding(.bottom, 17)
 
             Text("Today")
                 .font(.largeTitle.weight(.bold))
@@ -440,8 +462,18 @@ struct TodayView: View {
         open(target)
     }
 
+    /// Switches the main content. Month opens on the current month with Today selected every time.
+    private func select(_ view: MainView) {
+        guard view != mainView else { return }
+        if view == .month { month.showCurrentMonth() }
+        mainView = view
+    }
+
     private func beginTaskDraft() {
         let draftWasHidden = isShowingTaskDraft && sections.isCollapsed(.tasks)
+        // Today's field is built again as it comes back from Month, so it takes focus once it's on screen.
+        let comingFromMonth = mainView == .month
+        mainView = .today
         sections.startTaskDraft()
         if !isShowingTaskDraft {
             taskDraft = ""
@@ -449,6 +481,7 @@ struct TodayView: View {
         } else if draftWasHidden {
             revealTaskDraftWhenShown = true
         }
+        if comingFromMonth { revealTaskDraftWhenShown = true }
         isTaskDraftFocused = true
     }
 
@@ -475,7 +508,6 @@ struct TodayView: View {
 }
 
 private enum TodayPreviewSheet: Identifiable {
-    case calendar
     case settings
     case habitForm
     case editHabit(UUID)
@@ -486,7 +518,6 @@ private enum TodayPreviewSheet: Identifiable {
 
     var id: String {
         switch self {
-        case .calendar: "calendar"
         case .settings: "settings"
         case .habitForm: "habitForm"
         case .editHabit(let id): "editHabit:\(id.uuidString)"
@@ -524,30 +555,23 @@ private struct TaskDraftRow: View {
     }
 }
 
-private struct TodayBottomBar: View {
+/// The main content the bottom bar switches between.
+private enum MainView {
+    case today
+    case month
+}
+
+private struct MainBottomBar: View {
+    let selected: MainView
+    let select: (MainView) -> Void
     let addTask: () -> Void
     let addHabit: () -> Void
     let addWrittenMemo: () -> Void
     let addVoiceMemo: () -> Void
-    let openCalendar: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Button(action: {}) {
-                VStack(spacing: 3) {
-                    Image(systemName: "sun.max")
-                        .font(.system(size: 22, weight: .medium))
-                    Text("Today")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundStyle(accentColor)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .background(accentColor.opacity(0.09), in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Today")
-            .accessibilityAddTraits(.isSelected)
+            switchButton(.today, title: "Today", systemImage: "sun.max")
 
             Menu {
                 Button("Task", systemImage: "checkmark.circle", action: addTask)
@@ -566,20 +590,7 @@ private struct TodayBottomBar: View {
             .accessibilityLabel("Add an item")
             .accessibilityHint("Adds a task, a habit or a memo")
 
-            Button(action: openCalendar) {
-                VStack(spacing: 3) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 22, weight: .medium))
-                    Text("Calendar")
-                        .font(.caption2.weight(.semibold))
-                }
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Calendar")
-            .accessibilityHint("Opens the past days preview")
+            switchButton(.month, title: "Month", systemImage: "calendar")
         }
         .padding(6)
         .frame(maxWidth: 430)
@@ -591,72 +602,29 @@ private struct TodayBottomBar: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// A button that shows `view`. The selected one is drawn in the accent on a pill.
+    private func switchButton(_ view: MainView, title: String, systemImage: String) -> some View {
+        let isSelected = selected == view
+        return Button { select(view) } label: {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 22, weight: .medium))
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? accentColor : Color.secondary)
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .background(isSelected ? accentColor.opacity(0.09) : .clear, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("main-view-\(title.lowercased())")
+    }
+
     private var accentColor: Color {
         KyoPalette.accent
-    }
-}
-
-private struct CalendarPreviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedDate = Calendar(identifier: .gregorian).date(
-        from: DateComponents(year: 2026, month: 9, day: 23)
-    ) ?? .now
-
-    private let latestDate = Calendar(identifier: .gregorian).date(
-        from: DateComponents(year: 2026, month: 9, day: 24)
-    ) ?? .now
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Past days")
-                    .font(.title2.bold())
-                Spacer()
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Circle())
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close calendar preview")
-            }
-
-            DatePicker("Choose a day", selection: $selectedDate, in: ...latestDate, displayedComponents: .date)
-                .datePickerStyle(.compact)
-                .font(.body)
-                .tint(KyoPalette.accent)
-                .padding(14)
-                .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                    .font(.headline)
-                    .accessibilityLabel(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
-                Text("No entries in this sketch.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
-            .accessibilityElement(children: .combine)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 22)
-        .padding(.top, 14)
-        .padding(.bottom, 24)
-        .frame(maxWidth: 520, alignment: .topLeading)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Calendar preview")
     }
 }
 

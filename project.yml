@@ -176,6 +176,7 @@ targets:
       - Kyo/FakeCalendarService.swift
       - Kyo/MonthModel.swift
       - Kyo/TaskMonthContent.swift
+      - Kyo/MemoMonthContent.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.tests

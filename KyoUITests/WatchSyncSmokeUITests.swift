@@ -67,13 +67,13 @@ final class WatchSyncSmokeUITests: XCTestCase {
         app.buttons["Save"].tap()
         let circle = app.buttons[name]
         XCTAssertTrue(circle.waitForExistence(timeout: 3))
-        assertCheckboxValue(circle, equals: "Not completed")
+        assertCheckboxValue(circle, equals: "Not checked off")
 
         // Tap the habit row on the Watch: the phone records Today's check-off.
-        waitForValue(of: app.buttons[name], matching: "value BEGINSWITH 'Completed'", timeout: timeout,
+        waitForValue(of: app.buttons[name], matching: "value BEGINSWITH 'Checked off'", timeout: timeout,
                      message: "Tap the habit \"\(name)\" on the paired Watch to check it off")
         // Tap it again: the phone removes the check-off.
-        waitForValue(of: app.buttons[name], matching: "value == 'Not completed'", timeout: timeout,
+        waitForValue(of: app.buttons[name], matching: "value == 'Not checked off'", timeout: timeout,
                      message: "Tap the habit \"\(name)\" on the paired Watch again to uncheck it")
 
         // Clean up so repeated runs don't accumulate habits in the real, shared store.

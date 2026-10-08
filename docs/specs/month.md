@@ -174,7 +174,7 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 ### Accessibility and layout
 
 - Each day cell is a single accessibility element reading the date and what it holds, for example "Tuesday 6 October, 2 events, 3 tasks completed, all habits done, 1 memo". The hollow habit state reads "some habits done". The cell carries the selected trait when selected and says when it is Today.
-- Day summary rows read as they do in their Today sections, with one exception: a habit row's state reads "Checked off" or "Not checked off", the glossary's term, where Today's habit rows currently say "Completed".
+- Day summary rows read as they do in their Today sections: a habit row reads "Checked off" or "Not checked off", a task row "Completed".
 - The header, legend, and Day summary respect Dynamic Type at every size. The grid's weekday row and day cells stop growing at the largest standard size, because seven columns can't hold accessibility-size numbers.
 - iPad uses the same stacked layout within the existing Today width.
 

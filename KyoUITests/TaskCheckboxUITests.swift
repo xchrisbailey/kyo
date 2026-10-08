@@ -143,13 +143,13 @@ final class TaskCheckboxUITests: XCTestCase {
 
         let circle = app.buttons["Stretch"]
         XCTAssertTrue(circle.waitForExistence(timeout: 10))
-        assertValue(circle, equals: "Not completed")
+        assertValue(circle, equals: "Not checked off")
         assertValue(summary, equals: "0 / 1 habits done")
         circle.tap()
-        assertValue(app.buttons["Stretch"], equals: "Completed, 1 day streak")
+        assertValue(app.buttons["Stretch"], equals: "Checked off, 1 day streak")
         assertValue(summary, equals: "1 / 1 habits done")
         app.buttons["Stretch"].tap()
-        assertValue(app.buttons["Stretch"], equals: "Not completed")
+        assertValue(app.buttons["Stretch"], equals: "Not checked off")
 
         // The name opens the form prefilled; the circle still checks off.
         app.buttons["Edit habit: Stretch"].tap()
@@ -163,7 +163,7 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Stretch more"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["Stretch"].exists)
         app.buttons["Stretch more"].tap()
-        assertValue(app.buttons["Stretch more"], equals: "Completed, 1 day streak")
+        assertValue(app.buttons["Stretch more"], equals: "Checked off, 1 day streak")
 
         // Cancelling the confirmation keeps the habit; confirming deletes it and its log.
         app.buttons["Edit habit: Stretch more"].tap()
@@ -200,7 +200,7 @@ final class TaskCheckboxUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Nothing due today"].waitForNonExistence(timeout: 10))
         assertValue(summary, equals: "0 / 1 habits done")
         todayCircle.tap()
-        assertValue(app.buttons["Today only"], equals: "Completed, 1 day streak")
+        assertValue(app.buttons["Today only"], equals: "Checked off, 1 day streak")
         assertValue(summary, equals: "1 / 1 habits done")
     }
 

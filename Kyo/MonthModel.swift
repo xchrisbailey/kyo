@@ -19,6 +19,7 @@ enum MonthMark: Equatable, Sendable {
 /// What tapping a Day summary row opens.
 enum MonthSummaryTarget: Equatable, Sendable {
     case memo(UUID)
+    case event(ScheduleEventID)
 }
 
 /// One line in the Day summary. A row with a target can be tapped; one without is plain.
@@ -26,6 +27,10 @@ struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     let id: String
     let text: String
     var target: MonthSummaryTarget? = nil
+    /// What VoiceOver reads instead of `text`, when the row reads as more than it shows.
+    var accessibilityLabel: String? = nil
+    /// Set on an event row, which draws a time and a calendar dot beside `text`.
+    var event: MonthEventPresentation? = nil
 }
 
 /// What one kind holds on one day: its mark, the phrase a day cell reads aloud for it (such as

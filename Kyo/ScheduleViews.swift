@@ -248,7 +248,7 @@ private struct EventDetailHost: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
 
-private struct EventDetailSheet: View {
+struct EventDetailSheet: View {
     let detail: PresentedEventDetail
 
     var body: some View {

@@ -252,9 +252,7 @@ private struct MonthDaySummaryView: View {
                         .accessibilityAddTraits(.isHeader)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(section.rows) { row in
-                            Text(row.text)
-                                .font(.body)
-                                .foregroundStyle(.primary)
+                            MonthSummaryRowContent(row: row)
                                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                 .padding(.horizontal, 14)
                                 .opening(row, with: onOpen)
@@ -270,15 +268,64 @@ private struct MonthDaySummaryView: View {
     }
 }
 
+/// A row's text, or for an event its calendar dot, time and title as the Schedule draws them.
+private struct MonthSummaryRowContent: View {
+    let row: MonthSummaryRow
+
+    var body: some View {
+        if let event = row.event {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(Color(.sRGB, red: event.color.red, green: event.color.green, blue: event.color.blue, opacity: event.color.alpha))
+                    .opacity(event.isDimmed ? 0.4 : 1)
+                    .frame(width: 9, height: 9)
+                if event.isInProgress {
+                    Text(event.time)
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(KyoPalette.accent)
+                        .lineLimit(1)
+                        .fixedSize()
+                } else {
+                    Text(event.time)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(event.isDimmed ? .tertiary : .secondary)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                Text(row.text)
+                    .font(.body)
+                    .foregroundStyle(event.isDimmed ? .secondary : .primary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            Text(row.text)
+                .font(.body)
+                .foregroundStyle(.primary)
+        }
+    }
+}
+
 private extension View {
     /// Makes a Day summary row a button that opens its target. A row with no target stays as it is.
     @ViewBuilder
     func opening(_ row: MonthSummaryRow, with open: @escaping (MonthSummaryTarget) -> Void) -> some View {
         if let target = row.target {
-            Button { open(target) } label: { contentShape(Rectangle()) }
+            let button = Button { open(target) } label: { contentShape(Rectangle()) }
                 .buttonStyle(.plain)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("month-summary-row-\(row.id)")
+            // A row that reads as more than its text, such as an event, is one element with its own label.
+            if let label = row.accessibilityLabel {
+                button
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(label)
+                    .accessibilityHint(row.event == nil ? "" : "Shows event details")
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("month-summary-row-\(row.id)")
+            } else {
+                button
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("month-summary-row-\(row.id)")
+            }
         } else {
             self
         }

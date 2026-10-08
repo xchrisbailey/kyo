@@ -55,9 +55,14 @@ struct TodayView: View {
         )
         _memoStore = StateObject(wrappedValue: memoStore)
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
-        _schedule = StateObject(wrappedValue: CalendarServiceSelection.makeScheduleStore())
+        // Built on first use, once, because Month reads events through it as well.
+        lazy var schedule = CalendarServiceSelection.makeScheduleStore()
+        _schedule = StateObject(wrappedValue: schedule)
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
-        _month = StateObject(wrappedValue: MonthModel(sources: [MemoMonthContent(store: memoStore)]))
+        _month = StateObject(wrappedValue: MonthModel(sources: [
+            MemoMonthContent(store: memoStore),
+            EventMonthContent(schedule: schedule, calendar: .current),
+        ]))
         self.languageModel = languageModel
     }
 
@@ -75,8 +80,16 @@ struct TodayView: View {
                             MonthView(model: month, onOpen: { target in
                                 switch target {
                                 case .memo(let id): activeSheet = .memo(id)
+                                case .event(let id): schedule.open(id)
                                 }
                             })
+                            // The Schedule section, which shows these on Today, isn't on screen under Month.
+                            .sheet(item: Binding(
+                                get: { schedule.presentedDetail },
+                                set: { if $0 == nil { schedule.dismissDetail() } }
+                            )) { detail in
+                                EventDetailSheet(detail: detail)
+                            }
                         }
                     }
                     .frame(maxWidth: 680, alignment: .leading)

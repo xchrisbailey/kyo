@@ -11,6 +11,7 @@ Names, comments, test names, and on-screen text use the terms in `GLOSSARY.md`. 
 - Write an identifier in kebab-case, leading with what the element is: `schedule-all-day`, `section-header-tasks`.
 - Key a repeated element on a stable value such as an enum's raw value or a model id: `section-header-\(section.rawValue)`, `schedule-calendar-\(calendar.id)`. Display text changes with wording and locale.
 - A UI test finds an element by its identifier, then asserts its label or value. A query on label text is for a test whose subject is that text.
+- `scripts/lint-ui-tests` enforces that rule: it flags a query on a string literal that isn't kebab-case (`app.buttons["Save"]`; `"month-day-\(id)"` passes). Queries that predate it are in `scripts/ui-test-queries.baseline`, so only new ones fail. Mark a deliberate label query with a trailing `// label-query: <reason>`; the reason is required.
 - A control that combines its children into one accessibility element carries the label, value, and identifier itself; tests address the control, never the text inside it.
 
 ## UserDefaults storage keys

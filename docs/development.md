@@ -62,6 +62,7 @@ The checks:
 - `scripts/test KyoTests`;
 - `scripts/test KyoUITests` when the PR touches `Kyo/`, `KyoUITests/` or `Shared/`, and `scripts/test KyoWatchUITests` when it touches `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/` or `Shared/`;
 - `xcodegen generate` with no resulting diff when the PR touches `project.yml`.
+- `scripts/lint-ui-tests` when the PR touches `KyoUITests/` or `KyoWatchUITests/`. It needs no simulator, so `scripts/check` runs it first. See UI test query lint below.
 
 `.github/workflows/ci.yml` runs on every pull request and every push to `main`, on the `xcode-27` GitHub-hosted runner. It:
 
@@ -74,6 +75,8 @@ The checks:
 Each UI test shard builds first (`build-for-testing`) and tests second (`test-without-building`), and nothing boots the simulator in between: xcodebuild boots it for the test. Do not add a step that boots the simulator before the build or before xcodebuild starts. A freshly booted iOS simulator holds the runner's three cores at a load average of several hundred for the rest of the job, which made xcodebuild take two to four minutes to print its invocation and made the build more than twice as slow (#166). The Watch job does not need this: the watchOS simulator is light enough that its job takes under two minutes in all.
 
 `.github/workflows/watch-ui-tests.yml` runs the **KyoWatchUITests** scheme as the **Test KyoWatchUITests** job, on a freshly booted watchOS 27 simulator (a new one is created if the runner has none). It runs only on ready pull requests (a draft skips it, like the UI tests above) that change `KyoWatch/`, `KyoWatchWidgets/`, `KyoWatchUITests/`, `Shared/`, `project.yml`, or the workflow file. It builds signed for the simulator, without `CODE_SIGNING_ALLOWED=NO`, and the first-launch smoke test is the regression test for #150: the job fails if the Watch app is built unsigned. A failed or timed-out run uploads its result bundle as an artifact.
+
+UI test query lint: `scripts/lint-ui-tests` flags UI test element queries on a string literal that isn't kebab-case, the rule in `CODING_STANDARDS.md` under "Accessibility identifiers". It covers string-literal subscripts on the element query types (`buttons`, `staticTexts`, `textFields`, `navigationBars`, `otherElements`, `switches`, and the other XCUIElement query properties), on `descendants(matching:)` and `children(matching:)`, and `matching(identifier:)`; the script's header lists them all. It does not cover predicate queries. `"month-day-\(id)"` passes because its fixed part is kebab-case. A line whose subject is the text ends with `// label-query: <reason>`. The queries that existed when the lint was added are in `scripts/ui-test-queries.baseline`, keyed on file and query text with a count, so edits elsewhere in a file don't disturb it. The lint fails on a query the baseline doesn't allow and names each as `file:line`; when baselined queries are gone it says the baseline can shrink. `scripts/lint-ui-tests --update-baseline` rewrites it and prints what it added or removed; growing the baseline is a deliberate step that belongs in its own reviewed change.
 
 The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the project check fails, install that version, run `xcodegen generate`, and commit the result. A newer push to the same ref cancels the run in progress.
 

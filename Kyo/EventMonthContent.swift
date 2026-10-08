@@ -60,10 +60,12 @@ final class EventMonthContent: MonthContentSource {
         }
         // Events from another month's read, or any read while the Schedule hides events, aren't shown.
         guard schedule.showsEvents, let cached, cached.month == month else { return [:] }
+        // The cache predates the latest calendar selection, so apply it to what is answered.
+        let held = cached.events.filter { schedule.isCalendarVisible($0.calendarID) }
         var result: [Date: MonthKindDay] = [:]
         for day in days {
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { continue }
-            let events = cached.events.filter { Self.event($0, overlaps: day, next) }
+            let events = held.filter { Self.event($0, overlaps: day, upTo: next) }
             if events.isEmpty { continue }
             // All-day events first, each group in the Schedule's time order.
             let ordered = events.filter(\.isAllDay) + events.filter { !$0.isAllDay }
@@ -78,7 +80,7 @@ final class EventMonthContent: MonthContentSource {
 
     /// An event is on a day when it overlaps the span from the day's start to the next day's start.
     /// An event that ends at midnight, as an all-day event does, isn't on the day that follows.
-    private static func event(_ event: ScheduleEvent, overlaps start: Date, _ next: Date) -> Bool {
+    private static func event(_ event: ScheduleEvent, overlaps start: Date, upTo next: Date) -> Bool {
         if event.start == event.end { return event.start >= start && event.start < next }
         return event.start < next && event.end > start
     }

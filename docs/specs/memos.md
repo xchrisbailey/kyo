@@ -238,7 +238,7 @@ These close gaps found while writing this spec, confirmed by the user. (#62)
 - Background recording through a Live Activity without opening Kyo.
 - Implementation. This map produces the two specs only.
 - Indexing memo content in system Spotlight (decided in #63).
-- Filter chips in the Memos sheet, and reaching past memos through the Calendar tab or any past-day view (decided in #58).
+- Filter chips in the Memos sheet, and reaching past memos through the Calendar tab or any past-day view (decided in #58). (The past-day part is superseded by `docs/specs/month.md`; filter chips still stand.)
 - A Siri phrase on the Watch (#62).
 
 ## Further Notes

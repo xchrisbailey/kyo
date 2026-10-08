@@ -5,8 +5,12 @@ A personal daily planner for iPhone, iPad, and Apple Watch that presents one day
 ## Language
 
 **Today**:
-The current day as the user's device clock sees it; the only day Kyo presents.
+The current day as the user's device clock sees it; the only day the user acts on. Other days are looked at through the Month, never changed.
 _Avoid_: Current date, day view
+
+**Month**:
+One calendar month shown as a grid of days, each marked with what it holds: events, tasks completed, habits, and memos. It is an overview on iPhone and iPad; nothing is added or checked off from it, though a day's memos and events can be opened.
+_Avoid_: Calendar, past days, history
 
 **Section**:
 One of the titled groups Today is divided into: Schedule, Tasks, Habits, and Memos.
@@ -15,6 +19,10 @@ _Avoid_: Group, card, list
 **Collapsed section**:
 A section the user has closed down to its header; it stays collapsed until the user expands it. The Schedule showing only its next few events is not this.
 _Avoid_: Folded, hidden, minimized
+
+**Day summary**:
+What the Month shows for the day the user selects: its events, the tasks completed on it, its habits and whether each was checked off, and its memos.
+_Avoid_: Day view, day detail, agenda
 
 **Task**:
 A one-off text entry for a day that the user checks off; unfinished tasks carry forward to the next day.
@@ -65,7 +73,7 @@ The editable text of a voice memo, produced on device; editing it never changes 
 _Avoid_: Caption, dictation text
 
 **Memo history**:
-All memos from days before Today, browsable and searchable.
+All memos from days before Today, browsable and searchable; a past day's memos can also be reached from the Month.
 _Avoid_: Archive, past memos
 
 **Suggested task**:
@@ -73,7 +81,7 @@ A task the on-device AI proposes from a memo; it isn't a task until the user add
 _Avoid_: Action item, AI task
 
 **Event**:
-Something on the user's calendars that falls on Today; Kyo reads it from the device's calendars and never stores or changes it.
+Something on the user's calendars that falls on a particular day; Kyo reads it from the device's calendars and never stores or changes it.
 _Avoid_: Appointment, meeting, calendar item
 
 **Schedule**:

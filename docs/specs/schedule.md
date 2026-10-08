@@ -89,7 +89,7 @@ Add a compact **Schedule** section to the top of Today on iPhone and iPad, below
 - The Apple Watch, widgets, and complications.
 - Creating, editing, or deleting events, and turning an event into a task.
 - Reminders (`EKReminder`).
-- Showing events for any day other than Today, and changes to the bottom bar's Calendar (Past days) sheet, including renaming it.
+- Showing events for any day other than Today, and changes to the bottom bar's Calendar (Past days) sheet, including renaming it. (Superseded by `docs/specs/month.md`, which replaces that sheet with Month and shows events for other days.)
 - An events stat in the summary row.
 - Syncing the calendar selection between devices.
 

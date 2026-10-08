@@ -252,11 +252,7 @@ private struct MonthDaySummaryView: View {
                         .accessibilityAddTraits(.isHeader)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(section.rows) { row in
-                            Text(row.text)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                .padding(.horizontal, 14)
+                            MonthSummaryRowView(row: row)
                                 .opening(row, with: onOpen)
                         }
                     }
@@ -267,6 +263,29 @@ private struct MonthDaySummaryView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A plain line of the Day summary. A habit's line carries its checked state as an indicator, not a control.
+private struct MonthSummaryRowView: View {
+    let row: MonthSummaryRow
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let isChecked = row.isChecked {
+                Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isChecked ? KyoPalette.accent : Color.secondary)
+                    .accessibilityHidden(true)
+            }
+            Text(row.text)
+                .font(.body)
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.horizontal, 14)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(row.text)
+        .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
     }
 }
 

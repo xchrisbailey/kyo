@@ -48,6 +48,7 @@
 		28A0B50D8A8F5E5D3CDACBF5 /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11B539EA593339A160053B1E /* CalendarService.swift */; };
 		299C9B94591A62EDB1BA611B /* WatchRecordingOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93771BC1E2763ADBC9FADF7 /* WatchRecordingOutbox.swift */; };
 		2A2826EC7A4059C3A52F0702 /* MonthTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E056B7B004FFACC5D4B2B1E /* MonthTestSupport.swift */; };
+		2A4622BD91C7B42A10BC72E3 /* HabitMonthContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B4AEE4181F92CF3DFE62408 /* HabitMonthContent.swift */; };
 		2A9A8059819F01B1CF72646E /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CF2F78994555897298356A /* QuickCaptureRouter.swift */; };
 		2B01F54FA7312341F059A6F6 /* MemoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */; };
 		2C46997A778B7FD843955E15 /* EventKitCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6411CA71408C6CCF8053B8F2 /* EventKitCalendarService.swift */; };
@@ -72,6 +73,7 @@
 		3FEC1AEDF83B303AEBB944EE /* CollapsedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9A83FB927DFD8F729E2CAF /* CollapsedSections.swift */; };
 		3FFF0BA93A6DAD85547FDB64 /* ScheduleCalendarsBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A0A39A8A72D94FF3F53A2 /* ScheduleCalendarsBehaviorTests.swift */; };
 		419193232AED3C66EEEB379E /* FakeOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBF78EA45D5D2F56269A70B /* FakeOnDeviceLanguageModel.swift */; };
+		41DACADFBBBDC4278249F571 /* HabitMonthContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B4AEE4181F92CF3DFE62408 /* HabitMonthContent.swift */; };
 		424B1E767B128D8541975C2D /* MonthUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F6F9F8123D66511CA8C7543 /* MonthUITests.swift */; };
 		431AD77E4AEF720F1663DC03 /* KyoWatchWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */; };
 		437830A55569F4D87850D902 /* WatchConnectivityRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44181AF6802CBDE6B962D7C3 /* WatchConnectivityRefreshTests.swift */; };
@@ -152,6 +154,7 @@
 		A9DE6095DA25770AD70441FA /* ApplicationContextEntries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */; };
 		AA76D45CC25C1E4026F13B90 /* WatchCollapsedCount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6824E8E5145BC75D43B92A3F /* WatchCollapsedCount.swift */; };
 		AA86F5B931BB2E90CE0DA447 /* WatchQuickCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B04528AD3397414FE0F9B72 /* WatchQuickCaptureIntents.swift */; };
+		AC734A2532C44D6EEA94F3FD /* MonthHabitsBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA116A37C2873F0CA4450245 /* MonthHabitsBehaviorTests.swift */; };
 		AE1B3611A1BA6D196C2AB2A0 /* KyoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DB59904B88906DE30C20F7 /* KyoApp.swift */; };
 		B192ECBCFB12B4A8B99EEBF2 /* KyoWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 687E3948210348853E76970C /* KyoWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B19927D76989AA18E28B16C7 /* FakeCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61105DE0FC56426638108B8B /* FakeCalendarService.swift */; };
@@ -327,6 +330,7 @@
 		11B539EA593339A160053B1E /* CalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarService.swift; sourceTree = "<group>"; };
 		11FB6B64CF0C4AF772416F83 /* MemoPhotoEncoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoPhotoEncoding.swift; sourceTree = "<group>"; };
 		1214E3D080AE96B4E6434CE0 /* ApplicationContextEntriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntriesTests.swift; sourceTree = "<group>"; };
+		1B4AEE4181F92CF3DFE62408 /* HabitMonthContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitMonthContent.swift; sourceTree = "<group>"; };
 		1BB969864AACBC086BCA311A /* WatchQuickCaptureRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchQuickCaptureRoutingTests.swift; sourceTree = "<group>"; };
 		1D5BA4EF0079CD5F3796540F /* MonthGridBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthGridBehaviorTests.swift; sourceTree = "<group>"; };
 		1F6F9F8123D66511CA8C7543 /* MonthUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthUITests.swift; sourceTree = "<group>"; };
@@ -457,6 +461,7 @@
 		F68ADF8A6CA8C0698647759B /* HabitOverviewsBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitOverviewsBehaviorTests.swift; sourceTree = "<group>"; };
 		F7528978887517D357C79DAE /* KyoSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoSchema.swift; sourceTree = "<group>"; };
 		F93771BC1E2763ADBC9FADF7 /* WatchRecordingOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecordingOutbox.swift; sourceTree = "<group>"; };
+		FA116A37C2873F0CA4450245 /* MonthHabitsBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthHabitsBehaviorTests.swift; sourceTree = "<group>"; };
 		FAC66624B9DD030335619A70 /* MemoStoreBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoStoreBehaviorTests.swift; sourceTree = "<group>"; };
 		FC2C817099EDA1E5B3603072 /* KyoWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = KyoWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD5DB96192F2D8F5819939D2 /* HabitEditDeleteBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitEditDeleteBehaviorTests.swift; sourceTree = "<group>"; };
@@ -491,6 +496,7 @@
 				61105DE0FC56426638108B8B /* FakeCalendarService.swift */,
 				77E9F4B5905CE4F84E22931F /* FoundationOnDeviceLanguageModel.swift */,
 				E63C88A027256BF6CE3A9B41 /* HabitForm.swift */,
+				1B4AEE4181F92CF3DFE62408 /* HabitMonthContent.swift */,
 				49171BC6E523AC917116A4A1 /* HabitsSheet.swift */,
 				BC3154A4134A4706566E8ED8 /* HabitStatusLabel.swift */,
 				32DB59904B88906DE30C20F7 /* KyoApp.swift */,
@@ -547,6 +553,7 @@
 				89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */,
 				8B3E850B22540B9760D2F31A /* MonthContentBehaviorTests.swift */,
 				1D5BA4EF0079CD5F3796540F /* MonthGridBehaviorTests.swift */,
+				FA116A37C2873F0CA4450245 /* MonthHabitsBehaviorTests.swift */,
 				844B035562982F34F16DF763 /* MonthMemoBehaviorTests.swift */,
 				A9273470A8CFB02357394716 /* MonthNavigationBehaviorTests.swift */,
 				EB9A3A6F407499643C968FF7 /* MonthTasksBehaviorTests.swift */,
@@ -957,6 +964,7 @@
 				8EC17287A176EC0847C2D183 /* Habit.swift in Sources */,
 				B867EA9FAA392802D2CA475D /* HabitContentPersistence.swift in Sources */,
 				62ED38A233FF48A3D0C14E57 /* HabitForm.swift in Sources */,
+				41DACADFBBBDC4278249F571 /* HabitMonthContent.swift in Sources */,
 				E0778B0A0F1BDC869D3473B3 /* HabitRecord.swift in Sources */,
 				F3B69488F9E650B98729AF62 /* HabitStatusLabel.swift in Sources */,
 				C6B1E57F8AAE309F530ECF57 /* HabitSync.swift in Sources */,
@@ -1036,6 +1044,7 @@
 				24BE70A4FF43BA2AC1EA0E7E /* HabitContentPersistence.swift in Sources */,
 				5425EDE14012EAAE06A22435 /* HabitEditDeleteBehaviorTests.swift in Sources */,
 				81D40155F9E0F759D082E477 /* HabitListBehaviorTests.swift in Sources */,
+				2A4622BD91C7B42A10BC72E3 /* HabitMonthContent.swift in Sources */,
 				3D1BC4478D9F78530BD99848 /* HabitOrderBehaviorTests.swift in Sources */,
 				0ECA71E0923B20933ABEFB88 /* HabitOverviewsBehaviorTests.swift in Sources */,
 				78ABE36BFA9B2A346B63F936 /* HabitRecord.swift in Sources */,
@@ -1067,6 +1076,7 @@
 				C81EBA3C8264EEFB2218344B /* MemoTaskSuggestions.swift in Sources */,
 				142DA2DF67516D358AC9857D /* MonthContentBehaviorTests.swift in Sources */,
 				0F3F0349DCF30D29B94A505C /* MonthGridBehaviorTests.swift in Sources */,
+				AC734A2532C44D6EEA94F3FD /* MonthHabitsBehaviorTests.swift in Sources */,
 				044A3CA35FBCE1B0D89C81EF /* MonthMemoBehaviorTests.swift in Sources */,
 				D100E7E0DC58E7818A6956DF /* MonthModel.swift in Sources */,
 				65588CC40BB0CEF9F0069C9B /* MonthNavigationBehaviorTests.swift in Sources */,

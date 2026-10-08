@@ -207,6 +207,19 @@ struct Habit: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
+    /// Whether the habit counted as due on `date` for Month: judged by the schedule it had that
+    /// day, never for a weekly target, and not before the day it was created. Unlike `isDue`,
+    /// which Today, streaks and the Watch rely on, this describes what a past day asked of the habit.
+    func countedAsDue(on date: Date, calendar: Calendar) -> Bool {
+        let day = TaskCompletionDay(date: date, calendar: calendar)
+        guard !Self.isEarlier(day, resolvedCreatedOn(fallback: day)) else { return false }
+        switch schedule(on: date, calendar: calendar) {
+        case .everyDay: return true
+        case .weeklyTarget: return false
+        case .weekdays(let days): return days.contains(calendar.component(.weekday, from: date))
+        }
+    }
+
     /// The target that judges the calendar week containing `date`: the one in effect on the
     /// week's last day (for the current week, the one in effect Today). `nil` if that
     /// schedule isn't a weekly target.

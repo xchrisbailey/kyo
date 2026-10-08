@@ -12,7 +12,9 @@
 #   - both build checks and `scripts/test KyoTests`, always;
 #   - `scripts/test KyoUITests` when Kyo/, KyoUITests/ or Shared/ changed;
 #   - `scripts/test KyoWatchUITests` when KyoWatch/, KyoWatchWidgets/, KyoWatchUITests/ or Shared/ changed;
-#   - `xcodegen generate` leaving no diff when project.yml changed.
+#   - `xcodegen generate` leaving no diff when project.yml changed;
+#   - `scripts/lint-ui-tests` when KyoUITests/ or KyoWatchUITests/ changed; it needs no simulator, so
+#     it runs first.
 #
 # `--all` runs every check whatever changed. `--quick` runs only the builds and KyoTests; the record
 # says the UI suites were skipped.
@@ -104,6 +106,7 @@ matched_prefixes() {
 
 ios_paths="$(matched_prefixes Kyo KyoUITests Shared)"
 watch_paths="$(matched_prefixes KyoWatch KyoWatchWidgets KyoWatchUITests Shared)"
+ui_test_paths="$(matched_prefixes KyoUITests KyoWatchUITests)"
 project_paths=""
 if grep -qx 'project.yml' <<<"$changed"; then project_paths="project.yml"; fi
 
@@ -123,7 +126,7 @@ run_check() {
   echo "scripts/check: [$index] $name"
   "$@" >"$log" 2>&1
   status=$?
-  result="$(grep -E '^\*\* (TEST |BUILD |XCODEGEN )?(SUCCEEDED|FAILED) \*\*' "$log" | tail -n 1 || true)"
+  result="$(grep -E '^\*\* (TEST |BUILD |XCODEGEN |LINT )?(SUCCEEDED|FAILED) \*\*' "$log" | tail -n 1 || true)"
   count="$(grep -E 'Executed [0-9]+ tests?, with' "$log" | tail -n 1 | sed -E 's/^[[:space:]]+//; s/ in [0-9.]+ \(.*$//' || true)"
   if [[ $status -eq 0 && "$result" == *SUCCEEDED* ]]; then
     verdict="PASS"
@@ -190,6 +193,8 @@ if [[ "$mode" == "quick" ]]; then
   partial=1 # a quick run is never a PASS, even when the paths didn't call for a UI suite
 fi
 
+plan "scripts/lint-ui-tests" "$ui_test_paths" "no changes under KyoUITests/ or KyoWatchUITests/" lint-ui-tests \
+  scripts/lint-ui-tests
 plan "xcodegen generate leaves no diff" "$project_paths" "project.yml unchanged" xcodegen xcodegen_check
 run_check "build Kyo" "$always" build-kyo \
   xcodebuild -project Kyo.xcodeproj -scheme Kyo -sdk iphonesimulator \

@@ -10,6 +10,14 @@ final class MonthUITests: XCTestCase {
         return String(format: "month-day-%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
+    /// A cell identifier for a day of the month `monthOffset` months from the current one.
+    private func dayIdentifier(inMonthOffset monthOffset: Int, day: Int) -> String {
+        let calendar = Calendar.current
+        var parts = calendar.dateComponents([.year, .month], from: calendar.date(byAdding: .month, value: monthOffset, to: .now) ?? .now)
+        parts.day = day
+        return String(format: "month-day-%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
     func testSwitchingToMonthAndBackKeepsTodaysTypedTaskAndOpensMonthOnTodayEachTime() throws {
         let app = launchApp()
         let today = app.buttons["main-view-today"]
@@ -120,6 +128,49 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         let isShown = NSPredicate(format: "isHittable == true")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: isShown, object: field)], timeout: 10), .completed)
+    }
+
+    func testChevronsAndSwipesMoveBetweenMonthsAndJumpBackReturnsToTodayWithTheCurrentMonth() throws {
+        let app = launchApp()
+        let month = app.buttons["main-view-month"]
+        XCTAssertTrue(month.waitForExistence(timeout: 10))
+        month.tap()
+        let header = app.staticTexts["month-header"]
+        XCTAssertTrue(header.waitForExistence(timeout: 10))
+        let currentHeader = header.label
+        let previous = app.buttons["month-previous"]
+        let next = app.buttons["month-next"]
+        let jumpBack = app.buttons["month-jump-back"]
+        XCTAssertEqual(previous.label, "Previous month")
+        XCTAssertEqual(next.label, "Next month")
+        XCTAssertFalse(jumpBack.exists, "the current month needs no way back")
+
+        next.tap()
+        XCTAssertNotEqual(header.label, currentHeader)
+        XCTAssertTrue(jumpBack.waitForExistence(timeout: 10))
+        XCTAssertEqual(jumpBack.label, "Back to current month")
+        XCTAssertFalse(app.buttons[dayIdentifier()].exists, "Today's cell is in the other month")
+        XCTAssertTrue(app.buttons[dayIdentifier(inMonthOffset: 1, day: 1)].isSelected, "the 1st stands in for a selection outside the month")
+
+        // A swipe on the grid moves a month too: left is forward, right is back.
+        let grid = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'month-day-'")).firstMatch
+        XCTAssertTrue(grid.exists)
+        let shownAfterNext = header.label
+        grid.swipeLeft()
+        XCTAssertNotEqual(header.label, shownAfterNext)
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'month-day-'")).firstMatch.swipeRight()
+        XCTAssertEqual(header.label, shownAfterNext)
+
+        previous.tap()
+        XCTAssertEqual(header.label, currentHeader)
+        XCTAssertFalse(jumpBack.exists)
+
+        previous.tap()
+        XCTAssertTrue(jumpBack.waitForExistence(timeout: 10))
+        jumpBack.tap()
+        XCTAssertEqual(header.label, currentHeader)
+        XCTAssertFalse(jumpBack.exists)
+        XCTAssertTrue(app.buttons[dayIdentifier()].isSelected)
     }
 
     private func addTask(_ title: String, to app: XCUIApplication) {

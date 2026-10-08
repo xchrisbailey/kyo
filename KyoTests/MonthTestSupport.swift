@@ -8,7 +8,7 @@ import Foundation
 final class MonthHarness {
     let calendar: Calendar
     let locale = Locale(identifier: "en_US")
-    private let now: Date
+    private(set) var now: Date
 
     /// A harness whose clock starts at the given moment, noon unless said otherwise.
     init(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12, firstWeekday: Int = 1) {
@@ -24,9 +24,35 @@ final class MonthHarness {
         calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
     }
 
-    func makeModel(sources: [any MonthContentSource] = []) -> MonthModel {
-        MonthModel(now: { self.now }, calendar: calendar, locale: locale, sources: sources)
+    /// Moves the clock to `moment`, as the passing of time does.
+    func setNow(_ moment: Date) { now = moment }
+
+    func makeModel(
+        sources: [any MonthContentSource] = [],
+        sleep: @escaping MonthModel.Sleep = { seconds in try await Task.sleep(for: .seconds(seconds)) }
+    ) -> MonthModel {
+        MonthModel(now: { self.now }, calendar: calendar, locale: locale, sources: sources, sleep: sleep)
     }
+}
+
+/// Stands in for `Task.sleep`: records each requested duration and waits until the test wakes it.
+@MainActor
+final class MonthSleepRecorder {
+    private(set) var durations: [TimeInterval] = []
+    private let wakeStream: AsyncStream<Void>
+    private let wakeContinuation: AsyncStream<Void>.Continuation
+
+    init() {
+        (wakeStream, wakeContinuation) = AsyncStream.makeStream()
+    }
+
+    func sleep(_ seconds: TimeInterval) async throws {
+        durations.append(seconds)
+        for await _ in wakeStream { return }
+        throw CancellationError()
+    }
+
+    func wake() { wakeContinuation.yield() }
 }
 
 /// Stands in for one kind's real content, which later tickets supply from the stores. Tests set

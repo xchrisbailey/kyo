@@ -105,7 +105,7 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - **Habit list (modified).** It already exposes every habit with its log and the habit schedule it had on a given day. Its existing due check can't be used as it stands: it answers "due" for a weekly-target habit on every day, and for any habit on days before it was created. Month needs a read-only query that answers whether a habit counted as due on a day under the Marks rules below. Today's behavior, streaks, and week progress must not change.
 - **Schedule model (modified).** Gains a query for the visible events in a date range. It applies the same rules the Schedule section uses: no events unless **Show schedule** is on and access is full, and hidden calendars filtered out. Month gets events only through this query, so the selection rule lives in one place.
 - **Calendar service (unchanged).** It already fetches events for any range and has a fake.
-- **Today view and bottom bar (modified).** The bar switches the main content between Today and Month. The placeholder sheet is removed.
+- **Today view and bottom bar (modified).** The bar switches the main content between Today and Month. The placeholder sheet is removed. The stores, the day-rollover and calendar-change observation, the recorder, and quick-capture handling that the Today view owns now must keep running while Month is showing, and switching back must not recreate them or lose Today's state, including a typed, unsubmitted task.
 - **Watch Today view (modified).** The Calendar button and its "Past days" placeholder are removed.
 
 ### Reaching Month
@@ -119,15 +119,16 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 
 - **Task** switches to Today and focuses the task field, as it does now.
 - **Habit**, **Written memo**, and **Voice memo** open their sheets over Month. Dismissing one leaves the user on Month, and the marks and Day summary update.
-- Quick-capture shortcuts and Watch behavior are unchanged.
+- Quick-capture shortcuts work while Month is showing exactly as they do on Today: a voice or written memo capture opens over Month straight away, and a task capture switches to Today and focuses the task field. Watch behavior is unchanged.
 
 ### The grid
 
-- One calendar month, with a header showing the month and year.
+- One calendar month, with a header showing the month and year. The grid holds only that month's days: cells before the 1st and after the last day are blank, with no dates, marks, or selection.
 - Weeks start on the device locale's first weekday, the same rule the **Weekly target** uses. A weekday header row sits above the grid.
 - Move between months by swiping horizontally or with chevrons beside the header. When any month other than the current one is showing, a control jumps back to the current month and selects Today.
 - Today's cell is highlighted as the current day. The selected day has its own highlight, distinct from Today's.
-- If the day rolls over while Month is showing, the current-day highlight moves to the new Today. The selection stays where the user put it.
+- If the day rolls over while Month is showing, the current-day highlight moves to the new Today. The selection stays where the user put it. If the new Today is in the next month, the shown month stays and the jump-back control appears.
+- Marks and the Day summary always follow the shown month and the selected day, whichever month that is.
 
 ### Marks
 
@@ -144,22 +145,23 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
   - A habit isn't due before the day it was created, so creating a habit never turns earlier days hollow.
   - Deleting a habit deletes its log, so its marks and Day summary rows disappear from past days. This is expected; Month keeps nothing of its own.
 - **Memos**: marked when the day has at least one memo.
-- Future days can only ever carry the event mark.
+- Days after Today can only ever carry the event mark. A task, check-off, or memo recorded against a later day (after a time zone or clock change) produces no mark and no row until that day is Today or earlier.
+- A day counts as holding an event when the event overlaps the span from the start of that day to the start of the next, so an all-day event that ends at midnight doesn't mark the following day.
 - Exact colors are chosen at implementation and reviewed from the PR screenshot, in light and dark.
 
 ### Events and calendar access
 
 - When **Show schedule** is off, or access isn't full, Month shows no event marks, lists no events in the Day summary, and shows no prompt. Connecting stays in Today and Settings.
-- Events are fetched for the range the grid shows. Refetch when the event store reports a change, when the shown month changes, when the app returns to the foreground, and when the Settings selection changes.
+- Events are fetched for the shown month. Refetch when the event store reports a change, when the shown month changes, when the app returns to the foreground, and when the Settings selection changes.
 - Kyo still stores no events.
 
 ### Day summary
 
 - Shown below the grid for the selected day, headed by that day's date.
 - It lists, in this order:
-  - **Events**: all of the day's visible events in time order, all-day first, shown as Schedule rows are, without the "Now" marker on days other than Today. Tapping one opens the system event detail for that day's occurrence, as the Schedule does.
+  - **Events**: all of the day's visible events in time order, all-day first, shown as Schedule rows are. On Today they match the Schedule exactly, including "Now", "Until", and dimming of ended events. On any other day each timed row shows its start time, is never dimmed, and is never read as ended, since those are relative to Today. Tapping one opens the system event detail for that day's occurrence, as the Schedule does.
   - **Tasks**: the tasks completed on that day. Plain rows, not tappable, with no checkbox control.
-  - **Habits**: every habit due that day with whether it was checked off, plus any weekly-target habit checked off that day. A habit that was due and not checked off is shown as unchecked. Plain rows, not tappable. An unchecked habit is the absence of a check-off, not a record of its own.
+  - **Habits**: every habit due that day with whether it was checked off, plus any other habit checked off that day: a weekly-target habit, or one whose schedule no longer made it due that day. Every check-off that counts toward the mark has a row. A habit that was due and not checked off is shown as unchecked. Plain rows, not tappable. An unchecked habit is the absence of a check-off, not a record of its own.
   - **Memos**: the day's memos. Tapping one opens it in the same sheet the Memos sheet uses, with whatever that sheet allows: editing, deleting, photos, and Memo → Task, which still adds the task to Today.
 - A kind with nothing for the day is left out.
 - Today's Day summary follows the same rules: events, tasks completed so far, habits with their state, and memos. Open tasks appear only in the Today view.
@@ -191,9 +193,10 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
   - Moving to the previous and next month, across a year boundary, and jumping back to the current month.
   - Day rollover while Month is showing: the Today highlight moves and the selection stays.
   - Recomputing after a task is completed or uncompleted, a habit is checked off or unchecked, a memo is added, edited, or deleted, and the event store reports a change.
+- Row order in the Day summary and phrase order in the day cell's VoiceOver label are fixed (events, tasks, habits, memos) and asserted.
 - The new read-only queries on the task list, memo store, and Schedule model are exercised through the Month model, not with tests of their own, unless a rule can't be reached from there.
 - Prior art: the Schedule's behavior tests (fake calendar service, fixed UTC calendar and locale, a clock closure, and a poll-until helper for refreshes that finish on their own tasks); the habit streak behavior tests (an in-memory container, a mutable clock moved day by day to build a log); the memo history behavior tests for memos grouped by day.
-- UI tests stay few, in line with the UI test audit: one that switches to Month and back, and one that selects a seeded day and opens a memo from its Day summary. They use the existing launch variables for the in-memory store and the fake calendar.
+- UI tests stay few, in line with the UI test audit: one that switches to Month and back, and one that adds a memo on Today, switches to Month, and opens it from Today's Day summary. They use the existing launch variables for the in-memory store and the fake calendar; no new seeding variable is added, so past days are covered by the behavior tests.
 - Check by hand on a real device: swiping between months with a large calendar account, and Dynamic Type at accessibility sizes.
 - Build both app schemes.
 
@@ -215,5 +218,6 @@ Replace the placeholder sheet with **Month**, a second main view on iPhone and i
 - This spec overturns three earlier out-of-scope decisions: events for any day other than Today and the bottom bar's Calendar sheet (Schedule spec), browsing past days (Habits spec), and reaching past memos through the Calendar tab or any past-day view (#58, Memos spec). Checking off past days and a per-habit history view remain out of scope.
 - It respects the existing ADRs: the phone stays authoritative for tasks and habits (0001–0003), and nothing new is stored or synced (0004, 0005).
 - No ADR was written. This is a product-scope change that is easy to reverse and is explained by this spec and `GLOSSARY.md`.
+- An adversarial pass on the ticket breakdown tightened this spec: blank cells outside the month, event rows on other days, the future-day rule, habits checked off on a day they weren't due, and keeping Today's work running under Month.
 - Decisions were made in one grilling session. The ticket breakdown is done separately.
 - No implementation agents should be launched by this spec-writing request. Delegation follows `docs/agents/orchestration.md`.

@@ -156,10 +156,6 @@ struct ScheduleSectionContent: View {
 private struct ScheduleRow: View {
     let row: ScheduleRowPresentation
     let open: () -> Void
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    /// The width the title and location column is given, and the width the location needs on one line.
-    @State private var textWidth: CGFloat = 0
-    @State private var locationWidth: CGFloat = .infinity
 
     private var isPast: Bool { row.state == .past }
     private var color: ScheduleColor { row.event.calendarColor }
@@ -172,21 +168,7 @@ private struct ScheduleRow: View {
                     .opacity(isPast ? 0.4 : 1)
                     .frame(width: 9, height: 9)
                 timeLabel
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.event.displayTitle)
-                        .font(.body)
-                        .foregroundStyle(isPast ? .secondary : .primary)
-                        .lineLimit(2)
-                    if showsLocation, let location = row.location {
-                        Text(location)
-                            .font(.footnote)
-                            .foregroundStyle(isPast ? .tertiary : .secondary)
-                            .lineLimit(1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
-                .background { locationMeasure }
+                EventTitleAndLocation(title: row.event.displayTitle, location: row.location, isPast: isPast)
             }
             .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
             .padding(.horizontal, 14)
@@ -197,19 +179,6 @@ private struct ScheduleRow: View {
         .accessibilityLabel(row.accessibilityLabel)
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("Shows event details")
-    }
-
-    /// An invisible copy of the location at its natural one-line width.
-    @ViewBuilder
-    private var locationMeasure: some View {
-        if let location = row.location {
-            Text(location)
-                .font(.footnote)
-                .lineLimit(1)
-                .fixedSize()
-                .hidden()
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { locationWidth = $0 }
-        }
     }
 
     @ViewBuilder
@@ -228,15 +197,59 @@ private struct ScheduleRow: View {
                 .fixedSize()
         }
     }
+}
 
-    /// Whether the location is shown: only once measured to fit on one line, and never at
-    /// accessibility sizes. Until it's measured it stays out, so a long one can't widen the row.
+/// An event's title with its location on a second line. The location is shown only once measured to fit
+/// on one line, and never at accessibility sizes; until it's measured it stays out, so a long one can't
+/// widen the row. The Schedule's rows and Month's Day summary rows both draw it.
+struct EventTitleAndLocation: View {
+    let title: String
+    /// The trimmed location, when there is one.
+    let location: String?
+    /// Whether the event has ended, which dims the text.
+    let isPast: Bool
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The width the title and location column is given, and the width the location needs on one line.
+    @State private var textWidth: CGFloat = 0
+    @State private var locationWidth: CGFloat = .infinity
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(isPast ? .secondary : .primary)
+                .lineLimit(2)
+            if showsLocation, let location {
+                Text(location)
+                    .font(.footnote)
+                    .foregroundStyle(isPast ? .tertiary : .secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
+        .background { locationMeasure }
+    }
+
+    /// An invisible copy of the location at its natural one-line width.
+    @ViewBuilder
+    private var locationMeasure: some View {
+        if let location {
+            Text(location)
+                .font(.footnote)
+                .lineLimit(1)
+                .fixedSize()
+                .hidden()
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { locationWidth = $0 }
+        }
+    }
+
     private var showsLocation: Bool {
-        row.location != nil && !dynamicTypeSize.isAccessibilitySize && locationWidth <= textWidth
+        location != nil && !dynamicTypeSize.isAccessibilitySize && locationWidth <= textWidth
     }
 }
 
-private extension ScheduleColor {
+extension ScheduleColor {
     var swiftUIColor: Color { Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha) }
 }
 

@@ -22,8 +22,8 @@ final class MemoMonthContent: MonthContentSource {
             let memos = store.memos(on: day)
             return (day, MonthKindDay(
                 mark: .filled,
-                phrase: memos.count == 1 ? "1 memo" : "\(memos.count) memos",
-                rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, target: .memo($0.id)) }
+                phrase: MonthKindDay.countPhrase(memos.count, one: "memo", other: "memos"),
+                rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, kind: .memo($0.id)) }
             ))
         })
     }

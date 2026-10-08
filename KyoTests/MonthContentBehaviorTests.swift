@@ -5,14 +5,8 @@ import XCTest
 /// Today is Tuesday 6 October 2026. The orders asserted here (marks, spoken phrases, Day summary
 /// sections) are fixed whatever order the sources arrive in.
 @MainActor
-final class MonthContentBehaviorTests: XCTestCase {
+final class MonthContentBehaviorTests: MonthTestCase {
     private let harness = MonthHarness(2026, 10, 6)
-
-    private func row(_ text: String) -> MonthSummaryRow { MonthSummaryRow(id: text, text: text) }
-
-    private func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
-        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
-    }
 
     private func standIn(_ kind: MonthKind, _ days: [Int: MonthKindDay]) -> StandInMonthContent {
         let source = StandInMonthContent(kind)

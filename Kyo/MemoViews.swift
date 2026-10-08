@@ -190,6 +190,7 @@ struct WrittenMemoComposeSheet: View {
                         .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
                         .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityLabel("Memo text")
+                        .accessibilityIdentifier("memo-compose-text")
                     MemoPendingPhotos(
                         photos: photos,
                         onAdd: { photo in
@@ -208,6 +209,7 @@ struct WrittenMemoComposeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("memo-compose-cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -215,6 +217,7 @@ struct WrittenMemoComposeSheet: View {
                         dismiss()
                     }
                     .fontWeight(.semibold)
+                    .accessibilityIdentifier("memo-compose-save")
                 }
             }
         }
@@ -396,6 +399,7 @@ struct MemoCardSheet: View {
                 .padding(.vertical, -9)
                 .padding(.trailing, -9)
                 .accessibilityLabel("Close memo")
+                .accessibilityIdentifier("memo-close")
             }
             .font(.footnote.weight(.medium))
             .foregroundStyle(KyoPalette.accent)
@@ -500,6 +504,7 @@ struct MemoCardSheet: View {
             .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
             .background(MemoPresentation.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityLabel("Memo text")
+            .accessibilityIdentifier("memo-text")
     }
 
     @ViewBuilder

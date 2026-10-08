@@ -3,7 +3,7 @@ import XCTest
 /// Events in Month, seen through the Month model on a real Schedule model over the fake calendar
 /// service. Today is Tuesday 6 October 2026, noon, unless a test moves the clock.
 @MainActor
-final class MonthEventBehaviorTests: XCTestCase {
+final class MonthEventBehaviorTests: MonthTestCase {
     private let harness = MonthHarness(2026, 10, 6)
 
     private struct Fixture {
@@ -34,12 +34,14 @@ final class MonthEventBehaviorTests: XCTestCase {
     }
 
     private func timed(
-        _ title: String, on day: Int, from startHour: Int, to endHour: Int, month: Int = 10, calendarID: String = "work"
+        _ title: String, on day: Int, from startHour: Int, to endHour: Int, month: Int = 10, calendarID: String = "work",
+        location: String? = nil
     ) -> ScheduleEvent {
         let start = harness.date(2026, month, day, hour: startHour)
         return ScheduleEvent(
             id: ScheduleEventID(eventID: title, occurrenceDate: start), title: title,
-            start: start, end: harness.date(2026, month, day, hour: endHour), calendarID: calendarID, calendarTitle: "Work"
+            start: start, end: harness.date(2026, month, day, hour: endHour), location: location,
+            calendarID: calendarID, calendarTitle: "Work"
         )
     }
 
@@ -58,10 +60,6 @@ final class MonthEventBehaviorTests: XCTestCase {
         model.selectedSummary.sections.first { $0.kind == .events }?.rows ?? []
     }
 
-    private func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
-        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
-    }
-
     private func eventMark(onDay number: Int, in model: MonthModel) throws -> MonthMark {
         let index = try XCTUnwrap(MonthKind.allCases.firstIndex(of: .events))
         return try day(number, in: model).marks[index]
@@ -74,15 +72,6 @@ final class MonthEventBehaviorTests: XCTestCase {
 
     private func times(of rows: [MonthSummaryRow]) -> [String] {
         rows.compactMap { plain($0.event?.time) }
-    }
-
-    /// Polls until `condition` holds, since events are fetched on their own tasks.
-    private func eventually(_ message: String = "condition", _ condition: @MainActor () throws -> Bool) async rethrows {
-        for _ in 0..<500 {
-            if try condition() { return }
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Timed out waiting for \(message)")
     }
 
     // MARK: Marks
@@ -148,6 +137,25 @@ final class MonthEventBehaviorTests: XCTestCase {
         XCTAssertEqual(try eventMark(onDay: 8, in: f.model), .filled)
         f.model.select(harness.date(2026, 10, 9, hour: 0))
         XCTAssertEqual(eventRows(in: f.model), [])
+    }
+
+    func testHidingACalendarRemovesItsMarksAndRowsAtOnceWithoutWaitingForTheNextRead() async throws {
+        let f = await makeFixture(events: [
+            timed("Standup", on: 6, from: 13, to: 14, calendarID: "work"),
+            timed("Movie", on: 6, from: 19, to: 21, calendarID: "personal"),
+            timed("Dinner", on: 9, from: 19, to: 21, calendarID: "personal"),
+        ])
+        try await eventually("the marks and rows") {
+            try eventMark(onDay: 9, in: f.model) == .filled && eventRows(in: f.model).count == 2
+        }
+
+        f.schedule.setCalendar("personal", visible: false)
+
+        // Nothing is awaited: the read that setCalendar starts hasn't landed yet.
+        XCTAssertEqual(try eventMark(onDay: 9, in: f.model), .empty)
+        XCTAssertEqual(try eventMark(onDay: 6, in: f.model), .filled, "the visible calendar's event keeps its mark")
+        XCTAssertEqual(eventRows(in: f.model).map(\.text), ["Standup"])
+        XCTAssertEqual(try day(6, in: f.model).accessibilityLabel, "Tuesday, October 6, Today, 1 event")
     }
 
     func testWithShowScheduleOffThereAreNoMarksNoRowsAndNothingIsRead() async throws {
@@ -305,6 +313,34 @@ final class MonthEventBehaviorTests: XCTestCase {
         XCTAssertEqual(id, tuesday.id)
         XCTAssertEqual(f.schedule.presentedDetail?.id, tuesday.id)
         XCTAssertEqual(f.service.fakeEventDetails.requestedIDs, [tuesday.id])
+    }
+
+    // MARK: Location
+
+    func testTodaysRowCarriesTheTrimmedLocationTheScheduleRowDoes() async throws {
+        let f = await makeFixture(events: [
+            timed("Review", on: 6, from: 13, to: 14, location: "  Room 4 \n"),
+            timed("Call", on: 6, from: 15, to: 16, location: "   "),
+            timed("Lunch", on: 6, from: 17, to: 18),
+        ])
+        try await eventually("the rows") { eventRows(in: f.model).count == 3 }
+
+        let rows = eventRows(in: f.model)
+        XCTAssertEqual(rows.map(\.text), ["Review", "Call", "Lunch"])
+        XCTAssertEqual(rows.map { $0.event?.location }, ["Room 4", nil, nil])
+        XCTAssertEqual(rows.map { $0.event?.location }, f.schedule.allTimedRows.map(\.location))
+    }
+
+    func testAnotherDaysRowCarriesTheTrimmedLocation() async throws {
+        let f = await makeFixture(events: [
+            timed("Review", on: 8, from: 9, to: 10, location: " Room 4 "),
+            timed("Call", on: 8, from: 11, to: 12, location: ""),
+        ])
+        try await eventually("the mark") { try eventMark(onDay: 8, in: f.model) == .filled }
+
+        f.model.select(harness.date(2026, 10, 8, hour: 0))
+
+        XCTAssertEqual(eventRows(in: f.model).map { $0.event?.location }, ["Room 4", nil])
     }
 
     // MARK: Refetching

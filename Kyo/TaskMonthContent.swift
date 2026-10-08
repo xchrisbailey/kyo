@@ -23,8 +23,8 @@ struct TaskMonthContent: MonthContentSource {
             let tasks = taskList.tasksCompleted(on: day)
             content[day] = MonthKindDay(
                 mark: .filled,
-                phrase: tasks.count == 1 ? "1 task completed" : "\(tasks.count) tasks completed",
-                rows: tasks.map { MonthSummaryRow(id: "task-\($0.id.uuidString)", text: $0.text) }
+                phrase: MonthKindDay.countPhrase(tasks.count, one: "task completed", other: "tasks completed"),
+                rows: tasks.map { MonthSummaryRow(id: "task-\($0.id.uuidString)", text: $0.text, accessibilityValue: "Completed") }
             )
         }
         return content

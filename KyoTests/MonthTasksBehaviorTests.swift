@@ -3,7 +3,7 @@ import XCTest
 /// Tasks completed in Month, driven through the Month model with a real task list on in-memory
 /// storage. Today is Tuesday 6 October 2026 unless a test moves the clock.
 @MainActor
-final class MonthTasksBehaviorTests: XCTestCase {
+final class MonthTasksBehaviorTests: MonthTestCase {
     private let harness = MonthHarness(2026, 10, 6)
 
     private func makeTaskList() throws -> TaskListStore {
@@ -16,10 +16,6 @@ final class MonthTasksBehaviorTests: XCTestCase {
 
     private func makeModel(_ taskList: TaskListStore) -> MonthModel {
         harness.makeModel(sources: [TaskMonthContent(taskList: taskList)])
-    }
-
-    private func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
-        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
     }
 
     private func taskMark(_ number: Int, in model: MonthModel) throws -> MonthMark {
@@ -103,6 +99,18 @@ final class MonthTasksBehaviorTests: XCTestCase {
 
         model.select(harness.date(2026, 10, 5, hour: 0))
         XCTAssertTrue(model.selectedSummary.isEmpty)
+    }
+
+    func testTaskRowsReadAsCompletedToVoiceOver() throws {
+        let taskList = try makeTaskList()
+        let task = try completeTask("Pay rent", in: taskList, on: harness.date(2026, 10, 3))
+        let model = makeModel(taskList)
+
+        model.select(harness.date(2026, 10, 3, hour: 0))
+
+        let rows = model.selectedSummary.sections.first { $0.kind == .tasks }?.rows ?? []
+        XCTAssertEqual(rows.map(\.accessibilityValue), ["Completed"])
+        XCTAssertEqual(rows.map(\.accessibilityIdentifier), ["month-summary-row-task-\(task.id.uuidString)"])
     }
 
     // MARK: Recomputing

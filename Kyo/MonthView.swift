@@ -266,47 +266,61 @@ private struct MonthDaySummaryView: View {
     }
 }
 
-/// One line of the Day summary. A habit's line carries its checked state as an indicator, not a control;
-/// an event's carries its calendar dot and its time as the Schedule draws them.
+/// One line of the Day summary, drawn as its kind needs. It is one accessibility element and carries its
+/// own label, value and identifier. A habit's line shows its checked state as an indicator, not a control;
+/// an event's shows its calendar dot, its time and its location as the Schedule draws them.
 private struct MonthSummaryRowView: View {
     let row: MonthSummaryRow
 
     var body: some View {
         HStack(spacing: 10) {
-            if let event = row.event {
-                Circle()
-                    .fill(Color(.sRGB, red: event.color.red, green: event.color.green, blue: event.color.blue, opacity: event.color.alpha))
-                    .opacity(event.isDimmed ? 0.4 : 1)
-                    .frame(width: 9, height: 9)
-                if event.isInProgress {
-                    Text(event.time)
-                        .font(.subheadline.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(KyoPalette.accent)
-                        .lineLimit(1)
-                        .fixedSize()
-                } else {
-                    Text(event.time)
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(event.isDimmed ? .tertiary : .secondary)
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-            } else if let isChecked = row.isChecked {
+            switch row.kind {
+            case .plain, .memo:
+                title
+            case .habit(let isChecked):
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isChecked ? KyoPalette.accent : Color.secondary)
                     .accessibilityHidden(true)
+                title
+            case .event(let event, _):
+                Circle()
+                    .fill(event.color.swiftUIColor)
+                    .opacity(event.isDimmed ? 0.4 : 1)
+                    .frame(width: 9, height: 9)
+                timeLabel(of: event)
+                EventTitleAndLocation(title: row.text, location: event.location, isPast: event.isDimmed)
             }
-            Text(row.text)
-                .font(.body)
-                .foregroundStyle(row.event?.isDimmed == true ? .secondary : .primary)
-                .lineLimit(row.event == nil ? nil : 2)
         }
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .padding(.horizontal, 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.accessibilityLabel ?? row.text)
-        .accessibilityValue(row.isChecked.map { $0 ? "Checked off" : "Not checked off" } ?? "")
+        .accessibilityValue(row.accessibilityValue ?? "")
         .accessibilityHint(row.event == nil ? "" : "Shows event details")
+        .accessibilityIdentifier(row.accessibilityIdentifier)
+    }
+
+    private var title: some View {
+        Text(row.text)
+            .font(.body)
+            .foregroundStyle(.primary)
+    }
+
+    @ViewBuilder
+    private func timeLabel(of event: MonthEventPresentation) -> some View {
+        if event.isInProgress {
+            Text(event.time)
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(KyoPalette.accent)
+                .lineLimit(1)
+                .fixedSize()
+        } else {
+            Text(event.time)
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(event.isDimmed ? .tertiary : .secondary)
+                .lineLimit(1)
+                .fixedSize()
+        }
     }
 }
 
@@ -318,7 +332,6 @@ private extension View {
             Button { open(target) } label: { contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("month-summary-row-\(row.id)")
         } else {
             self
         }

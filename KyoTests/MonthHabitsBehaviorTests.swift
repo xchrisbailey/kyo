@@ -97,6 +97,18 @@ final class MonthHabitsBehaviorTests: XCTestCase {
 
     // MARK: Weekly targets
 
+    func testHabitRowsReadAsCheckedOffOrNotCheckedOffToVoiceOver() throws {
+        let walk = try add("Walk")
+        _ = try add("Read")
+        check(walk, on: [thursday])
+        model.select(try cell(thursday).date)
+
+        let rows = model.selectedSummary.sections.first { $0.kind == .habits }?.rows ?? []
+        XCTAssertEqual(rows.map(\.text), ["Walk", "Read"])
+        XCTAssertEqual(rows.map(\.accessibilityValue), ["Checked off", "Not checked off"])
+        XCTAssertTrue(rows.allSatisfy { $0.accessibilityIdentifier.hasPrefix("month-summary-row-habit-") })
+    }
+
     func testAWeeklyTargetCheckOffAloneFillsTheDay() throws {
         let run = try add("Run", .weeklyTarget(3))
         check(run, on: [2])

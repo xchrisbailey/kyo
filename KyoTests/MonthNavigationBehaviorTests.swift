@@ -3,14 +3,8 @@ import XCTest
 /// Moving between months, jumping back to the current one, and the day rolling over while Month is showing.
 /// Today is Tuesday 6 October 2026 unless a test moves the clock.
 @MainActor
-final class MonthNavigationBehaviorTests: XCTestCase {
+final class MonthNavigationBehaviorTests: MonthTestCase {
     private let harness = MonthHarness(2026, 10, 6)
-
-    private func row(_ text: String) -> MonthSummaryRow { MonthSummaryRow(id: text, text: text) }
-
-    private func day(_ number: Int, in model: MonthModel) throws -> MonthDay {
-        try XCTUnwrap(model.weeks.flatMap(\.cells).compactMap(\.day).first { $0.number == number })
-    }
 
     private func selectedNumbers(in model: MonthModel) -> [Int] {
         model.weeks.flatMap(\.cells).compactMap(\.day).filter(\.isSelected).map(\.number)
@@ -18,14 +12,6 @@ final class MonthNavigationBehaviorTests: XCTestCase {
 
     private func todayNumbers(in model: MonthModel) -> [Int] {
         model.weeks.flatMap(\.cells).compactMap(\.day).filter(\.isToday).map(\.number)
-    }
-
-    private func eventually(_ message: String, _ condition: @MainActor () -> Bool) async {
-        for _ in 0..<500 {
-            if condition() { return }
-            try? await Task.sleep(for: .milliseconds(10))
-        }
-        XCTFail("Timed out waiting for \(message)")
     }
 
     // MARK: Previous and next

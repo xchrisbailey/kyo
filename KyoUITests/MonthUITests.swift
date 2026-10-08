@@ -28,9 +28,9 @@ final class MonthUITests: XCTestCase {
         XCTAssertFalse(month.isSelected)
 
         // A task typed on Today and not submitted.
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
-        let field = app.textFields["New task"]
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let field = app.textFields["new-task"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText("Buy milk")
@@ -44,7 +44,7 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["month-summary-empty"].exists)
         XCTAssertEqual(app.staticTexts["month-summary-empty"].label, "Nothing on this day")
         XCTAssertTrue(app.descendants(matching: .any)["month-legend"].exists)
-        XCTAssertFalse(app.textFields["New task"].exists)
+        XCTAssertFalse(app.textFields["new-task"].exists)
         let todayCell = app.buttons[dayIdentifier()]
         XCTAssertTrue(todayCell.exists)
         XCTAssertTrue(todayCell.label.contains("Today"), todayCell.label)
@@ -60,7 +60,7 @@ final class MonthUITests: XCTestCase {
 
         // Back on Today, the draft is as it was left.
         today.tap()
-        let draft = app.textFields["New task"]
+        let draft = app.textFields["new-task"]
         XCTAssertTrue(draft.waitForExistence(timeout: 10))
         XCTAssertEqual(draft.value as? String, "Buy milk")
 
@@ -70,9 +70,9 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(todayCell.isSelected)
 
         // + → Task from Month goes to Today and focuses the task field, draft intact.
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
-        let returned = app.textFields["New task"]
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let returned = app.textFields["new-task"]
         XCTAssertTrue(returned.waitForExistence(timeout: 10))
         XCTAssertTrue(today.isSelected)
         XCTAssertEqual(returned.value as? String, "Buy milk")
@@ -87,11 +87,11 @@ final class MonthUITests: XCTestCase {
         month.tap()
         XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
 
-        app.buttons["Add an item"].tap()
-        app.buttons["Written memo"].tap()
-        XCTAssertTrue(app.textFields["Memo text"].waitForExistence(timeout: 10))
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-written-memo"].tap()
+        XCTAssertTrue(app.textFields["memo-compose-text"].waitForExistence(timeout: 10))
 
-        app.buttons["Cancel"].tap()
+        app.buttons["memo-compose-cancel"].tap()
 
         XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["main-view-month"].isSelected)
@@ -122,9 +122,9 @@ final class MonthUITests: XCTestCase {
         // + → Task from Month scrolls Today to the new field, past the tasks above it.
         month.tap()
         XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
-        let field = app.textFields["New task"]
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let field = app.textFields["new-task"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         let isShown = NSPredicate(format: "isHittable == true")
         XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: isShown, object: field)], timeout: 10), .completed)
@@ -195,9 +195,9 @@ final class MonthUITests: XCTestCase {
     }
 
     private func addTask(_ title: String, to app: XCUIApplication) {
-        app.buttons["Add an item"].tap()
-        app.buttons["Task"].tap()
-        let field = app.textFields["New task"]
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let field = app.textFields["new-task"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.typeText(title + "\n")
         XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 10))

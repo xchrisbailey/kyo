@@ -249,16 +249,26 @@ final class ScheduleStore: ObservableObject {
     /// "10:00 AM, Design review, Work calendar", "Now, Design review, Work calendar", and for an
     /// event that has ended, "9:00 AM, Design review, Work calendar, ended".
     func accessibilityLabel(for event: ScheduleEvent) -> String {
-        let label = "\(timeText(for: event)), \(event.displayTitle), \(event.calendarTitle) calendar"
+        let label = accessibilityLabel(for: event, at: timeText(for: event))
         return state(of: event) == .past ? label + ", ended" : label
     }
 
-    func presentation(of event: ScheduleEvent) -> ScheduleRowPresentation {
+    /// "10:00 AM, Design review, Work calendar" for whatever `time` the row shows.
+    private func accessibilityLabel(for event: ScheduleEvent, at time: String) -> String {
+        "\(time), \(event.displayTitle), \(event.calendarTitle) calendar"
+    }
+
+    /// The location without surrounding whitespace, or `nil` when there is none to show.
+    private func trimmedLocation(of event: ScheduleEvent) -> String? {
         let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ScheduleRowPresentation(
+        return location?.isEmpty == false ? location : nil
+    }
+
+    func presentation(of event: ScheduleEvent) -> ScheduleRowPresentation {
+        ScheduleRowPresentation(
             event: event, state: state(of: event), timeText: timeText(for: event),
             accessibilityLabel: accessibilityLabel(for: event),
-            location: location?.isEmpty == false ? location : nil
+            location: trimmedLocation(of: event)
         )
     }
 
@@ -268,11 +278,10 @@ final class ScheduleStore: ObservableObject {
     func presentation(of event: ScheduleEvent, on day: Date) -> ScheduleRowPresentation {
         if day == calendar.startOfDay(for: now()) { return presentation(of: event) }
         let time = formatted(event.start)
-        let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines)
         return ScheduleRowPresentation(
             event: event, state: .upcoming, timeText: time,
-            accessibilityLabel: "\(time), \(event.displayTitle), \(event.calendarTitle) calendar",
-            location: location?.isEmpty == false ? location : nil
+            accessibilityLabel: accessibilityLabel(for: event, at: time),
+            location: trimmedLocation(of: event)
         )
     }
 

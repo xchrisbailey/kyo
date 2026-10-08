@@ -9,6 +9,8 @@ struct MonthEventPresentation: Equatable, Sendable {
     /// An event that has ended, on Today only.
     let isDimmed: Bool
     let color: ScheduleColor
+    /// The trimmed location, when there is one. The view decides whether it fits.
+    let location: String?
 }
 
 /// What Month shows for events: a mark on each day a visible event overlaps, and the day's events as
@@ -60,16 +62,18 @@ final class EventMonthContent: MonthContentSource {
         }
         // Events from another month's read, or any read while the Schedule hides events, aren't shown.
         guard schedule.showsEvents, let cached, cached.month == month else { return [:] }
+        // The cache predates the latest calendar selection, so apply it to what is answered.
+        let held = cached.events.filter { schedule.isCalendarVisible($0.calendarID) }
         var result: [Date: MonthKindDay] = [:]
         for day in days {
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { continue }
-            let events = cached.events.filter { Self.event($0, overlaps: day, next) }
+            let events = held.filter { Self.event($0, overlaps: day, upTo: next) }
             if events.isEmpty { continue }
             // All-day events first, each group in the Schedule's time order.
             let ordered = events.filter(\.isAllDay) + events.filter { !$0.isAllDay }
             result[day] = MonthKindDay(
                 mark: .filled,
-                phrase: ordered.count == 1 ? "1 event" : "\(ordered.count) events",
+                phrase: MonthKindDay.countPhrase(ordered.count, one: "event", other: "events"),
                 rows: ordered.map { row(for: $0, on: day) }
             )
         }
@@ -78,7 +82,7 @@ final class EventMonthContent: MonthContentSource {
 
     /// An event is on a day when it overlaps the span from the day's start to the next day's start.
     /// An event that ends at midnight, as an all-day event does, isn't on the day that follows.
-    private static func event(_ event: ScheduleEvent, overlaps start: Date, _ next: Date) -> Bool {
+    private static func event(_ event: ScheduleEvent, overlaps start: Date, upTo next: Date) -> Bool {
         if event.start == event.end { return event.start >= start && event.start < next }
         return event.start < next && event.end > start
     }
@@ -87,19 +91,25 @@ final class EventMonthContent: MonthContentSource {
         let id = "event-\(event.id.eventID)-\(event.id.occurrenceDate.timeIntervalSinceReferenceDate)"
         if event.isAllDay {
             return MonthSummaryRow(
-                id: id, text: event.displayTitle, target: .event(event.id),
-                accessibilityLabel: "All day: \(event.displayTitle)",
-                event: MonthEventPresentation(time: "All day", isInProgress: false, isDimmed: false, color: event.calendarColor)
+                id: id, text: event.displayTitle,
+                kind: .event(
+                    MonthEventPresentation(time: "All day", isInProgress: false, isDimmed: false, color: event.calendarColor, location: nil),
+                    target: event.id
+                ),
+                accessibilityLabel: "All day: \(event.displayTitle)"
             )
         }
         let presentation = schedule.presentation(of: event, on: day)
         return MonthSummaryRow(
-            id: id, text: event.displayTitle, target: .event(event.id),
-            accessibilityLabel: presentation.accessibilityLabel,
-            event: MonthEventPresentation(
-                time: presentation.timeText, isInProgress: presentation.state == .inProgress,
-                isDimmed: presentation.state == .past, color: event.calendarColor
-            )
+            id: id, text: event.displayTitle,
+            kind: .event(
+                MonthEventPresentation(
+                    time: presentation.timeText, isInProgress: presentation.state == .inProgress,
+                    isDimmed: presentation.state == .past, color: event.calendarColor, location: presentation.location
+                ),
+                target: event.id
+            ),
+            accessibilityLabel: presentation.accessibilityLabel
         )
     }
 

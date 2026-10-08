@@ -120,7 +120,7 @@ Make Habits a real feature within the existing layout. A user adds a habit from 
 ## Out of Scope
 
 - Implementing the feature as part of this specification request.
-- A habit history view, browsing past days, checking off past days, checking off habits from the Habits sheet, and best/longest streaks.
+- A habit history view, browsing past days, checking off past days, checking off habits from the Habits sheet, and best/longest streaks. (Browsing past days is superseded by `docs/specs/month.md`; the rest still stands.)
 - "Every N days" schedules, and quantity or duration targets.
 - Archiving or pausing habits, including a vacation mode.
 - Creating, editing, reordering, or deleting habits on Watch.

@@ -91,8 +91,11 @@ struct MonthDaySummary: Equatable {
 /// through a `MonthContentSource`.
 @MainActor
 final class MonthModel: ObservableObject {
+    typealias Sleep = @MainActor (TimeInterval) async throws -> Void
+
     @Published private(set) var shownMonth: Date
-    @Published private(set) var selectedDay: Date
+    /// The day the user last chose, which may lie outside the shown month.
+    @Published private var chosenDay: Date
     @Published private(set) var today: Date
     /// What each source reported for the shown month's days.
     @Published private var contents: [Date: [MonthKind: MonthKindDay]] = [:]
@@ -101,13 +104,15 @@ final class MonthModel: ObservableObject {
     private let calendar: Calendar
     private let locale: Locale
     private let sources: [any MonthContentSource]
+    private let sleep: Sleep
     private var subscriptions = Set<AnyCancellable>()
 
     init(
         now: @escaping () -> Date = Date.init,
         calendar: Calendar = .current,
         locale: Locale = .current,
-        sources: [any MonthContentSource] = []
+        sources: [any MonthContentSource] = [],
+        sleep: @escaping Sleep = { seconds in try await Task.sleep(for: .seconds(seconds)) }
     ) {
         var calendar = calendar
         calendar.locale = locale
@@ -116,8 +121,9 @@ final class MonthModel: ObservableObject {
         self.calendar = calendar
         self.locale = locale
         self.sources = sources
+        self.sleep = sleep
         self.today = today
-        self.selectedDay = today
+        self.chosenDay = today
         self.shownMonth = Self.startOfMonth(containing: today, in: calendar)
         for source in sources {
             source.changes
@@ -134,6 +140,17 @@ final class MonthModel: ObservableObject {
         shownMonth.formatted(format.year().month(.wide))
     }
 
+    /// Whether the shown month holds Today. When it doesn't, Month offers a way back.
+    var isShowingCurrentMonth: Bool {
+        shownMonth == Self.startOfMonth(containing: today, in: calendar)
+    }
+
+    /// The day the Day summary describes: the user's choice while the shown month holds it, otherwise
+    /// the shown month's 1st. Moving between months never changes the choice itself.
+    var selectedDay: Date {
+        calendar.isDate(chosenDay, equalTo: shownMonth, toGranularity: .month) ? chosenDay : shownMonth
+    }
+
     /// The weekday row, starting at the locale's first weekday.
     var weekdayTitles: [String] {
         let symbols = calendar.shortWeekdaySymbols
@@ -143,8 +160,9 @@ final class MonthModel: ObservableObject {
     var weeks: [MonthWeek] {
         let leading = (calendar.component(.weekday, from: shownMonth) - calendar.firstWeekday + 7) % 7
         let days = daysOfShownMonth
+        let selected = selectedDay
         var cells = (0..<leading).map { MonthCell(id: $0, day: nil) }
-        cells += days.enumerated().map { MonthCell(id: leading + $0.offset, day: makeDay($0.element, number: $0.offset + 1)) }
+        cells += days.enumerated().map { MonthCell(id: leading + $0.offset, day: makeDay($0.element, number: $0.offset + 1, selected: selected)) }
         while cells.count % 7 != 0 { cells.append(MonthCell(id: cells.count, day: nil)) }
         return stride(from: 0, to: cells.count, by: 7).map { MonthWeek(id: $0 / 7, cells: Array(cells[$0..<$0 + 7])) }
     }
@@ -168,15 +186,34 @@ final class MonthModel: ObservableObject {
     func select(_ day: Date) {
         let start = calendar.startOfDay(for: day)
         guard daysOfShownMonth.contains(start) else { return }
-        selectedDay = start
+        chosenDay = start
     }
 
-    /// Shows the current month with Today selected, as Month opens each time.
+    func showPreviousMonth() { showMonth(offsetBy: -1) }
+
+    func showNextMonth() { showMonth(offsetBy: 1) }
+
+    /// Shows the current month with Today selected, as Month opens each time and as the jump-back control does.
     func showCurrentMonth() {
         let current = calendar.startOfDay(for: now())
         shownMonth = Self.startOfMonth(containing: current, in: calendar)
-        selectedDay = current
+        chosenDay = current
         refresh()
+    }
+
+    /// Refreshes now, then again at every local midnight until cancelled, so Today's highlight moves with
+    /// the day and the days Month can fill are judged against the new Today.
+    func refreshAtEachDayBoundary() async {
+        while !Task.isCancelled {
+            refresh()
+            let current = calendar.startOfDay(for: now())
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: current) else { return }
+            do {
+                try await sleep(max(1, tomorrow.timeIntervalSince(now())))
+            } catch {
+                return
+            }
+        }
     }
 
     /// Asks every source again about the shown month's days.
@@ -195,6 +232,12 @@ final class MonthModel: ObservableObject {
         contents = result
     }
 
+    private func showMonth(offsetBy months: Int) {
+        guard let month = calendar.date(byAdding: .month, value: months, to: shownMonth) else { return }
+        shownMonth = Self.startOfMonth(containing: month, in: calendar)
+        refresh()
+    }
+
     // MARK: Building days
 
     private var format: Date.FormatStyle {
@@ -206,7 +249,7 @@ final class MonthModel: ObservableObject {
         return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: shownMonth) }
     }
 
-    private func makeDay(_ date: Date, number: Int) -> MonthDay {
+    private func makeDay(_ date: Date, number: Int, selected: Date) -> MonthDay {
         let content = contents[date] ?? [:]
         let isToday = date == today
         let parts = [date.formatted(format.weekday(.wide).month(.wide).day())]
@@ -218,7 +261,7 @@ final class MonthModel: ObservableObject {
             number: number,
             identifier: String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0),
             isToday: isToday,
-            isSelected: date == selectedDay,
+            isSelected: date == selected,
             marks: MonthKind.allCases.map { content[$0]?.mark ?? .empty },
             accessibilityLabel: parts.joined(separator: ", ")
         )

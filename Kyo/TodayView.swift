@@ -190,6 +190,9 @@ struct TodayView: View {
         .task(id: dayBoundaryRefreshToken) {
             await schedule.refreshAtEachDayBoundary()
         }
+        .task(id: dayBoundaryRefreshToken) {
+            await month.refreshAtEachDayBoundary()
+        }
         .task {
             await schedule.observeChanges()
         }
@@ -202,6 +205,7 @@ struct TodayView: View {
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
                 memoStore.refreshForCurrentDay()
+                month.refresh()
                 Task { await schedule.refresh() }
                 // The speech model may have been installed while Kyo was in the background.
                 memoStore.retryTranscriptionsWaitingForModel()

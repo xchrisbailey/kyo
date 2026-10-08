@@ -4,15 +4,11 @@ import SwiftUI
 /// It shows what `MonthModel` reports and changes nothing but the selection.
 struct MonthView: View {
     @ObservedObject var model: MonthModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(model.headerText)
-                .font(.largeTitle.weight(.bold))
-                .tracking(-1.2)
-                .foregroundStyle(.primary)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("month-header")
+            header
                 .padding(.bottom, 18)
 
             VStack(spacing: 4) {
@@ -36,6 +32,10 @@ struct MonthView: View {
             // standard size. The header, legend and Day summary keep scaling.
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contentShape(Rectangle())
+            .simultaneousGesture(swipe)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("month-grid")
 
             legend
                 .padding(.top, 12)
@@ -44,6 +44,57 @@ struct MonthView: View {
                 .padding(.top, 24)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The month and year, with the chevrons beside them and, away from the current month, the way back.
+    /// The controls move below the title when large text leaves them no room beside it.
+    private var header: some View {
+        let title = Text(model.headerText)
+            .font(.largeTitle.weight(.bold))
+            .tracking(-1.2)
+            .foregroundStyle(.primary)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("month-header")
+        return Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    title
+                    controls
+                }
+            } else {
+                HStack(spacing: 8) {
+                    title.frame(maxWidth: .infinity, alignment: .leading)
+                    controls
+                }
+            }
+        }
+    }
+
+    private var controls: some View {
+        HStack(spacing: 4) {
+            if !model.isShowingCurrentMonth {
+                MonthControl(systemImage: "arrow.uturn.backward", label: "Back to current month", identifier: "month-jump-back") {
+                    model.showCurrentMonth()
+                }
+            }
+            MonthControl(systemImage: "chevron.left", label: "Previous month", identifier: "month-previous") {
+                model.showPreviousMonth()
+            }
+            MonthControl(systemImage: "chevron.right", label: "Next month", identifier: "month-next") {
+                model.showNextMonth()
+            }
+        }
+    }
+
+    /// A mostly horizontal drag moves a month. It runs beside the scroll view's own drag, and a mostly
+    /// vertical one is left to the scroll view alone.
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { drag in
+                let across = drag.translation.width
+                guard abs(across) > 48, abs(across) > abs(drag.translation.height) * 2 else { return }
+                if across < 0 { model.showNextMonth() } else { model.showPreviousMonth() }
+            }
     }
 
     private var weekdayRow: some View {
@@ -85,6 +136,27 @@ struct MonthView: View {
             }
             .fixedSize()
         }
+    }
+}
+
+/// An icon button beside the month header.
+private struct MonthControl: View {
+    let systemImage: String
+    let label: LocalizedStringKey
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(KyoPalette.accent)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 }
 

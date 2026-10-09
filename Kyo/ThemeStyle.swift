@@ -47,7 +47,7 @@ private struct HeaderStyleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(theme.headerFont.font(for: style))
-            .tracking(theme.headerFont.tracking(for: style))
+            .tracking(theme.headerFont.tracking(for: style) + theme.headerFont.overhangAllowance)
     }
 }
 

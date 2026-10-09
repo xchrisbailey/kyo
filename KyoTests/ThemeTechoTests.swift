@@ -10,14 +10,13 @@ final class ThemeTechoTests: XCTestCase {
         XCTAssertEqual(Theme.withID("techo")?.name, "Techo")
     }
 
-    /// Caveat sets no letter spacing of its own, so the tracking a Techo header gets is only the
-    /// allowance that keeps the last glyph from being clipped by the text's bounds: the glyph reaches
-    /// past its advance, and SwiftUI can only add room for it as tracking.
-    func testTechoHeadersGetOnlyTheOverhangAllowanceAsTracking() {
+    /// Caveat sets no letter spacing of its own, so Techo adds none: the last glyph's room comes from
+    /// a space after the text, which leaves the letters where the font puts them.
+    func testTechoHeadersGetNoLetterSpacingAndTheirLastGlyphRoomFromATrailingSpace() {
         let header = Theme.techo.headerFont
-        XCTAssertEqual(header.overhangAllowance, 2)
+        XCTAssertFalse(header.trailingRoom.isEmpty)
         for style in [HeaderStyle.section, .largeTitle, .navigationTitle] {
-            XCTAssertEqual(header.tracking(for: style), header.overhangAllowance, "\(style)")
+            XCTAssertEqual(header.tracking(for: style), 0, "\(style)")
         }
     }
 
@@ -27,12 +26,12 @@ final class ThemeTechoTests: XCTestCase {
         XCTAssertEqual(Theme.kyo.headerFont.sizeScale, 1)
     }
 
-    /// The Kyo theme's headers are set exactly as before: no extra tracking for glyph overhang and no
+    /// The Kyo theme's headers are set exactly as before: no trailing room for glyph overhang and no
     /// per-style sizes.
-    func testTheKyoThemeAddsNoOverhangAllowanceOrStyleSizes() {
-        XCTAssertEqual(Theme.kyo.headerFont.overhangAllowance, 0)
+    func testTheKyoThemeAddsNoTrailingRoomOrStyleSizes() {
+        XCTAssertEqual(Theme.kyo.headerFont.trailingRoom, "")
         XCTAssertTrue(Theme.kyo.headerFont.styleSizeScales.isEmpty)
-        XCTAssertEqual(Theme.neko.headerFont.overhangAllowance, 0)
+        XCTAssertEqual(Theme.neko.headerFont.trailingRoom, "")
     }
 
     /// In light the accent and destructive are both red, and they meet on screen: the "Delete habit"

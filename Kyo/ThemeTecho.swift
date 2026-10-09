@@ -23,7 +23,7 @@ extension Theme {
         headerFont: HeaderFont(
             face: .caveat, sizeScale: 1.3,
             styleSizeScales: [.section: 1.4, .navigationTitle: 1.55],
-            overhangAllowance: 2, sectionTracking: 0, largeTitleTracking: 0
+            trailingRoom: "\u{00A0}", sectionTracking: 0, largeTitleTracking: 0
         ),
         light: Palette(
             screenBackground: Paper.cream,

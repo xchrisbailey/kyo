@@ -46,7 +46,9 @@ final class WatchThemeParityTests: XCTestCase {
             assertEqual(watch.onAccent, phone.onAccentText, "label on accent", theme: id)
             assertEqual(watch.onWarning, phone.onWarning, "label on warning", theme: id)
             assertEqual(watch.onDestructive, phone.onDestructive, "label on destructive", theme: id)
-            assertEqual(watch.editTint, phone.controlTint, "Edit tint", theme: id)
+            // The Edit swipe action's glyph is drawn white by watchOS, so Neko and Techo keep the system
+            // tint there instead of the phone's control tint, which is light.
+            XCTAssertNil(watch.editTint.components, "\(id) Edit tint is watchOS's own")
         }
     }
 

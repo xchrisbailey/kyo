@@ -95,7 +95,9 @@ struct WatchPalette: Sendable {
     let warning: WatchPaletteColor
     /// Also colors recording.
     let destructive: WatchPaletteColor
-    /// The tint of a task row's Edit button.
+    /// The tint of a task row's Edit swipe action. watchOS draws a swipe action's glyph in white
+    /// whatever a view sets, so a tint that is light on black, as Neko's and Techo's accents are,
+    /// leaves the glyph unreadable. Those themes keep the system blue, as the Kyo theme does.
     let editTint: WatchPaletteColor
 
     /// The label drawn on a button filled with the accent, the warning color, or the destructive
@@ -154,7 +156,7 @@ extension WatchPalette {
         tertiaryText: .fixed(hex: 0xa6adc8),
         warning: .fixed(hex: 0xfab387),
         destructive: .fixed(hex: 0xf38ba8),
-        editTint: .fixed(hex: 0xcba6f7),
+        editTint: .system(.blue),
         onAccent: .fixed(hex: 0x1e1e2e),
         onWarning: .fixed(hex: 0x1e1e2e),
         onDestructive: .fixed(hex: 0x1e1e2e)
@@ -173,7 +175,7 @@ extension WatchPalette {
         tertiaryText: .fixed(hex: 0x7f8b83),
         warning: .fixed(hex: 0xf0a265),
         destructive: .fixed(hex: 0xf0877d),
-        editTint: .fixed(hex: 0xf2d974),
+        editTint: .system(.blue),
         onAccent: .fixed(hex: 0x1d2a26),
         onWarning: .fixed(hex: 0x1d2a26),
         onDestructive: .fixed(hex: 0x1d2a26)

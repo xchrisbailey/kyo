@@ -169,7 +169,6 @@ struct WatchTodayView: View {
                             activeSheet = .edit(task)
                         } label: {
                             Label("Edit", systemImage: "pencil")
-                                .buttonLabelColor(palette.onAccent)
                         }
                         .tint(palette.editTint.color)
                     }
@@ -705,6 +704,8 @@ private struct WatchTaskTextSheet: View {
                 Button(buttonLabel) { commit() }
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 42)
+                    // A bordered button's label is the tint, which the root text style would override.
+                    .foregroundStyle(.tint)
                     .tint(palette.accent.color)
                     .accessibilityHint(buttonHint)
             }

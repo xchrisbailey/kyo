@@ -43,7 +43,9 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 
 - The Watch shows the theme chosen on the iPhone it is paired with. The phone is the only writer. The Watch has no theme setting.
 - An iPad's theme is its own and never reaches the Watch.
-- The phone puts the chosen theme's id in the application context that already carries the task, habit and memo snapshots, under its own key, and writes it in the same single write as the snapshots (ADR 0003). It publishes again when the theme changes on the phone.
+- The phone puts the chosen theme's id in the application context that already carries the task, habit and memo snapshots, under its own key, and writes it in the same single write as the snapshots (ADR 0003). It publishes the id when the phone app starts, as the snapshots are, and again when the theme changes, so a Watch paired or reinstalled later still gets it.
+- A context that arrives without a theme id leaves the Watch's stored theme alone.
+- The Watch reads the id both from the context waiting for it at launch and from one that arrives while it runs.
 - The Watch stores the last id it received in its own `UserDefaults`, under a key that follows `CODING_STANDARDS.md`, injected so tests can supply their own.
 - With nothing stored, the Watch shows the Kyo theme. An id it has no palette for also shows the Kyo theme and stays stored, so the Watch switches without another message once its app knows that theme.
 - The Watch never asks the phone for the theme and never waits on it.
@@ -53,17 +55,19 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 
 - Colors only. The Watch does not use the **header font**: its section headers and titles stay in the system font in every theme, and no font is bundled with the Watch app.
 - The Watch uses each theme's dark palette. Behind everything is true black, in every theme.
-- From the theme come: the accent, the card and row surfaces, the text levels, the warning color, the destructive color (which also colors recording), the tint of the Edit button, and the color of a mark drawn on the accent.
+- From the theme come: the accent, the card and row surfaces, the text levels, the warning color, the destructive color (which also colors recording), the tint of the Edit button, and the color of a label drawn on a button filled with the accent, the warning color, or the destructive color.
+- A theme colors what the Watch app sets itself. What watchOS draws stays as watchOS draws it: the clock, a sheet's close control, the text-input sheet, alerts, and a swipe action's own destructive styling.
 - Neko and Techo on the Watch use the same values as their dark palettes on the phone.
-- The Kyo theme on the Watch is the Watch's look today, unchanged: its system green accent, its own card grey, its blue Edit tint, and the light-mode values its code already carries. Introducing the Watch palette changes nothing on screen.
-- Neko and Techo have dark values only.
+- The Kyo theme on the Watch is the Watch's look today, unchanged: watchOS's own green, blue, red, orange and secondary text, its card grey at today's opacities, its buttons' own label colors, and the light-mode values its code already carries. Its palette holds those system colors themselves, not copies of them. Introducing the Watch palette changes nothing on screen.
+- Neko and Techo have dark values only, as fixed color values. A surface's opacity is part of its palette value, not something a view applies on top.
 - The one place the Watch draws on a translucent system material stays as it is.
 - Both Watch screens are covered: Today and the recorder.
 - The complication and the Watch's control are not themed. A Watch face tints its complications, and watchOS draws controls.
 
 ### Where the colors live
 
-- The phone's theme code is built on iOS-only color APIs and is compiled only into the phone app, so the Watch has its own palette: plain color values for the roles above, keyed by the same theme ids, in code both apps compile.
+- The phone's theme code is built on iOS-only color APIs and is compiled only into the phone app, so the Watch has its own palette for the roles above, keyed by the same theme ids, in code both apps compile. Neko's and Techo's entries are plain color values a test can read; the Kyo theme's are watchOS system colors.
+- Watch views read the current palette from the environment, with the Kyo theme as the default.
 - Views in the Watch app take every color from the current Watch palette. No Watch view names a system color or a color literal directly, other than clear, black for the background, and the material above.
 - The phone's theme files are not refactored for this.
 
@@ -71,9 +75,11 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 
 - Test external behavior through the models the views consume, not view structure. There is no Watch UI test for themes: a Watch UI test can't receive anything from a phone, and none asserts color.
 - Test the Watch's theme model with an injected `UserDefaults` suite: it starts as Kyo; it adopts a received id; a new model on the same defaults reads it back; an unknown id shows Kyo and stays stored; a later known id replaces it.
-- Test parity: for Neko and Techo, each color in the Watch palette equals the phone's dark palette value for the same role. A theme added to one side without the other fails.
-- Test contrast on the Watch palettes to the phone's floors, against black and against the card: primary text 4.5:1; secondary text, the accent, and a mark on the accent 3:1. Where the Kyo theme's existing Watch colors miss a floor, the color is left alone and the pair is recorded with its ratio, as on the phone.
-- Test the phone side through the transport: the published context carries the theme id with the snapshots still in it, and changing the theme publishes again.
+- Test parity: for Neko and Techo, each color in the Watch palette equals the phone's dark palette value for the matching role (accent, card, list row, the text levels, warning, destructive, the labels on accent, warning and destructive fills, and the control tint for the Edit button). A theme added to one side without the other fails.
+- Test contrast on Neko's and Techo's Watch palettes to the phone's floors, against black and against the card: primary text 4.5:1; secondary text and the accent 3:1; a button's label against its fill 3:1. The Kyo theme's Watch colors are watchOS system colors, which a test can't read, so they are not measured.
+- Test the phone side through the transport: the published context carries the theme id with the snapshots still in it; it is published at start and again when the theme changes; and publishing a snapshot keeps it. Test the Watch side the same way for both paths a context arrives by, and for a context with no id.
+- Delivery between a real phone and Watch can't be driven in tests; the PR says how the end-to-end path was exercised.
+- A launch variable selects the Watch's theme storage, as collapsed sections have, so a screenshot run can start the Watch app in a chosen theme and an in-memory launch writes nothing lasting.
 - Prior art: `CollapsedSections` and its tests (a per-device choice both apps share), the phone's `ThemeContrastTests` and `ContrastMeasure`, and the transport tests for the habit and memo snapshots.
 - The look is reviewed from Watch simulator screenshots. For the palette ticket: Today and the recorder in the Kyo theme before and after, with no difference. For the follow ticket: the same screens in Neko and in Techo.
 - `scripts/check` runs the Watch UI suite when Watch or shared code changes; it must still pass.
@@ -93,6 +99,6 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 
 - Decisions were made in one grilling session on #221 and #222. ADR 0007 was written, because this reverses the themes spec's "the choice belongs to the device" for the Watch and adds to phone–Watch sync.
 - This supersedes the lines in `docs/specs/themes.md` that leave the Watch app out of themes.
-- Not discussed in the session, and the spec author's call: recording a Kyo theme contrast miss on the Watch instead of fixing it, which follows the rule the phone uses.
+- An adversarial pass on the ticket breakdown changed this spec before any code was written: publishing the id at start, a context without an id, the two paths a context arrives by, labels on filled buttons, what watchOS draws, the Kyo theme holding system colors and going unmeasured, opacity living in the palette, and the launch variable.
 - Suggested tickets, in order: (1) the Watch palette, with the Kyo theme only and no visible change; (2) the phone publishes the choice and the Watch follows it, with Neko's and Techo's palettes.
 - Execution policy: **Opus 5.5** (`claude-opus-5-5`) runs orchestration and owns review; the coder assignment is **Sonnet 5.5, high reasoning** (`claude-sonnet-5-5`, `high`). The follow ticket touches phone–Watch sync, so its branch gets an adversarial pass before review.

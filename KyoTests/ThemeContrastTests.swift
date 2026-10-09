@@ -72,6 +72,14 @@ final class ThemeContrastTests: XCTestCase {
         assertEveryTheme(foreground: ("accent", \.accent), on: surfaces, floor: 3)
     }
 
+    /// Switches, plain buttons and carets are drawn in the control tint on the screen and on the
+    /// surfaces. A theme that keeps iOS's tint has none to measure.
+    func testControlTintMeetsThreeToOneOnEveryBackground() {
+        let themes = Theme.all.filter { $0.light.controlTint != nil && $0.dark.controlTint != nil }
+        XCTAssertTrue(themes.contains { $0.id == "techo" })
+        assertEveryTheme(foreground: ("controlTint", \.controlTintOrAccent), on: surfaces, floor: 3, themes: themes)
+    }
+
     func testColorsDrawnOnTheAccentMeetThreeToOneAgainstIt() {
         let accent = Backdrop("accent", \.accent)
         for foreground in [
@@ -170,6 +178,9 @@ final class ThemeContrastTests: XCTestCase {
 }
 
 private extension Palette {
+    /// The control tint, for the themes that set one; the others are filtered out before it is read.
+    var controlTintOrAccent: UIColor { controlTint ?? accent }
+
     /// The control tint a test measures against, for a theme that sets one.
     var controlTintOrClear: UIColor { controlTint ?? .clear }
 }

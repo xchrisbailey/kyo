@@ -152,6 +152,8 @@ targets:
       - Kyo/EventMonthContent.swift
       - Kyo/Theme.swift
       - Kyo/ThemeStyle.swift
+      - Kyo/ThemeNeko.swift
+      - Kyo/ThemeSelection.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: computer.srcery.kyo.tests

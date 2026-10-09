@@ -219,9 +219,12 @@ struct VoiceRecorderView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(theme.accent)
+                .foregroundStyle(theme.onAccentText)
             }
+            // A bordered button's label is the tint, which the screen's text color would replace.
             Button("Close", action: onFinish)
                 .buttonStyle(.bordered)
+                .foregroundStyle(.tint)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)

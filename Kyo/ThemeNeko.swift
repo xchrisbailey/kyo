@@ -6,18 +6,13 @@ extension HeaderFont.Face {
 }
 
 extension Theme {
-    /// Catppuccin Latte in light and Catppuccin Mocha in dark, with Geist Mono for headers. Every color
-    /// is a published value from the Catppuccin palette (github.com/catppuccin/palette, palette.json,
-    /// v1.8.0), named for its role here by the Catppuccin color it is.
-    ///
-    /// Geist Mono is wide, so its large title is scaled down until "September 2026" fits beside the
-    /// Month's buttons at the default text size.
+    /// Catppuccin Latte in light and Catppuccin Mocha in dark, with Geist Mono for headers. Every
+    /// color is a published value from the Catppuccin palette (github.com/catppuccin/palette,
+    /// palette.json, v1.8.0), named for its role here by the Catppuccin color it is.
     static let neko = Theme(
         id: "neko",
         name: "Neko",
-        headerFont: HeaderFont(
-            face: .geistMono, styleSizeScales: [.largeTitle: 0.74], sectionTracking: 0, largeTitleTracking: 0
-        ),
+        headerFont: HeaderFont(face: .geistMono, sectionTracking: 0, largeTitleTracking: 0),
         light: Palette(
             screenBackground: Latte.base,
             sheetBackground: Latte.base,

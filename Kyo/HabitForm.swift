@@ -69,13 +69,14 @@ struct HabitForm: View {
 
     var body: some View {
         Form {
-            TextField("Name", text: $name)
-                .focused($isNameFocused)
-                .submitLabel(.done)
-                .onSubmit(save)
-                .accessibilityLabel("Habit name")
-                .listRowBackground(theme.listRow)
-            Section {
+            ThemedListGroup {
+                TextField("Name", text: $name)
+                    .focused($isNameFocused)
+                    .submitLabel(.done)
+                    .onSubmit(save)
+                    .accessibilityLabel("Habit name")
+            }
+            ThemedListGroup("Schedule") {
                 Picker("Schedule", selection: $kind) {
                     ForEach(ScheduleKind.allCases) { Text($0.rawValue).tag($0) }
                 }
@@ -93,18 +94,13 @@ struct HabitForm: View {
                         in: HabitSchedule.weeklyTargetRange
                     )
                 }
-            } header: {
-                Text("Schedule")
-                    .foregroundStyle(theme.secondaryText)
             }
-            .listRowBackground(theme.listRow)
             if habit != nil {
-                Section {
+                ThemedListGroup {
                     Button("Delete habit", role: .destructive) { isConfirmingDelete = true }
                         .foregroundStyle(theme.destructive)
                         .accessibilityHint("Deletes this habit and its log")
                 }
-                .listRowBackground(theme.listRow)
             }
         }
         .themedListBackground()

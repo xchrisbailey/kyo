@@ -86,6 +86,50 @@ extension View {
     }
 }
 
+/// A group of rows in a list or form, with the theme's row background and, when it has a title, the
+/// title as a group header in the theme's secondary text color. Lists use it in place of a plain
+/// `Section` so a group can't miss either. A group with no title has no header.
+struct ThemedListGroup<Content: View>: View {
+    @Environment(\.theme) private var theme
+    private let title: Text?
+    private let content: Content
+
+    /// A group headed by a localized `title`.
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
+        self.title = Text(title)
+        self.content = content()
+    }
+
+    /// A group headed by `title` as given, such as a name that comes from the data.
+    init<S: StringProtocol>(verbatim title: S, @ViewBuilder content: () -> Content) {
+        self.title = Text(verbatim: String(title))
+        self.content = content()
+    }
+
+    /// A group with no header.
+    init(@ViewBuilder content: () -> Content) {
+        self.title = nil
+        self.content = content()
+    }
+
+    var body: some View {
+        Group {
+            if let title {
+                Section {
+                    content
+                } header: {
+                    title.foregroundStyle(theme.secondaryText)
+                }
+            } else {
+                Section {
+                    content
+                }
+            }
+        }
+        .listRowBackground(theme.listRow)
+    }
+}
+
 private struct ThemedListBackground: ViewModifier {
     @Environment(\.theme) private var theme
 

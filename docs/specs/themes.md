@@ -61,7 +61,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - **Techo**: light is warm cream paper with blue-black ink text and a red margin-line accent; dark is a deep slate-green chalkboard with chalk-white text and a chalk-yellow accent. Header font: Caveat.
 - Exact values that aren't published (all of Techo, and Neko's choice of kind colors) are chosen at implementation and reviewed from the PR screenshots, in light and dark.
 - Primary text meets WCAG AA contrast, 4.5:1, against every background it sits on, in every theme and both modes. Secondary text, the accent, and the color drawn on the accent meet 3:1. Tertiary text is for hints and disabled states and has no floor. Contrast is measured on the color as drawn, after a translucent color is blended with what's behind it.
-- These floors are ones today's look and Catppuccin's published values can meet almost everywhere; a stricter floor would force changing them. Where the Kyo theme or a published Neko value still misses one, the color is left alone and the pair is recorded in the contrast test with its ratio. The Kyo theme's known miss is white text on its accent in dark.
+- These floors are ones today's look and Catppuccin's published values can meet almost everywhere; a stricter floor would force changing them. Where the Kyo theme or a published Neko value still misses one, the color is left alone and the pair is recorded in the contrast test with its ratio. The Kyo theme's recorded misses are on iOS's system orange and red; Neko's are on Catppuccin's Peach in light, which the owner chose to keep as published.
 - The same 3:1 floor applies to text and glyphs drawn in or on the warning and destructive colors.
 - Geist Mono and Caveat are bundled with the app in the two weights headers use, semibold and bold. Both are under the SIL Open Font License.
 
@@ -118,6 +118,14 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - Decisions were made in one grilling session. No ADR was written: per-device storage and the palette are easy to reverse and don't touch sync or storage design.
 - This supersedes the lines in `docs/specs/habits.md` saying Settings holds only the Schedule group.
 - Not discussed in the session, and the spec author's call: which Catppuccin accents become Neko's warning, destructive, and kind colors, and the exact shape of a preview card. Each can be changed in review.
+- Decided from screenshots after the themes shipped (#212–#219), and now part of the look:
+  - Neko's light cards and rows are Mantle, with Surface0 for the unselected weekday chip.
+  - Techo's light controls are tinted pen blue; vermilion stays its accent.
+  - In the Kyo theme's dark mode, marks drawn on the accent are dark. This and the next item are the places the Kyo theme was changed on purpose.
+  - In the Month, a long month name stays on one line and shrinks to fit, in every theme.
+  - Techo's headers use Caveat's own letter spacing, with room for the last letter added as a space after the text.
+  - The audio player bar is drawn on the card color in Neko and Techo; the Kyo theme keeps the system material.
+  - The screen shown when the store fails to open takes the theme's screen background, which in the Kyo theme is the grouped grey.
 - An adversarial pass on the ticket breakdown changed this spec before any code was written: the palette's extra roles, system colors for the Kyo theme, the contrast floors, the large titles joining the header font, the fallback for navigation bar titles, and one theme across iPad windows.
 - Suggested tickets, in order, each stacked on the one before:
   1. The palette and shared headers, with the Kyo theme only and no visible change.

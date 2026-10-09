@@ -280,24 +280,27 @@ private struct AllDayEventChooser: View {
 
     var body: some View {
         NavigationStack {
-            List(schedule.allDayEvents) { event in
-                Button {
-                    schedule.open(event.id)
-                } label: {
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(event.calendarColor.swiftUIColor)
-                            .frame(width: 9, height: 9)
-                        Text(event.displayTitle)
-                            .foregroundStyle(theme.primaryText)
-                        Spacer(minLength: 0)
+            List {
+                ThemedListGroup {
+                    ForEach(schedule.allDayEvents) { event in
+                        Button {
+                            schedule.open(event.id)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(event.calendarColor.swiftUIColor)
+                                    .frame(width: 9, height: 9)
+                                Text(event.displayTitle)
+                                    .foregroundStyle(theme.primaryText)
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel("\(event.displayTitle), \(event.calendarTitle) calendar")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Shows event details")
                     }
-                    .contentShape(Rectangle())
                 }
-                .accessibilityLabel("\(event.displayTitle), \(event.calendarTitle) calendar")
-                .accessibilityAddTraits(.isButton)
-                .accessibilityHint("Shows event details")
-                .listRowBackground(theme.listRow)
             }
             .themedListBackground()
             .themedNavigationTitle("All day")

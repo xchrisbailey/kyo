@@ -36,10 +36,32 @@ final class ThemeUITests: XCTestCase {
         XCTAssertEqual(app.buttons["theme-card-neko"].label, "Neko")
     }
 
+    func testNekoHeadersGrowWithTheDeviceTextSize() {
+        let app = launchApp()
+        openSettings(in: app)
+        app.buttons["theme-card-neko"].tap()
+        XCTAssertTrue(waitForSelected(app.buttons["theme-card-neko"]))
+        app.buttons["settings-done"].tap()
+        let normal = monthHeaderHeight(in: app)
+
+        relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
+        let large = monthHeaderHeight(in: app)
+
+        XCTAssertGreaterThan(large, normal, "a Geist Mono header scales with the text size")
+    }
+
     // MARK: Helpers
 
-    private func launchApp() -> XCUIApplication {
+    private func monthHeaderHeight(in app: XCUIApplication) -> CGFloat {
+        app.buttons["main-view-month"].tap()
+        let header = app.staticTexts["month-header"]
+        XCTAssertTrue(header.waitForExistence(timeout: 10))
+        return header.frame.height
+    }
+
+    private func launchApp(textSize: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
+        if let textSize { app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize] }
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launchEnvironment["KYO_THEME_SUITE"] = suite
         app.launch()
@@ -59,9 +81,10 @@ final class ThemeUITests: XCTestCase {
     }
 
     /// Terminates the app, waits for the process to be gone, then launches it again with the same launch environment.
-    private func relaunch(_ app: XCUIApplication) {
+    private func relaunch(_ app: XCUIApplication, textSize: String? = nil) {
         app.terminate()
         XCTAssertTrue(app.wait(for: .notRunning, timeout: 10), "the app is still running after terminate")
+        if let textSize { app.launchArguments += ["-UIPreferredContentSizeCategoryName", textSize] }
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "the app isn't in the foreground after launch")
     }

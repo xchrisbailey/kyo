@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
+    @Environment(\.theme) private var theme
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
@@ -105,7 +106,8 @@ struct TodayView: View {
                     .padding(.bottom, 28)
                     .id("main-top")
                 }
-                .background(Color(uiColor: .systemGroupedBackground))
+                .themedText()
+                .background(theme.screenBackground)
                 .scrollIndicators(.hidden)
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     MainBottomBar(
@@ -120,7 +122,7 @@ struct TodayView: View {
                 .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
                     case .settings:
-                        SettingsSheet(schedule: schedule)
+                        SettingsSheet(schedule: schedule, themes: .shared)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
@@ -276,7 +278,7 @@ struct TodayView: View {
                 if taskList.tasks.isEmpty && !isShowingTaskDraft {
                     Text("No tasks yet")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                 }
@@ -317,10 +319,10 @@ struct TodayView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("No habits yet")
                             .font(.body)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondaryText)
                         Text("Tap + to add one")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.tertiaryText)
                     }
                     .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                     .padding(.horizontal, 14)
@@ -328,7 +330,7 @@ struct TodayView: View {
                 } else if habitList.todayHabits.isEmpty {
                     Text("Nothing due today")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                 }
@@ -354,7 +356,7 @@ struct TodayView: View {
                 if memoStore.memos.isEmpty {
                     Text("Tap + to add a memo")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                 }
@@ -378,7 +380,7 @@ struct TodayView: View {
             Text("kyo")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                 .tracking(-0.4)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .accessibilityLabel("Kyo")
             Spacer()
             Button {
@@ -386,7 +388,7 @@ struct TodayView: View {
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -396,6 +398,7 @@ struct TodayView: View {
             .padding(.trailing, -12)
             .accessibilityLabel("Settings")
             .accessibilityHint("Opens Settings")
+            .accessibilityIdentifier("settings-button")
         }
     }
 
@@ -405,13 +408,12 @@ struct TodayView: View {
                 .padding(.bottom, 17)
 
             Text("Today")
-                .font(.largeTitle.weight(.bold))
-                .tracking(-1.2)
-                .foregroundStyle(.primary)
+                .headerStyle(.largeTitle)
+                .foregroundStyle(theme.primaryText)
 
             Text(taskList.currentDate, format: .dateTime.weekday(.wide).month(.wide).day())
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .padding(.top, 5)
                 .accessibilityLabel(taskList.currentDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
         }
@@ -428,7 +430,7 @@ struct TodayView: View {
         .padding(.vertical, 17)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Color(uiColor: .separator).opacity(0.6))
+                .fill(theme.separator.opacity(0.6))
                 .frame(height: 0.5)
         }
         .padding(.bottom, 5)
@@ -438,7 +440,7 @@ struct TodayView: View {
 
     private var statDivider: some View {
         Rectangle()
-            .fill(Color(uiColor: .separator).opacity(0.6))
+            .fill(theme.separator.opacity(0.6))
             .frame(width: 0.5, height: 39)
             .padding(.horizontal, 12)
             .accessibilityHidden(true)
@@ -446,7 +448,7 @@ struct TodayView: View {
 
     private var rowDivider: some View {
         Rectangle()
-            .fill(Color(uiColor: .separator).opacity(0.55))
+            .fill(theme.separator.opacity(0.55))
             .frame(height: 0.5)
             .accessibilityHidden(true)
     }
@@ -562,6 +564,7 @@ private enum TodayPreviewSheet: Identifiable {
 }
 
 private struct TaskDraftRow: View {
+    @Environment(\.theme) private var theme
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let submit: () -> Void
@@ -569,7 +572,7 @@ private struct TaskDraftRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Circle()
-                .strokeBorder(Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
+                .strokeBorder(theme.tertiaryText, lineWidth: 1.5)
                 .frame(width: 23, height: 23)
                 .accessibilityHidden(true)
 
@@ -595,6 +598,7 @@ private enum MainView: String {
 }
 
 private struct MainBottomBar: View {
+    @Environment(\.theme) private var theme
     let selected: MainView
     let select: (MainView) -> Void
     let addTask: () -> Void
@@ -618,9 +622,9 @@ private struct MainBottomBar: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 26, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onAccentText)
                     .frame(width: 52, height: 52)
-                    .background(accentColor, in: Circle())
+                    .background(theme.accent, in: Circle())
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -650,9 +654,9 @@ private struct MainBottomBar: View {
                 Text(title)
                     .font(.caption2.weight(.semibold))
             }
-            .foregroundStyle(isSelected ? accentColor : Color.secondary)
+            .foregroundStyle(isSelected ? theme.accent : theme.secondaryText)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(isSelected ? accentColor.opacity(0.09) : .clear, in: Capsule())
+            .background(isSelected ? theme.accent.opacity(0.09) : .clear, in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -661,30 +665,10 @@ private struct MainBottomBar: View {
         .accessibilityIdentifier("main-view-\(view.rawValue)")
     }
 
-    private var accentColor: Color {
-        KyoPalette.accent
-    }
-}
-
-enum KyoPalette {
-    static var accent: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1)
-                : UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1)
-        })
-    }
-
-    static var cardBackground: Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1)
-                : .white
-        })
-    }
 }
 
 private struct SummaryStat: View {
+    @Environment(\.theme) private var theme
     let value: String
     let label: String
 
@@ -694,12 +678,12 @@ private struct SummaryStat: View {
                 .font(.system(.title3, design: .rounded, weight: .semibold))
                 .tracking(-0.6)
                 .monospacedDigit()
-                .foregroundStyle(.primary)
+                .foregroundStyle(theme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -710,6 +694,7 @@ private struct SummaryStat: View {
 }
 
 struct TodaySection<Content: View>: View {
+    @Environment(\.theme) private var theme
     let title: String
     let note: String
     /// Shown in place of `note` while the section is collapsed, such as "2 of 5 done".
@@ -735,18 +720,17 @@ struct TodaySection<Content: View>: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         HStack(spacing: 7) {
                             Text(title)
-                                .font(.title3.weight(.semibold))
-                                .tracking(-0.4)
-                                .foregroundStyle(.primary)
+                                .headerStyle(.section)
+                                .foregroundStyle(theme.primaryText)
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(theme.secondaryText)
                                 .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                         }
                         Spacer(minLength: 8)
                         Text(shownNote)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondaryText)
                             .multilineTextAlignment(.trailing)
                     }
                     .frame(maxWidth: .infinity, minHeight: 51)
@@ -762,7 +746,7 @@ struct TodaySection<Content: View>: View {
                     Button(action: linkAction) {
                         Text(linkTitle)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(KyoPalette.accent)
+                            .foregroundStyle(theme.accent)
                             .padding(.leading, 6)
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
@@ -776,7 +760,7 @@ struct TodaySection<Content: View>: View {
 
             if !isCollapsed {
                 content
-                    .background(KyoPalette.cardBackground)
+                    .background(theme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .accessibilityElement(children: .contain)
             }
@@ -785,12 +769,12 @@ struct TodaySection<Content: View>: View {
 }
 
 private struct CheckRow: View {
+    @Environment(\.theme) private var theme
     let title: String
     var trailing: String? = nil
     let isComplete: Bool
     var isTask = false
     var onToggle: (() -> Void)? = nil
-    @Environment(\.colorScheme) private var colorScheme
 
     @ViewBuilder
     var body: some View {
@@ -812,15 +796,15 @@ private struct CheckRow: View {
 
             Text(title)
                 .font(.body)
-                .foregroundStyle(isComplete ? Color.secondary : Color.primary)
-                .strikethrough(isComplete && isTask, color: .secondary)
+                .foregroundStyle(isComplete ? theme.secondaryText : theme.primaryText)
+                .strikethrough(isComplete && isTask, color: theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let trailing {
                 Text(trailing)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .fixedSize()
             }
         }
@@ -850,29 +834,23 @@ private struct CheckRow: View {
     private var checkboxGlyph: some View {
         ZStack {
             Circle()
-                .strokeBorder(isComplete ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
-                .background(Circle().fill(isComplete ? accentColor : .clear))
+                .strokeBorder(isComplete ? theme.accent : theme.tertiaryText, lineWidth: 1.5)
+                .background(Circle().fill(isComplete ? theme.accent : .clear))
                 .frame(width: 23, height: 23)
             if isComplete {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+                    .foregroundStyle(theme.onAccent)
             }
         }
-    }
-
-    private var accentColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.57, green: 0.79, blue: 0.68)
-            : Color(red: 0.22, green: 0.43, blue: 0.34)
     }
 }
 
 private struct HabitRow: View {
+    @Environment(\.theme) private var theme
     let entry: TodayHabit
     let onToggle: () -> Void
     let onEdit: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 10) {
@@ -889,7 +867,7 @@ private struct HabitRow: View {
             Button(action: onEdit) {
                 Text(entry.habit.name)
                     .font(.body)
-                    .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                    .foregroundStyle(entry.isDone ? theme.secondaryText : theme.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -907,7 +885,7 @@ private struct HabitRow: View {
 
     private var trailingStatus: some View {
         HabitStatusLabel(weekProgress: entry.weekProgress, streak: entry.streak)
-            .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+            .foregroundStyle(entry.isDone ? theme.secondaryText : theme.primaryText)
             .accessibilityHidden(true)
     }
 
@@ -927,26 +905,21 @@ private struct HabitRow: View {
     private var checkboxGlyph: some View {
         ZStack {
             Circle()
-                .strokeBorder(entry.isCheckedOffToday ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
-                .background(Circle().fill(entry.isCheckedOffToday ? accentColor : .clear))
+                .strokeBorder(entry.isCheckedOffToday ? theme.accent : theme.tertiaryText, lineWidth: 1.5)
+                .background(Circle().fill(entry.isCheckedOffToday ? theme.accent : .clear))
                 .frame(width: 23, height: 23)
             if entry.isCheckedOffToday {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+                    .foregroundStyle(theme.onAccent)
             }
         }
         .accessibilityHidden(true)
     }
-
-    private var accentColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.57, green: 0.79, blue: 0.68)
-            : Color(red: 0.22, green: 0.43, blue: 0.34)
-    }
 }
 
 private struct TaskRow: View {
+    @Environment(\.theme) private var theme
     let task: DailyTask
     let onToggle: () -> Void
     let onEdit: (String) -> Bool
@@ -957,7 +930,6 @@ private struct TaskRow: View {
     @State private var isDeleteRevealed = false
     @State private var shareItems: ShareItems?
     @FocusState private var isEditorFocused: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     private let deleteWidth: CGFloat = 84
 
@@ -982,10 +954,10 @@ private struct TaskRow: View {
                 Button(action: onDelete) {
                     Label("Delete", systemImage: "trash")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.onDestructive)
                         .frame(width: deleteWidth)
                         .frame(maxHeight: .infinity)
-                        .background(Color.red)
+                        .background(theme.destructive)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -1047,8 +1019,8 @@ private struct TaskRow: View {
             } else {
                 Text(task.text)
                     .font(.body)
-                    .foregroundStyle(task.isComplete ? Color.secondary : Color.primary)
-                    .strikethrough(task.isComplete, color: .secondary)
+                    .foregroundStyle(task.isComplete ? theme.secondaryText : theme.primaryText)
+                    .strikethrough(task.isComplete, color: theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -1064,28 +1036,22 @@ private struct TaskRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
-        .background(KyoPalette.cardBackground)
+        .background(theme.card)
     }
 
     private var checkboxGlyph: some View {
         ZStack {
             Circle()
-                .strokeBorder(task.isComplete ? accentColor : Color(uiColor: .tertiaryLabel), lineWidth: 1.5)
-                .background(Circle().fill(task.isComplete ? accentColor : .clear))
+                .strokeBorder(task.isComplete ? theme.accent : theme.tertiaryText, lineWidth: 1.5)
+                .background(Circle().fill(task.isComplete ? theme.accent : .clear))
                 .frame(width: 23, height: 23)
             if task.isComplete {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color(uiColor: .secondarySystemBackground))
+                    .foregroundStyle(theme.onAccent)
             }
         }
         .accessibilityHidden(true)
-    }
-
-    private var accentColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.57, green: 0.79, blue: 0.68)
-            : Color(red: 0.22, green: 0.43, blue: 0.34)
     }
 
     private func saveEdit() {

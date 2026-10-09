@@ -48,9 +48,10 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 ### What a theme holds
 
 - A theme has a name, a header font, and two palettes, light and dark.
-- A palette is a full set of named colors, not just an accent: screen background, card, primary, secondary and tertiary text, separator, accent, warning, destructive (which also colors recording), and the four Month kind colors.
-- Views take every color from the current theme. No view names a system color or a color literal directly. The existing `KyoPalette` and the accent literals duplicated beside it are replaced by this.
-- The Kyo theme's colors resolve to exactly the colors in use today, so introducing the palette changes nothing on screen.
+- A palette is a full set of named colors, not just an accent: screen background, sheet background, card, list row, primary, secondary and tertiary text, separator, fill, accent, the color drawn on top of the accent (a checkmark on a filled circle), scrim, warning, destructive (which also colors recording), and the four Month kind colors. If the app turns out to use a role this list misses, the role is added to the palette; a view never falls back to naming a color.
+- Views take every color from the current theme. No view names a system color or a color literal directly. The exceptions are clear, system materials, and event colors. The existing `KyoPalette` and the accent literals duplicated beside it are replaced by this.
+- Lists and sheets that name no color today, and so get iOS's own backgrounds, take their backgrounds and rows from the theme too.
+- The Kyo theme's colors resolve to exactly the colors in use today, so introducing the palette changes nothing on screen. Its colors are the same system colors, not fixed copies of them, so they still shift for a sheet's raised background in dark and for Increase Contrast. Where two screens use different colors for the same role today, the Kyo theme keeps both.
 - The Kyo theme's header font is the system font at today's sizes and weights.
 - Event colors come from the user's calendars (`ScheduleColor`) and are not part of any theme.
 
@@ -59,22 +60,27 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - **Neko**: Latte in light, Mocha in dark, using Catppuccin's published values. Base is the screen background, the surface colors are cards, Text and the Subtext colors are the text levels, and **Mauve** is the accent. Warning, destructive, and the Month kind colors are drawn from Catppuccin's other accents. Header font: Geist Mono.
 - **Techo**: light is warm cream paper with blue-black ink text and a red margin-line accent; dark is a deep slate-green chalkboard with chalk-white text and a chalk-yellow accent. Header font: Caveat.
 - Exact values that aren't published (all of Techo, and Neko's choice of kind colors) are chosen at implementation and reviewed from the PR screenshots, in light and dark.
-- Body text meets WCAG AA contrast, 4.5:1, against its background in every theme and both modes.
-- Geist Mono and Caveat are bundled with the app. Both are under the SIL Open Font License.
+- Primary text meets WCAG AA contrast, 4.5:1, against every background it sits on, in every theme and both modes. Secondary text, the accent, and the color drawn on the accent meet 3:1. Tertiary text is for hints and disabled states and has no floor. Contrast is measured on the color as drawn, after a translucent color is blended with what's behind it.
+- These floors are ones today's look and Catppuccin's published values can meet almost everywhere; a stricter floor would force changing them. Where the Kyo theme or a published Neko value still misses one, the color is left alone and the pair is recorded in the contrast test with its ratio. The Kyo theme's known miss is white text on its accent in dark.
+- The same 3:1 floor applies to text and glyphs drawn in or on the warning and destructive colors.
+- Geist Mono and Caveat are bundled with the app in the two weights headers use, semibold and bold. Both are under the SIL Open Font License.
 
 ### Header font
 
-- The header font sets section headers and screen titles: the section headers on Today, navigation titles, and the day-group and summary titles in Memos and the Month.
+- The header font sets section headers and screen titles: the section headers on Today, the large "Today" title, the Month's month name, navigation bar titles, and the day-group and summary titles in Memos and the Month.
+- Navigation bar titles go through one shared title style that every screen uses. iOS gives no direct way to set their font, so if no approach can restyle an open screen at once without touching screens iOS draws, navigation bar titles stay in the system font and the rest of this list stands.
+- Letter spacing belongs to the theme with the font. The Kyo theme keeps today's and Neko uses its font's own. Techo adds a little, because Caveat's last letter reaches past its own width and would otherwise be cut off.
 - Everything else stays in the system font: body text, task, habit and memo text, numbers, and controls.
 - The "kyo" wordmark and the large numerals keep their rounded system design in every theme.
 - The header font scales with the device text size the way headers do today.
-- A theme can adjust its header size so that its headers look the same size as the Kyo theme's. Caveat needs this; it reads smaller than the system font at the same point size.
+- A theme can adjust its header size, for all headers or for one kind, so that its headers look the same size as the Kyo theme's. Caveat needs this; it reads smaller than the system font at the same point size.
+- Navigation bar titles grow with the device text size no further than iOS's own navigation titles do.
 - Headers come from one shared place, so the ad hoc titles in Memos and the Month stop carrying their own font.
 
 ### Reach
 
 - A theme colors everything Kyo lays out: Today, the Month, sheets, navigation bars, the Settings list, and control tints.
-- What iOS draws stays as iOS draws it: alerts, context menus, the keyboard, and pickers. These still follow light and dark.
+- What iOS draws stays as iOS draws it: alerts, context menus, the keyboard, pickers, and the system event detail. These still follow light and dark. Their buttons may pick up the theme's accent as a tint; that's accepted.
 - Themes apply to the iPhone and iPad app only. Phone widgets, the watch app, and watch widgets keep the Kyo look.
 
 ### Choosing and remembering
@@ -83,6 +89,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - The picker shows one preview card per theme, with the theme's light and dark colors and its name set in its header font. The current theme is marked as selected.
 - Tapping a card applies the theme immediately, with no confirmation, and Settings itself redraws in it.
 - The app always follows the device's light or dark setting. There is no override.
+- There is one current theme for the app. On iPad, every window shows it, and picking a theme in one window changes them all.
 - The choice persists in the device's own `UserDefaults`, injected so tests can supply their own, under a key that follows `CODING_STANDARDS.md`. It isn't in the SwiftData store and isn't synced.
 - With nothing stored, the theme is Kyo. A stored value that names no current theme also gives Kyo.
 
@@ -90,9 +97,9 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 
 - Test external behavior through the model the views consume, not view structure. There are no snapshot tests; the look is reviewed from PR screenshots in light and dark.
 - Test the theme choice with an injected `UserDefaults` suite: it starts as Kyo; a pick is read back by a new model on the same defaults; an unknown stored value gives Kyo.
-- Test contrast by computation: for every theme and both modes, each text color against the screen background and the card meets 4.5:1. A theme added later is covered without a new test.
+- Test contrast by computation, to the floors above: for every theme and both modes, primary text, secondary text and the accent against each background they sit on, and the on-accent color against the accent. Colors are resolved for the mode and blended before measuring, so a translucent color isn't read as opaque. A theme added later is covered without a new test.
 - Prior art: the `CollapsedSections` tests (state persisted through injected defaults).
-- One UI test on iPhone: open Settings, pick a theme, relaunch, and find it still selected. It starts from a clean choice through a launch variable, like `KYO_IN_MEMORY_STORE`.
+- UI tests on iPhone cover what the model can't: open Settings, pick a theme, relaunch, and find it still selected; and a bundled header font grows with the device text size. A launch variable names the `UserDefaults` suite the choice is kept in, so the test starts clean and the relaunch reads the same suite.
 - The palette ticket has no behavior to test beyond the existing suites staying green; its review is a before-and-after screenshot comparison showing no change.
 - Build both app schemes.
 
@@ -110,7 +117,8 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 
 - Decisions were made in one grilling session. No ADR was written: per-device storage and the palette are easy to reverse and don't touch sync or storage design.
 - This supersedes the lines in `docs/specs/habits.md` saying Settings holds only the Schedule group.
-- Not discussed in the session, and the spec author's call: which Catppuccin accents become Neko's warning, destructive, and kind colors; the exact shape of a preview card; and which weights of Geist Mono and Caveat are bundled. Each can be changed in review.
+- Not discussed in the session, and the spec author's call: which Catppuccin accents become Neko's warning, destructive, and kind colors, and the exact shape of a preview card. Each can be changed in review.
+- An adversarial pass on the ticket breakdown changed this spec before any code was written: the palette's extra roles, system colors for the Kyo theme, the contrast floors, the large titles joining the header font, the fallback for navigation bar titles, and one theme across iPad windows.
 - Suggested tickets, in order, each stacked on the one before:
   1. The palette and shared headers, with the Kyo theme only and no visible change.
   2. The Appearance group, the picker, the stored choice, and the Neko theme with Geist Mono.

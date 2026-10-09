@@ -7,6 +7,7 @@ import UIKit
 /// **Share** (above Delete) when the memo has something to share, so a memo can be shared
 /// without opening it. The caller confirms before deleting a Voice memo.
 struct MemoRow: View {
+    @Environment(\.theme) private var theme
     let memo: Memo
     /// A photo's small thumbnail, by photo id.
     let loadThumbnail: (UUID) -> Data?
@@ -44,10 +45,10 @@ struct MemoRow: View {
                 Button(action: onDelete) {
                     Label("Delete", systemImage: "trash")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.onDestructive)
                         .frame(width: deleteWidth)
                         .frame(maxHeight: .infinity)
-                        .background(Color.red)
+                        .background(theme.destructive)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -85,18 +86,18 @@ struct MemoRow: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: MemoPresentation.icon(for: memo))
                 .font(.system(size: 19, weight: .medium))
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .frame(width: 28, height: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(MemoHighlight.attributed(memo.title, matching: highlight))
+                Text(MemoHighlight.attributed(memo.title, matching: highlight, theme: theme))
                     .font(.body)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                 if let snippet {
-                    Text(MemoHighlight.attributed(snippet))
+                    Text(MemoHighlight.attributed(snippet, theme: theme))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .lineLimit(1)
                 } else if memo.transcriptState == .transcribing {
                     HStack(spacing: 6) {
@@ -105,11 +106,11 @@ struct MemoRow: View {
                         Text("Transcribing…")
                     }
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                 } else if let detail = memo.detail {
-                    Text(MemoHighlight.attributed(detail, matching: highlight))
+                    Text(MemoHighlight.attributed(detail, matching: highlight, theme: theme))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .lineLimit(1)
                 }
                 if !memo.photoIDs.isEmpty {
@@ -126,14 +127,14 @@ struct MemoRow: View {
                 }
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(theme.secondaryText)
             .fixedSize()
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(minHeight: 55)
         .frame(maxWidth: .infinity)
-        .background(KyoPalette.cardBackground)
+        .background(theme.card)
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
         .accessibilityElement(children: .ignore)
@@ -168,6 +169,7 @@ struct MemoRow: View {
 /// The compose sheet behind **+ > Written memo**, with a photo menu and up to 4 photos. Save keeps
 /// the text and photos as a memo; a memo with neither is discarded. Cancel keeps nothing.
 struct WrittenMemoComposeSheet: View {
+    @Environment(\.theme) private var theme
     let onSave: (String, [StoredPhoto]) -> Void
     /// Reports whether the sheet holds unsaved text or photos, so quick capture leaves it alone.
     var onDraftChange: (Bool) -> Void = { _ in }
@@ -191,7 +193,7 @@ struct WrittenMemoComposeSheet: View {
                         .focused($isFocused)
                         .padding(14)
                         .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-                        .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityLabel("Memo text")
                         .accessibilityIdentifier("memo-compose-text")
                     MemoPendingPhotos(
@@ -206,8 +208,9 @@ struct WrittenMemoComposeSheet: View {
                 }
                 .padding(20)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Written memo")
+            .themedText()
+            .background(theme.sheetBackground)
+            .themedNavigationTitle("Written memo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -238,6 +241,7 @@ struct WrittenMemoComposeSheet: View {
 /// transcript, or the editable Transcript) and the audio player pinned to the bottom. Deleting
 /// one confirms first.
 struct MemoCardSheet: View {
+    @Environment(\.theme) private var theme
     let memo: Memo
     let onEdit: (String) -> Void
     /// Names a Voice memo. The user's title replaces a generated one for good.
@@ -338,7 +342,8 @@ struct MemoCardSheet: View {
             }
             .padding(20)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .themedText()
+        .background(theme.sheetBackground)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if memo.kind == .voice {
                 MemoAudioPlayerBar(loadAudio: loadAudio, duration: memo.duration)
@@ -394,6 +399,7 @@ struct MemoCardSheet: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
                         .symbolRenderingMode(.hierarchical)
+                        // The secondary level of the accent this row sets, not a color of its own.
                         .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -405,7 +411,7 @@ struct MemoCardSheet: View {
                 .accessibilityIdentifier("memo-close")
             }
             .font(.footnote.weight(.medium))
-            .foregroundStyle(KyoPalette.accent)
+            .foregroundStyle(theme.accent)
             .padding(.top, 14)
 
             if memo.kind == .voice {
@@ -421,7 +427,7 @@ struct MemoCardSheet: View {
                 Text(writtenTitle.isEmpty ? "Untitled" : writtenTitle)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
-                    .foregroundStyle(writtenTitle.isEmpty ? Color.secondary : Color.primary)
+                    .foregroundStyle(writtenTitle.isEmpty ? theme.secondaryText : theme.primaryText)
                     .lineLimit(2)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -438,7 +444,7 @@ struct MemoCardSheet: View {
     private func capNote(_ note: String) -> some View {
         Label(note, systemImage: "clock.badge.exclamationmark")
             .font(.footnote.weight(.medium))
-            .foregroundStyle(.orange)
+            .foregroundStyle(theme.warning)
     }
 
     private var actionRow: some View {
@@ -447,10 +453,10 @@ struct MemoCardSheet: View {
                 Button(action: share) {
                     Label("Share", systemImage: "square.and.arrow.up")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
-                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .background(theme.accent.opacity(0.12), in: Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -462,10 +468,10 @@ struct MemoCardSheet: View {
             } label: {
                 Label("Memo → Task", systemImage: "checklist")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(KyoPalette.accent)
+                    .foregroundStyle(theme.accent)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 44)
-                    .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                    .background(theme.accent.opacity(0.12), in: Capsule())
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -481,10 +487,10 @@ struct MemoCardSheet: View {
             } label: {
                 Label("Delete", systemImage: "trash")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(theme.destructive)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 44)
-                    .background(Color.red.opacity(0.12), in: Capsule())
+                    .background(theme.destructive.opacity(0.12), in: Capsule())
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -505,7 +511,7 @@ struct MemoCardSheet: View {
             .focused($isEditorFocused)
             .padding(14)
             .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-            .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityLabel("Memo text")
             .accessibilityIdentifier("memo-text")
     }
@@ -517,21 +523,21 @@ struct MemoCardSheet: View {
             HStack(spacing: 10) {
                 ProgressView()
                 Text("Transcribing…")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
             }
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
             .accessibilityElement(children: .combine)
         case .noTranscript:
             VStack(alignment: .leading, spacing: 12) {
                 Text("No transcript")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                 Button(action: onRetryTranscription) {
                     Label("Try again", systemImage: "arrow.clockwise")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
-                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .background(theme.accent.opacity(0.12), in: Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -545,7 +551,7 @@ struct MemoCardSheet: View {
                 .focused($isEditorFocused)
                 .padding(14)
                 .frame(maxWidth: .infinity, minHeight: 160, alignment: .topLeading)
-                .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .accessibilityLabel("Transcript")
         }
     }
@@ -553,21 +559,21 @@ struct MemoCardSheet: View {
 
 /// Marks the matched words of a search in a memo's text.
 enum MemoHighlight {
-    static func attributed(_ text: String, matching query: String) -> AttributedString {
-        attributed(text, ranges: MemoSearch.ranges(of: query, in: text))
+    static func attributed(_ text: String, matching query: String, theme: Theme) -> AttributedString {
+        attributed(text, ranges: MemoSearch.ranges(of: query, in: text), theme: theme)
     }
 
-    static func attributed(_ snippet: MemoSnippet) -> AttributedString {
-        attributed(snippet.text, ranges: snippet.highlights)
+    static func attributed(_ snippet: MemoSnippet, theme: Theme) -> AttributedString {
+        attributed(snippet.text, ranges: snippet.highlights, theme: theme)
     }
 
-    private static func attributed(_ text: String, ranges: [Range<String.Index>]) -> AttributedString {
+    private static func attributed(_ text: String, ranges: [Range<String.Index>], theme: Theme) -> AttributedString {
         var result = AttributedString(text)
         for range in ranges {
             guard let marked = Range(range, in: result) else { continue }
             result[marked].inlinePresentationIntent = .stronglyEmphasized
-            result[marked].foregroundColor = Color.primary
-            result[marked].backgroundColor = KyoPalette.accent.opacity(0.22)
+            result[marked].foregroundColor = theme.primaryText
+            result[marked].backgroundColor = theme.accent.opacity(0.22)
         }
         return result
     }

@@ -13,6 +13,7 @@ struct HabitForm: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
     @State private var name: String
     @State private var kind: ScheduleKind
     @State private var weekdays: Set<Int>
@@ -73,7 +74,8 @@ struct HabitForm: View {
                 .submitLabel(.done)
                 .onSubmit(save)
                 .accessibilityLabel("Habit name")
-            Section("Schedule") {
+                .listRowBackground(theme.listRow)
+            Section {
                 Picker("Schedule", selection: $kind) {
                     ForEach(ScheduleKind.allCases) { Text($0.rawValue).tag($0) }
                 }
@@ -91,15 +93,22 @@ struct HabitForm: View {
                         in: HabitSchedule.weeklyTargetRange
                     )
                 }
+            } header: {
+                Text("Schedule")
+                    .foregroundStyle(theme.secondaryText)
             }
+            .listRowBackground(theme.listRow)
             if habit != nil {
                 Section {
                     Button("Delete habit", role: .destructive) { isConfirmingDelete = true }
+                        .foregroundStyle(theme.destructive)
                         .accessibilityHint("Deletes this habit and its log")
                 }
+                .listRowBackground(theme.listRow)
             }
         }
-        .navigationTitle(habit == nil ? "New Habit" : "Edit Habit")
+        .themedListBackground()
+        .themedNavigationTitle(habit == nil ? "New Habit" : "Edit Habit")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if showsCancel {
@@ -147,7 +156,7 @@ struct HabitFormSheet: View {
 /// One toggle chip per weekday, in the device locale's week order.
 struct WeekdayChips: View {
     @Binding var selection: Set<Int>
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let calendar = Calendar.current
@@ -160,8 +169,8 @@ struct WeekdayChips: View {
                     Text(calendar.veryShortWeekdaySymbols[day - 1])
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .foregroundStyle(isSelected ? Color(uiColor: .secondarySystemBackground) : Color.primary)
-                        .background(Circle().fill(isSelected ? accentColor : Color(uiColor: .tertiarySystemFill)))
+                        .foregroundStyle(isSelected ? theme.onAccent : theme.primaryText)
+                        .background(Circle().fill(isSelected ? theme.accent : theme.fill))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(calendar.weekdaySymbols[day - 1])
@@ -169,11 +178,5 @@ struct WeekdayChips: View {
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-    }
-
-    private var accentColor: Color {
-        colorScheme == .dark
-            ? Color(red: 0.57, green: 0.79, blue: 0.68)
-            : Color(red: 0.22, green: 0.43, blue: 0.34)
     }
 }

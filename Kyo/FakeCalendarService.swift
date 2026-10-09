@@ -112,6 +112,7 @@ final class FakeEventDetailPresenter: EventDetailPresenter {
 }
 
 private struct FakeEventDetailView: View {
+    @Environment(\.theme) private var theme
     let event: ScheduleEvent
     let onDone: @MainActor () -> Void
 
@@ -122,7 +123,7 @@ private struct FakeEventDetailView: View {
                     .font(.title2.weight(.semibold))
                     .accessibilityIdentifier("event-detail-title")
                 Text(event.isAllDay ? "All day" : event.start.formatted(date: .omitted, time: .shortened))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .accessibilityIdentifier("event-detail-time")
                 Spacer()
             }

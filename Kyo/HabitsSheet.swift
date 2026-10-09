@@ -15,6 +15,7 @@ struct HabitsSheet: View {
 }
 
 private struct HabitsList: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var habitList: HabitListStore
     @Environment(\.dismiss) private var dismiss
     @State private var editMode = EditMode.inactive
@@ -33,6 +34,7 @@ private struct HabitsList: View {
                     HabitsSheetRow(overview: overview)
                 }
                 .accessibilityHint("Edits this habit")
+                .listRowBackground(theme.listRow)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button("Delete", role: .destructive) { pendingDelete = overview.habit }
                         .accessibilityLabel("Delete habit: \(overview.habit.name)")
@@ -40,13 +42,14 @@ private struct HabitsList: View {
             }
             .onMove { habitList.moveHabits(fromOffsets: $0, toOffset: $1) }
         }
+        .themedListBackground()
         .overlay {
             if habitList.habitOverviews.isEmpty {
                 Text("No habits yet")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
             }
         }
-        .navigationTitle("Habits")
+        .themedNavigationTitle("Habits")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Edit mode's own Done sits in the same corner, so the sheet's Done waits for it to end.
@@ -87,6 +90,7 @@ private struct HabitsList: View {
 }
 
 private struct HabitsSheetRow: View {
+    @Environment(\.theme) private var theme
     let overview: HabitOverview
 
     var body: some View {
@@ -103,11 +107,11 @@ private struct HabitsSheetRow: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.rowDetailText)
             }
             Spacer(minLength: 8)
             HabitStatusLabel(weekProgress: overview.weekProgress, streak: overview.streak)
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(theme.primaryText)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(overview.habit.name)

@@ -6,6 +6,7 @@ import UIKit
 /// with **Resume** and **Stop** after an interruption, and the denied-microphone state. Up to 4
 /// photos can be attached while recording; they're saved with the memo on **Stop**.
 struct VoiceRecorderView: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var session: VoiceRecordingSession
     let onFinish: () -> Void
 
@@ -15,8 +16,8 @@ struct VoiceRecorderView: View {
         VStack(spacing: 24) {
             HStack {
                 Text("Voice memo")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                    .headerStyle(.navigationTitle)
+                    .foregroundStyle(theme.secondaryText)
                 Spacer()
             }
             .accessibilityAddTraits(.isHeader)
@@ -36,7 +37,8 @@ struct VoiceRecorderView: View {
         .padding(24)
         .frame(maxWidth: 680)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .themedText()
+        .background(theme.screenBackground.ignoresSafeArea())
         .interactiveDismissDisabled()
         .task {
             await session.begin()
@@ -80,14 +82,14 @@ struct VoiceRecorderView: View {
                 HStack(spacing: 8) {
                     if session.phase == .paused {
                         Image(systemName: "pause.fill")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(theme.warning)
                             .accessibilityHidden(true)
                         Text("Paused")
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(theme.warning)
                     } else {
                         Circle()
-                            .fill(Color.red)
+                            .fill(theme.destructive)
                             .frame(width: 9, height: 9)
                             .accessibilityHidden(true)
                     }
@@ -100,10 +102,10 @@ struct VoiceRecorderView: View {
                 if session.isNearCap {
                     Label("Ends in \(Memo.formattedDuration(session.remaining))", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(theme.onWarning)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Color.orange, in: Capsule())
+                        .background(theme.warning, in: Capsule())
                         .accessibilityLabel("Recording ends in \(Int(session.remaining.rounded(.up))) seconds")
                 }
             }
@@ -130,7 +132,7 @@ struct VoiceRecorderView: View {
         ScrollView {
             Text(liveTranscriptText)
                 .font(.title3)
-                .foregroundStyle(session.liveTranscript.isEmpty ? Color.secondary : Color.primary)
+                .foregroundStyle(session.liveTranscript.isEmpty ? theme.secondaryText : theme.primaryText)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel(liveTranscriptAccessibilityLabel)
@@ -157,10 +159,10 @@ struct VoiceRecorderView: View {
             } label: {
                 Label("Discard", systemImage: "trash")
                     .font(.body.weight(.medium))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(theme.destructive)
                     .frame(minWidth: 110, minHeight: 52)
                     .padding(.horizontal, 6)
-                    .background(Color.red.opacity(0.12), in: Capsule())
+                    .background(theme.destructive.opacity(0.12), in: Capsule())
                     .contentShape(Capsule())
             }
             .disabled(!session.isActive)
@@ -172,10 +174,10 @@ struct VoiceRecorderView: View {
                 } label: {
                     Label("Resume", systemImage: "mic.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .frame(minWidth: 110, minHeight: 52)
                         .padding(.horizontal, 6)
-                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .background(theme.accent.opacity(0.12), in: Capsule())
                         .contentShape(Capsule())
                 }
             }
@@ -185,10 +187,10 @@ struct VoiceRecorderView: View {
             } label: {
                 Label("Stop", systemImage: "stop.fill")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onDestructive)
                     .frame(minWidth: 110, minHeight: 52)
                     .padding(.horizontal, 6)
-                    .background(Color.red, in: Capsule())
+                    .background(theme.destructive, in: Capsule())
                     .contentShape(Capsule())
             }
             .disabled(!session.isActive)
@@ -204,7 +206,7 @@ struct VoiceRecorderView: View {
             Spacer(minLength: 0)
             Image(systemName: "mic.slash")
                 .font(.system(size: 44))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .accessibilityHidden(true)
             Text(message)
                 .font(.title3.weight(.semibold))
@@ -216,7 +218,7 @@ struct VoiceRecorderView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(KyoPalette.accent)
+                .tint(theme.accent)
             }
             Button("Close", action: onFinish)
                 .buttonStyle(.bordered)
@@ -228,6 +230,7 @@ struct VoiceRecorderView: View {
 
 /// Recent input levels as bars, newest at the right. Empty slots on the left stay flat.
 private struct WaveformView: View {
+    @Environment(\.theme) private var theme
     let levels: [Float]
     let isPaused: Bool
 
@@ -237,7 +240,7 @@ private struct WaveformView: View {
             HStack(alignment: .center, spacing: 3) {
                 ForEach(Array(padded.enumerated()), id: \.offset) { _, level in
                     Capsule()
-                        .fill((isPaused ? Color.secondary : KyoPalette.accent).opacity(0.35 + 0.65 * Double(level)))
+                        .fill((isPaused ? theme.secondaryText : theme.accent).opacity(0.35 + 0.65 * Double(level)))
                         .frame(height: max(4, geometry.size.height * CGFloat(level)))
                 }
             }

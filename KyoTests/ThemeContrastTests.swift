@@ -43,7 +43,6 @@ final class ThemeContrastTests: XCTestCase {
     /// and suits the role, so the color is left alone and the miss is recorded here. The test fails
     /// if one of these starts to pass, so the entry goes when the color is fixed.
     private let knownShortfalls: Set<String> = [
-        "Kyo dark onAccentText on accent",  // 1.87:1
         "Kyo light onWarning on warning",  // 2.31:1
         "Kyo dark onWarning on warning",  // 2.23:1
         "Kyo light warning on screenBackground",  // 2.07:1

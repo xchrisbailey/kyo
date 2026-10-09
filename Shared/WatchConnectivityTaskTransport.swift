@@ -102,8 +102,16 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         session?.activate()
     }
 
-    /// The context the next `updateApplicationContext` writes: the latest payload of every key.
-    var latestContext: [String: Any] { outgoingContext.context }
+    /// The context the next `updateApplicationContext` writes: the latest payload of every key, or
+    /// `nil` while no snapshot has been published in this process. The theme id rides in every write,
+    /// but never causes the first one: a Watch with nothing stored would otherwise get a theme and
+    /// none of its tasks, habits or memos, from a launch that never built the lists.
+    var contextToWrite: [String: Any]? {
+        let snapshotKeys = [Self.snapshotKey, Self.habitSnapshotKey, Self.memoSnapshotKey]
+        let context = outgoingContext.context
+        guard snapshotKeys.contains(where: { context[$0] != nil }) else { return nil }
+        return context
+    }
 
     /// What a context carries, taken out on the system's thread so it can cross to the main actor.
     /// The two paths a context arrives by, the one waiting at launch and the one that arrives
@@ -269,9 +277,9 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         #if os(iOS)
         guard session.isPaired, session.isWatchAppInstalled else { return }
         #endif
-        guard !outgoingContext.isEmpty else { return }
+        guard let context = contextToWrite else { return }
         do {
-            try session.updateApplicationContext(outgoingContext.context)
+            try session.updateApplicationContext(context)
         } catch {
             logger.error("failed to update application context: \(error.localizedDescription)")
         }
@@ -377,14 +385,20 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     ) {
         let received = ReceivedContext(session.receivedApplicationContext)
         Task { @MainActor in
-            self.sendLatest()
-            self.flushPendingOutgoingCommands()
-            self.receive(received)
-            // After the received context, so a recording the phone has already confirmed is
-            // retired before the outbox looks for what to send.
-            if self.isActivated {
-                self.activationHandler?()
-            }
+            self.handleActivation(receivedContext: received)
+        }
+    }
+
+    /// What activating the session does: write what's waiting to go out, then apply the context
+    /// that was waiting to come in.
+    func handleActivation(receivedContext received: ReceivedContext) {
+        sendLatest()
+        flushPendingOutgoingCommands()
+        receive(received)
+        // After the received context, so a recording the phone has already confirmed is
+        // retired before the outbox looks for what to send.
+        if isActivated {
+            activationHandler?()
         }
     }
 

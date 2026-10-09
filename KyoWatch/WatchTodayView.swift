@@ -169,6 +169,7 @@ struct WatchTodayView: View {
                             activeSheet = .edit(task)
                         } label: {
                             Label("Edit", systemImage: "pencil")
+                                .buttonLabelColor(palette.onAccent)
                         }
                         .tint(palette.editTint.color)
                     }
@@ -317,7 +318,6 @@ struct WatchTodayView: View {
                 .accessibilityLabel("Kyo")
             Text("Today")
                 .font(.headline.weight(.bold))
-                .foregroundStyle(palette.primaryText.style)
                 .tracking(-0.5)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -458,7 +458,6 @@ private struct WatchSectionHeader: View {
             HStack(spacing: 5) {
                 Text(title)
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(palette.primaryText.style)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(palette.secondaryText.style)
@@ -492,7 +491,6 @@ private struct WatchSummaryStat: View {
         VStack(spacing: 1) {
             Text(value)
                 .font(.system(.caption, design: .rounded, weight: .semibold))
-                .foregroundStyle(palette.primaryText.style)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -649,7 +647,6 @@ private struct WatchMemoRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(memo.title)
                     .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(palette.primaryText.style)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(memo.detailLine())
                     .font(.caption2)
@@ -698,7 +695,6 @@ private struct WatchTaskTextSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(title).font(.headline)
-                    .foregroundStyle(palette.primaryText.style)
 
                 TextField(placeholder, text: $draft)
                     .font(.footnote)
@@ -709,7 +705,6 @@ private struct WatchTaskTextSheet: View {
                 Button(buttonLabel) { commit() }
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 42)
-                    .buttonLabelColor(palette.onAccent)
                     .tint(palette.accent.color)
                     .accessibilityHint(buttonHint)
             }

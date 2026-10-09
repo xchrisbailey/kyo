@@ -46,27 +46,31 @@ final class WatchThemeModel: ObservableObject {
     }
 }
 
-/// Picks where this launch keeps the Watch's theme: the device's own defaults, or, for UI tests and
-/// screenshot runs, a suite of their own.
+/// Picks where this launch keeps the Watch's theme: the device's own defaults fed by the phone, or,
+/// for UI tests and screenshot runs, a suite of their own that the phone can't reach.
 enum WatchThemeSelection {
     /// A launch with this set to a suite name sees the id an earlier launch (or a harness) left
-    /// there, so a run can start the Watch in a chosen theme. Isolated launches without it get a
-    /// throwaway suite, so they start in the Kyo theme and write nothing lasting.
+    /// there, so a run can start the Watch in a chosen theme. It takes no feed from the phone and
+    /// writes only to that suite, so a paired simulator can't recolor the run or leave its theme in
+    /// the real defaults. Isolated launches without it get a throwaway suite, likewise unfed, so they
+    /// start in the Kyo theme and write nothing lasting.
     static let suiteEnvironmentKey = "KYO_WATCH_THEME_SUITE"
 
     @MainActor
-    static func make(transport: any ThemeIDTransport) -> WatchThemeModel {
-        let environment = ProcessInfo.processInfo.environment
+    static func make(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
+    ) -> WatchThemeModel {
         if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
-            return WatchThemeModel(defaults: defaults, transport: transport)
+            return WatchThemeModel(defaults: defaults)
         }
-        if KyoModelContainer.isInMemoryRequested {
+        if environment[KyoModelContainer.inMemoryEnvironmentKey] == "1" {
             let suite = "kyo.watch-theme.ui-tests.\(UUID().uuidString)"
             if let defaults = UserDefaults(suiteName: suite) {
                 defaults.removePersistentDomain(forName: suite)
-                return WatchThemeModel(defaults: defaults, transport: transport)
+                return WatchThemeModel(defaults: defaults)
             }
         }
-        return WatchThemeModel(transport: transport)
+        return WatchThemeModel(transport: transport())
     }
 }

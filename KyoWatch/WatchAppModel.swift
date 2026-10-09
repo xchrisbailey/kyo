@@ -19,7 +19,7 @@ final class WatchAppModel {
         let transport = WatchConnectivityTaskTransport.shared
         taskList = TaskListStore(sync: .mirror(from: transport))
         habitList = HabitListStore(sync: .mirror(from: transport))
-        theme = WatchThemeSelection.make(transport: transport)
+        theme = WatchThemeSelection.make(transport: { transport })
         memoList = WatchMemoList(outbox: WatchRecordingOutbox(transport: transport), sync: transport)
     }
 

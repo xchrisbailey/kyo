@@ -86,7 +86,6 @@ struct WatchRecorderView: View {
             }
             Text(Memo.formattedDuration(session.elapsed))
                 .font(.system(size: 38, weight: .semibold, design: .rounded))
-                .foregroundStyle(palette.primaryText.style)
                 .monospacedDigit()
                 .accessibilityLabel("\(session.phase == .paused ? "Paused" : "Recording"), \(Memo.formattedDuration(session.elapsed))")
             if session.isNearCap {
@@ -153,7 +152,6 @@ struct WatchRecorderView: View {
                 .accessibilityHidden(true)
             Text(message)
                 .font(.footnote)
-                .foregroundStyle(palette.primaryText.style)
                 .multilineTextAlignment(.center)
             Button("OK", action: onFinish)
         }

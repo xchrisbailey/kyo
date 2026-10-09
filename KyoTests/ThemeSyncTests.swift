@@ -40,7 +40,7 @@ final class ThemeSyncTests: XCTestCase {
 
         transport.publish(themeID: "neko")
 
-        let context = transport.latestContext
+        let context = transport.contextToWrite ?? [:]
         XCTAssertEqual(id(in: context), "neko")
         XCTAssertNotNil(context[WatchConnectivityTaskTransport.snapshotKey])
         XCTAssertNotNil(context[WatchConnectivityTaskTransport.habitSnapshotKey])
@@ -55,8 +55,8 @@ final class ThemeSyncTests: XCTestCase {
         contextWithAllSnapshots(transport)
         transport.publish(TaskListSnapshot(revision: 2, tasks: []))
 
-        XCTAssertEqual(id(in: transport.latestContext), "techo")
-        XCTAssertEqual(transport.latestContext.count, 4)
+        XCTAssertEqual(id(in: transport.contextToWrite ?? [:]), "techo")
+        XCTAssertEqual(transport.contextToWrite?.count, 4)
     }
 
     func testANewerThemeIdReplacesTheOldOneAndKeepsTheSnapshots() {
@@ -66,8 +66,39 @@ final class ThemeSyncTests: XCTestCase {
 
         transport.publish(themeID: "techo")
 
-        XCTAssertEqual(id(in: transport.latestContext), "techo")
-        XCTAssertEqual(transport.latestContext.count, 4)
+        XCTAssertEqual(id(in: transport.contextToWrite ?? [:]), "techo")
+        XCTAssertEqual(transport.contextToWrite?.count, 4)
+    }
+
+    func testAThemeIdAloneNeverCausesTheFirstWriteOfALaunch() {
+        let transport = WatchConnectivityTaskTransport(session: nil)
+
+        transport.publish(themeID: "neko")
+
+        XCTAssertNil(transport.contextToWrite)
+    }
+
+    func testTheFirstSnapshotOfALaunchWritesTheThemeIdAlongWithIt() {
+        let transport = WatchConnectivityTaskTransport(session: nil)
+        transport.publish(themeID: "neko")
+
+        transport.publish(TaskListSnapshot(revision: 1, tasks: []))
+
+        let context = transport.contextToWrite ?? [:]
+        XCTAssertEqual(id(in: context), "neko")
+        XCTAssertNotNil(context[WatchConnectivityTaskTransport.snapshotKey])
+    }
+
+    func testAThemeChangeAfterASnapshotWritesAtOnceWithEverySnapshot() {
+        let transport = WatchConnectivityTaskTransport(session: nil)
+        transport.publish(TaskListSnapshot(revision: 1, tasks: []))
+        XCTAssertEqual(transport.contextToWrite?.count, 1)
+
+        transport.publish(themeID: "techo")
+
+        let context = transport.contextToWrite ?? [:]
+        XCTAssertEqual(id(in: context), "techo")
+        XCTAssertNotNil(context[WatchConnectivityTaskTransport.snapshotKey])
     }
 
     func testTheThemeIdTravelsUnderItsOwnKey() {
@@ -112,30 +143,73 @@ final class ThemeSyncTests: XCTestCase {
         XCTAssertEqual(store.current.id, "neko")
     }
 
-    func testAnInMemoryLaunchPublishesNothing() {
-        let transport = ControllableThemeTransport()
+    func testAnInMemoryLaunchPublishesNothingAndNeverAsksForTheTransport() {
+        let store = ThemeSelection.make(
+            environment: [KyoModelContainer.inMemoryEnvironmentKey: "1"], transport: failingTransportRequest
+        )
 
-        let store = ThemeSelection.make(environment: [KyoModelContainer.inMemoryEnvironmentKey: "1"], transport: transport)
         store.select(.neko)
 
-        XCTAssertTrue(transport.published.isEmpty)
+        XCTAssertEqual(store.current.id, "neko")
     }
 
-    func testALaunchWithAThemeSuitePublishesNothing() {
-        let transport = ControllableThemeTransport()
+    func testALaunchWithAThemeSuitePublishesNothingAndNeverAsksForTheTransport() {
+        let store = ThemeSelection.make(
+            environment: [ThemeSelection.suiteEnvironmentKey: "kyo.theme.tests.\(UUID().uuidString)"],
+            transport: failingTransportRequest
+        )
 
-        let store = ThemeSelection.make(environment: [ThemeSelection.suiteEnvironmentKey: "kyo.theme.tests.\(UUID().uuidString)"], transport: transport)
         store.select(.neko)
 
-        XCTAssertTrue(transport.published.isEmpty)
+        XCTAssertEqual(store.current.id, "neko")
     }
 
     func testARealLaunchPublishesItsThemeWhenItStarts() {
         let transport = ControllableThemeTransport()
 
-        let store = ThemeSelection.make(environment: [:], transport: transport)
+        let store = ThemeSelection.make(environment: [:], transport: { transport })
 
         XCTAssertEqual(transport.published, [store.current.id])
+    }
+
+    /// A launch that must not touch the live transport fails the test if it asks for any.
+    private func failingTransportRequest() -> any ThemeIDTransport {
+        XCTFail("this launch asked for the transport")
+        return ControllableThemeTransport()
+    }
+
+    // MARK: Watch: which launches follow the phone
+
+    func testALaunchWithAWatchThemeSuiteTakesNoFeedFromThePhoneAndWritesOnlyToTheSuite() {
+        let suite = "kyo.watch-theme.tests.\(UUID().uuidString)"
+        suiteNames.append(suite)
+        UserDefaults(suiteName: suite)!.set("techo", forKey: WatchThemeModel.storageKey)
+
+        let model = WatchThemeSelection.make(
+            environment: [WatchThemeSelection.suiteEnvironmentKey: suite], transport: failingTransportRequest
+        )
+
+        XCTAssertEqual(model.palette.themeID, "techo")
+        model.receive(themeID: "neko")
+        XCTAssertEqual(UserDefaults(suiteName: suite)!.string(forKey: WatchThemeModel.storageKey), "neko")
+    }
+
+    func testAnInMemoryWatchLaunchStartsInKyoWithNoFeedFromThePhone() {
+        let model = WatchThemeSelection.make(
+            environment: [KyoModelContainer.inMemoryEnvironmentKey: "1"], transport: failingTransportRequest
+        )
+
+        XCTAssertEqual(model.palette.themeID, "kyo")
+    }
+
+    func testARealWatchLaunchFollowsThePhone() {
+        let transport = ControllableThemeTransport()
+        let model = WatchThemeSelection.make(environment: [:], transport: { transport })
+        defer { UserDefaults.standard.removeObject(forKey: WatchThemeModel.storageKey) }
+
+        transport.deliver("neko")
+
+        XCTAssertEqual(model.palette.themeID, "neko")
     }
 
     // MARK: Watch: both paths a context arrives by
@@ -164,11 +238,23 @@ final class ThemeSyncTests: XCTestCase {
         XCTAssertEqual(received.ids, ["techo"])
     }
 
-    func testAContextWaitingAtLaunchDeliversItsThemeId() {
+    /// Activation reads the session's waiting context (not reachable without a real session) and hands
+    /// it to `handleActivation`, which these tests call.
+    func testAContextWaitingAtLaunchDeliversItsThemeIdWhenTheSessionActivates() {
         let transport = WatchConnectivityTaskTransport(session: nil)
         let received = receivedIDs(transport)
 
-        transport.receive(WatchConnectivityTaskTransport.ReceivedContext([WatchConnectivityTaskTransport.themeIDKey: Data("neko".utf8)]))
+        transport.handleActivation(receivedContext: .init([WatchConnectivityTaskTransport.themeIDKey: Data("neko".utf8)]))
+
+        XCTAssertEqual(received.ids, ["neko"])
+    }
+
+    func testAContextWaitingAtLaunchWithNoThemeIdLeavesAnEarlierOneAlone() {
+        let transport = WatchConnectivityTaskTransport(session: nil)
+        transport.handleActivation(receivedContext: .init([WatchConnectivityTaskTransport.themeIDKey: Data("neko".utf8)]))
+        transport.handleActivation(receivedContext: .init([WatchConnectivityTaskTransport.snapshotKey: Data()]))
+
+        let received = receivedIDs(transport)
 
         XCTAssertEqual(received.ids, ["neko"])
     }
@@ -195,7 +281,7 @@ final class ThemeSyncTests: XCTestCase {
 
     func testAnIdThatArrivedBeforeAReceiverRegisteredIsHandedOverWhenItDoes() {
         let transport = WatchConnectivityTaskTransport(session: nil)
-        transport.receive(WatchConnectivityTaskTransport.ReceivedContext([WatchConnectivityTaskTransport.themeIDKey: Data("neko".utf8)]))
+        transport.handleActivation(receivedContext: .init([WatchConnectivityTaskTransport.themeIDKey: Data("neko".utf8)]))
 
         let received = receivedIDs(transport)
 

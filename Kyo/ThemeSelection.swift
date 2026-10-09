@@ -10,11 +10,12 @@ enum ThemeSelection {
     static let suiteEnvironmentKey = "KYO_THEME_SUITE"
 
     /// Launches that keep the theme away from the device's real choice (in memory, or in a suite of
-    /// their own) publish nothing to the Watch, so a test never changes a paired Watch's theme.
+    /// their own) publish nothing to the Watch, and never ask for the transport, so a test never
+    /// activates a session or changes a paired Watch's theme.
     @MainActor
     static func make(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        transport: any ThemeIDTransport = WatchConnectivityTaskTransport.shared
+        transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
     ) -> ThemeStore {
         if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
             return ThemeStore(defaults: defaults)
@@ -26,6 +27,6 @@ enum ThemeSelection {
                 return ThemeStore(defaults: defaults)
             }
         }
-        return ThemeStore(transport: transport)
+        return ThemeStore(transport: transport())
     }
 }

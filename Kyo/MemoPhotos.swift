@@ -358,7 +358,6 @@ struct MemoPhotoCarousel: View {
 }
 
 private struct CarouselPhoto: View {
-
     @Environment(\.theme) private var theme
     let photoID: UUID
     let position: Int

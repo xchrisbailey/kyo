@@ -164,7 +164,6 @@ private struct MonthControl: View {
 }
 
 private struct MonthDayCell: View {
-
     @Environment(\.theme) private var theme
     let day: MonthDay
     let select: () -> Void
@@ -229,7 +228,6 @@ private struct MarkSlot: View {
 }
 
 private struct MonthDaySummaryView: View {
-
     @Environment(\.theme) private var theme
     let summary: MonthDaySummary
     let onOpen: (MonthSummaryTarget) -> Void

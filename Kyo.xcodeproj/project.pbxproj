@@ -144,7 +144,6 @@
 		8FF8BAF3E00AE0115D6BE6B2 /* KyoWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B4B522A2DB959943189C2E4F /* KyoWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		907066128C577AD13F723875 /* SectionCollapseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A83C12F7FCA3E3EDB669EB /* SectionCollapseUITests.swift */; };
 		937292FE94990A28B95D119A /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
-		9482FCDB1C0F28F09454473F /* ScreenshotTourUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE013A656ED84460B5A541D4 /* ScreenshotTourUITests.swift */; };
 		961388C59BB53C6FF3C0A4C5 /* WatchMemoList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0859BEDFD9F2BB24A566CACF /* WatchMemoList.swift */; };
 		97BA2BCAB0EC2C63E861A77E /* MemoTaskBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89CB9365B7261CACD1FFAA05 /* MemoTaskBehaviorTests.swift */; };
 		9B1FB7FF1CD1B4DB9DF1F537 /* VoiceMemoTitleBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6F954AF40DA339BC0A86F2A /* VoiceMemoTitleBehaviorTests.swift */; };
@@ -454,7 +453,6 @@
 		DB3F251061AAF830B62563CB /* CalendarServiceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarServiceSelection.swift; sourceTree = "<group>"; };
 		DB5B587AC7D91BEC5B52EE9E /* MemoShareBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShareBehaviorTests.swift; sourceTree = "<group>"; };
 		DC3D16FE3D497CED5BB83656 /* WatchCollapsedCountBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCollapsedCountBehaviorTests.swift; sourceTree = "<group>"; };
-		DE013A656ED84460B5A541D4 /* ScreenshotTourUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTourUITests.swift; sourceTree = "<group>"; };
 		E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationContextEntries.swift; sourceTree = "<group>"; };
 		E48D02F64E2A2A21CE7FECEE /* KyoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KyoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5D0F3E3B7611E621296C665 /* MonthMemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthMemoUITests.swift; sourceTree = "<group>"; };
@@ -617,7 +615,6 @@
 				0167112DC57A51C725650C9A /* ScheduleCalendarsUITests.swift */,
 				C245521D5372FC2053C29CBE /* ScheduleEventDetailUITests.swift */,
 				27ACD9FD78414F80B3680FAD /* ScheduleUITests.swift */,
-				DE013A656ED84460B5A541D4 /* ScreenshotTourUITests.swift */,
 				82A83C12F7FCA3E3EDB669EB /* SectionCollapseUITests.swift */,
 				547CEEC0FF485818E9E31A00 /* TaskCheckboxUITests.swift */,
 				D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */,
@@ -964,7 +961,6 @@
 				FA474485C92C5E70C6EDFACC /* ScheduleCalendarsUITests.swift in Sources */,
 				EB22C10C5F24BA1EAA9C80FC /* ScheduleEventDetailUITests.swift in Sources */,
 				6F3EF5168A7A52B6101A7122 /* ScheduleUITests.swift in Sources */,
-				9482FCDB1C0F28F09454473F /* ScreenshotTourUITests.swift in Sources */,
 				907066128C577AD13F723875 /* SectionCollapseUITests.swift in Sources */,
 				BA09FF5EDD4F9BD5FA862F5C /* TaskCheckboxUITests.swift in Sources */,
 				2E0059C35BD9EE604D40A030 /* WatchSyncSmokeUITests.swift in Sources */,

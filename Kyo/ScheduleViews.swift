@@ -155,7 +155,6 @@ struct ScheduleSectionContent: View {
 }
 
 private struct ScheduleRow: View {
-
     @Environment(\.theme) private var theme
     let row: ScheduleRowPresentation
     let open: () -> Void

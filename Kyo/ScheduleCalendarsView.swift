@@ -44,7 +44,6 @@ struct ScheduleCalendarsView: View {
 }
 
 private struct ScheduleCalendarRow: View {
-
     @Environment(\.theme) private var theme
     let calendar: ScheduleCalendar
     let isVisible: Bool
@@ -54,7 +53,7 @@ private struct ScheduleCalendarRow: View {
         Button(action: toggle) {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color(.sRGB, red: calendar.color.red, green: calendar.color.green, blue: calendar.color.blue, opacity: calendar.color.alpha))
+                    .fill(calendar.color.swiftUIColor)
                     .frame(width: 12, height: 12)
                 Text(calendar.title)
                     .foregroundStyle(theme.primaryText)

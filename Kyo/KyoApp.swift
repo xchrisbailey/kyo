@@ -39,7 +39,6 @@ struct KyoApp: App {
 }
 
 private struct StoreOpenFailedView: View {
-
     @Environment(\.theme) private var theme
     let retry: () -> Void
 

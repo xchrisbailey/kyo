@@ -15,7 +15,6 @@ struct HabitsSheet: View {
 }
 
 private struct HabitsList: View {
-
     @Environment(\.theme) private var theme
     @ObservedObject var habitList: HabitListStore
     @Environment(\.dismiss) private var dismiss
@@ -91,7 +90,6 @@ private struct HabitsList: View {
 }
 
 private struct HabitsSheetRow: View {
-
     @Environment(\.theme) private var theme
     let overview: HabitOverview
 

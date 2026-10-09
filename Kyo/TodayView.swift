@@ -3,7 +3,6 @@ import SwiftUI
 import UIKit
 
 struct TodayView: View {
-
     @Environment(\.theme) private var theme
     @StateObject private var taskList: TaskListStore
     @StateObject private var habitList: HabitListStore
@@ -563,7 +562,6 @@ private enum TodayPreviewSheet: Identifiable {
 }
 
 private struct TaskDraftRow: View {
-
     @Environment(\.theme) private var theme
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
@@ -598,7 +596,6 @@ private enum MainView: String {
 }
 
 private struct MainBottomBar: View {
-
     @Environment(\.theme) private var theme
     let selected: MainView
     let select: (MainView) -> Void
@@ -669,7 +666,6 @@ private struct MainBottomBar: View {
 }
 
 private struct SummaryStat: View {
-
     @Environment(\.theme) private var theme
     let value: String
     let label: String
@@ -696,7 +692,6 @@ private struct SummaryStat: View {
 }
 
 struct TodaySection<Content: View>: View {
-
     @Environment(\.theme) private var theme
     let title: String
     let note: String
@@ -772,7 +767,6 @@ struct TodaySection<Content: View>: View {
 }
 
 private struct CheckRow: View {
-
     @Environment(\.theme) private var theme
     let title: String
     var trailing: String? = nil
@@ -851,7 +845,6 @@ private struct CheckRow: View {
 }
 
 private struct HabitRow: View {
-
     @Environment(\.theme) private var theme
     let entry: TodayHabit
     let onToggle: () -> Void
@@ -924,7 +917,6 @@ private struct HabitRow: View {
 }
 
 private struct TaskRow: View {
-
     @Environment(\.theme) private var theme
     let task: DailyTask
     let onToggle: () -> Void

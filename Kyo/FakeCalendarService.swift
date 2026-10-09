@@ -112,7 +112,6 @@ final class FakeEventDetailPresenter: EventDetailPresenter {
 }
 
 private struct FakeEventDetailView: View {
-
     @Environment(\.theme) private var theme
     let event: ScheduleEvent
     let onDone: @MainActor () -> Void

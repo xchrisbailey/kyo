@@ -82,6 +82,7 @@ final class MemoAudioPlayer: ObservableObject {
 /// The open Voice memo's player, pinned to the bottom of its card: play/pause and a scrubber.
 struct MemoAudioPlayerBar: View {
     @Environment(\.theme) private var theme
+    @Environment(\.displayScale) private var displayScale
     let loadAudio: () -> Data?
     let duration: TimeInterval
 
@@ -139,10 +140,27 @@ struct MemoAudioPlayerBar: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) { Divider() }
+        .background(barStyle)
+        .overlay(alignment: .top) { separator }
         .onAppear { player.load(loadAudio(), fallbackDuration: duration) }
         .onDisappear { player.stop() }
+    }
+
+    /// The theme's bar color, or the system material when it has none.
+    private var barStyle: AnyShapeStyle {
+        theme.barBackground.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.regularMaterial)
+    }
+
+    /// A line in the theme's separator color over its bar color; the system's divider over the material.
+    @ViewBuilder
+    private var separator: some View {
+        if theme.barBackground != nil {
+            Rectangle()
+                .fill(theme.separator)
+                .frame(height: 1 / displayScale)
+        } else {
+            Divider()
+        }
     }
 
     private var shownPosition: TimeInterval {

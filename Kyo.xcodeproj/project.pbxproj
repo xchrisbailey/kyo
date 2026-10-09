@@ -24,6 +24,7 @@
 		09C66646EABED257464866CC /* KyoSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7528978887517D357C79DAE /* KyoSchema.swift */; };
 		0BCBCD64E34486325AC7B270 /* ThemeTechoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7225DC9C4FCF6B3926864E98 /* ThemeTechoTests.swift */; };
 		0DB5A9608C67C14DDF885EE5 /* MemoHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B378E300FD6EAEEEBE0157BC /* MemoHistory.swift */; };
+		0E9D36256BE6EDC945A8253B /* ThemeSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CB47CB7B88A249338D0821 /* ThemeSyncTests.swift */; };
 		0ECA71E0923B20933ABEFB88 /* HabitOverviewsBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F68ADF8A6CA8C0698647759B /* HabitOverviewsBehaviorTests.swift */; };
 		0F3F0349DCF30D29B94A505C /* MonthGridBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D5BA4EF0079CD5F3796540F /* MonthGridBehaviorTests.swift */; };
 		0F5397CEF6471032CBA0A5CE /* OnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE5820CFA449D4155D9E440 /* OnDeviceLanguageModel.swift */; };
@@ -492,6 +493,7 @@
 		C2D48E401880F48E0024B39A /* WatchOriginatedSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchOriginatedSyncTests.swift; sourceTree = "<group>"; };
 		C3833347045D0B34FCE55765 /* MemoRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoRecord.swift; sourceTree = "<group>"; };
 		C4981CC93D4FBDF7FADA58F4 /* OFL-Caveat.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Caveat.txt"; sourceTree = "<group>"; };
+		C6CB47CB7B88A249338D0821 /* ThemeSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSyncTests.swift; sourceTree = "<group>"; };
 		C6F954AF40DA339BC0A86F2A /* VoiceMemoTitleBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoTitleBehaviorTests.swift; sourceTree = "<group>"; };
 		C80A0A39A8A72D94FF3F53A2 /* ScheduleCalendarsBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleCalendarsBehaviorTests.swift; sourceTree = "<group>"; };
 		C90514C7D4BDDDA86EA314E2 /* UserDefaultsImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsImportTests.swift; sourceTree = "<group>"; };
@@ -659,6 +661,7 @@
 				51B9EB9CC615D77339ECE615 /* ThemeContrastTests.swift */,
 				8954E8748A549D0A5580F21F /* ThemeFontTests.swift */,
 				E170288F474B2990CC403E74 /* ThemeNekoTests.swift */,
+				C6CB47CB7B88A249338D0821 /* ThemeSyncTests.swift */,
 				7225DC9C4FCF6B3926864E98 /* ThemeTechoTests.swift */,
 				072205325C426413529D49A6 /* TranscriptionBehaviorTests.swift */,
 				C90514C7D4BDDDA86EA314E2 /* UserDefaultsImportTests.swift */,
@@ -1246,6 +1249,7 @@
 				520ED5E4403B980BB451A1FB /* ThemeNekoTests.swift in Sources */,
 				FD1B929365E63D982EA4B7E6 /* ThemeSelection.swift in Sources */,
 				8A234BD72A62294A75B0A442 /* ThemeStore.swift in Sources */,
+				0E9D36256BE6EDC945A8253B /* ThemeSyncTests.swift in Sources */,
 				968FA1A300939B2701A55ECF /* ThemeTecho.swift in Sources */,
 				0BCBCD64E34486325AC7B270 /* ThemeTechoTests.swift in Sources */,
 				471989F72F89F16F46A48BF8 /* TranscriptionBehaviorTests.swift in Sources */,

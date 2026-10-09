@@ -2,9 +2,16 @@ import SwiftUI
 
 @main
 struct KyoWatchApp: App {
+    // Owned by `WatchAppModel`, so a background launch has the phone's theme to adopt.
+    @ObservedObject private var theme = WatchAppModel.shared.theme
+
     var body: some Scene {
         WindowGroup {
             WatchTodayView()
+                // The palette every Watch view reads, sheets included, since they inherit it. A
+                // theme that arrives while the app is on screen recolors it at once, not animated.
+                .environment(\.watchPalette, theme.palette)
+                .transaction(value: theme.palette.themeID) { $0.animation = nil }
                 // A complication's `widgetURL` (`kyo://record-memo`) opens Kyo into recording
                 // through the same router as the Record memo control.
                 .onOpenURL { url in

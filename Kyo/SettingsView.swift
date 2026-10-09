@@ -5,20 +5,15 @@ struct SettingsSheet: View {
     @ObservedObject var schedule: ScheduleStore
     @ObservedObject var themes: ThemeStore
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
 
     var body: some View {
         NavigationStack {
             List {
-                Section {
+                ThemedListGroup("Appearance") {
                     ThemePicker(store: themes)
-                } header: {
-                    Text("Appearance")
-                        .foregroundStyle(theme.secondaryText)
                 }
-                .listRowBackground(theme.listRow)
 
-                Section {
+                ThemedListGroup("Schedule") {
                     Toggle("Show schedule", isOn: Binding(
                         get: { schedule.showsSchedule },
                         set: { schedule.setShowsSchedule($0) }
@@ -31,11 +26,7 @@ struct SettingsSheet: View {
                     }
                     .disabled(!schedule.showsSchedule)
                     .accessibilityHint("Chooses which calendars the schedule shows")
-                } header: {
-                    Text("Schedule")
-                        .foregroundStyle(theme.secondaryText)
                 }
-                .listRowBackground(theme.listRow)
             }
             .listStyle(.insetGrouped)
             .themedListBackground()

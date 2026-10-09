@@ -11,29 +11,25 @@ struct ScheduleCalendarsView: View {
         List {
             if schedule.showsEvents {
                 if schedule.calendarGroups.isEmpty {
-                    Text("No calendars")
-                        .foregroundStyle(theme.secondaryText)
-                        .listRowBackground(theme.listRow)
+                    ThemedListGroup {
+                        Text("No calendars")
+                            .foregroundStyle(theme.secondaryText)
+                    }
                 }
                 ForEach(schedule.calendarGroups) { group in
-                    Section {
+                    ThemedListGroup(verbatim: group.accountTitle) {
                         ForEach(group.calendars) { calendar in
                             ScheduleCalendarRow(calendar: calendar, isVisible: schedule.isCalendarVisible(calendar.id)) {
                                 schedule.toggleCalendar(calendar.id)
                             }
                         }
-                    } header: {
-                        Text(group.accountTitle)
-                            .foregroundStyle(theme.secondaryText)
                     }
-                    .listRowBackground(theme.listRow)
                 }
             } else if schedule.showsSection {
-                Section {
+                ThemedListGroup {
                     ScheduleSectionContent(schedule: schedule)
                         .listRowInsets(EdgeInsets())
                 }
-                .listRowBackground(theme.listRow)
             }
         }
         .themedListBackground()

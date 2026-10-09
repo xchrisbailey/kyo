@@ -91,6 +91,17 @@ final class ThemeContrastTests: XCTestCase {
         }
     }
 
+    /// The label of a prominent button is drawn on the control tint. The Kyo theme keeps iOS's tint
+    /// and its white label, so it has no tint to measure against.
+    func testTheLabelOfAProminentButtonMeetsThreeToOneAgainstTheControlTint() {
+        let tinted = Theme.all.filter { $0.light.controlTint != nil && $0.dark.controlTint != nil }
+        XCTAssertFalse(tinted.isEmpty)
+        assertEveryTheme(
+            foreground: ("onControlTint", \.onControlTint), on: [Backdrop("controlTint", \.controlTintOrClear)],
+            floor: 3, themes: tinted
+        )
+    }
+
     func testColorsDrawnOnAWarningAndOnADestructiveFillMeetThreeToOneAgainstIt() {
         assertEveryTheme(foreground: ("onWarning", \.onWarning), on: [Backdrop("warning", \.warning)], floor: 3)
         assertEveryTheme(foreground: ("onDestructive", \.onDestructive), on: [Backdrop("destructive", \.destructive)], floor: 3)
@@ -170,4 +181,7 @@ final class ThemeContrastTests: XCTestCase {
 private extension Palette {
     /// The control tint, for the themes that set one; the others are filtered out before it is read.
     var controlTintOrAccent: UIColor { controlTint ?? accent }
+
+    /// The control tint a test measures against, for a theme that sets one.
+    var controlTintOrClear: UIColor { controlTint ?? .clear }
 }

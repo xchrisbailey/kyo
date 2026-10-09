@@ -12,11 +12,18 @@ final class ThemeNekoTests: XCTestCase {
     func testLightIsCatppuccinLatteWithMauveAsTheAccent() {
         let light = Theme.neko.light
         XCTAssertEqual(hex(light.screenBackground), "eff1f5", "Base")
-        XCTAssertEqual(hex(light.card), "ccd0da", "Surface0")
+        XCTAssertEqual(hex(light.card), "e6e9ef", "Mantle")
         XCTAssertEqual(hex(light.primaryText), "4c4f69", "Text")
         XCTAssertEqual(hex(light.secondaryText), "5c5f77", "Subtext1")
         XCTAssertEqual(hex(light.tertiaryText), "6c6f85", "Subtext0")
         XCTAssertEqual(hex(light.accent), "8839ef", "Mauve")
+    }
+
+    /// The weekday chip sits on a row, so its fill has to differ from the row's.
+    func testLightChipFillIsSurface0SoItReadsAsAChipOnAMantleRow() {
+        let light = Theme.neko.light
+        XCTAssertEqual(hex(light.listRow), "e6e9ef", "Mantle")
+        XCTAssertEqual(hex(light.fill), "ccd0da", "Surface0")
     }
 
     func testDarkIsCatppuccinMochaWithMauveAsTheAccent() {

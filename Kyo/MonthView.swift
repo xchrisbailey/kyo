@@ -65,7 +65,11 @@ struct MonthView: View {
                 }
             } else {
                 HStack(spacing: 8) {
-                    title.frame(maxWidth: .infinity, alignment: .leading)
+                    // A long month name shrinks to fit beside the controls instead of wrapping.
+                    title
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     controls
                 }
             }

@@ -60,6 +60,9 @@ struct Palette {
     var onAccent: UIColor
     /// Text and icons drawn on a solid accent fill: the Add button, the Save capsule, the play button.
     var onAccentText: UIColor
+    /// Text on a prominent button, which iOS fills with the control tint. The Kyo theme keeps iOS's
+    /// tint, whose label is white.
+    var onControlTint: UIColor
     /// The day number drawn on the accent circle that marks today in the Month.
     var todayNumeral: UIColor
 
@@ -110,6 +113,7 @@ extension Theme {
     }
     var onAccent: Color { color(\.onAccent) }
     var onAccentText: Color { color(\.onAccentText) }
+    var onControlTint: Color { color(\.onControlTint) }
     var todayNumeral: Color { color(\.todayNumeral) }
     var warning: Color { color(\.warning) }
     var onWarning: Color { color(\.onWarning) }
@@ -221,6 +225,7 @@ extension Theme {
             controlTint: nil,
             onAccent: .secondarySystemBackground,
             onAccentText: .white,
+            onControlTint: .white,
             todayNumeral: .systemBackground,
             warning: .systemOrange,
             onWarning: .white,
@@ -249,6 +254,7 @@ extension Theme {
             controlTint: nil,
             onAccent: .secondarySystemBackground,
             onAccentText: .white,
+            onControlTint: .white,
             todayNumeral: .systemBackground,
             warning: .systemOrange,
             onWarning: .white,

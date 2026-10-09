@@ -23,24 +23,25 @@ private struct HabitsList: View {
 
     var body: some View {
         List {
-            ForEach(habitList.habitOverviews) { overview in
-                NavigationLink {
-                    HabitForm(
-                        habit: overview.habit,
-                        onSave: { name, schedule in habitList.editHabit(id: overview.id, name: name, schedule: schedule) != nil },
-                        onDelete: { habitList.deleteHabit(id: overview.id) }
-                    )
-                } label: {
-                    HabitsSheetRow(overview: overview)
+            ThemedListGroup {
+                ForEach(habitList.habitOverviews) { overview in
+                    NavigationLink {
+                        HabitForm(
+                            habit: overview.habit,
+                            onSave: { name, schedule in habitList.editHabit(id: overview.id, name: name, schedule: schedule) != nil },
+                            onDelete: { habitList.deleteHabit(id: overview.id) }
+                        )
+                    } label: {
+                        HabitsSheetRow(overview: overview)
+                    }
+                    .accessibilityHint("Edits this habit")
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button("Delete", role: .destructive) { pendingDelete = overview.habit }
+                            .accessibilityLabel("Delete habit: \(overview.habit.name)")
+                    }
                 }
-                .accessibilityHint("Edits this habit")
-                .listRowBackground(theme.listRow)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Delete", role: .destructive) { pendingDelete = overview.habit }
-                        .accessibilityLabel("Delete habit: \(overview.habit.name)")
-                }
+                .onMove { habitList.moveHabits(fromOffsets: $0, toOffset: $1) }
             }
-            .onMove { habitList.moveHabits(fromOffsets: $0, toOffset: $1) }
         }
         .themedListBackground()
         .overlay {

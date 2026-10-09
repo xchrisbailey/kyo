@@ -38,6 +38,11 @@ Run tests through `scripts/test <scheme> [extra xcodebuild arguments]`, for exam
 
 UI suites queue. `scripts/test KyoUITests` and `scripts/test KyoWatchUITests` (a narrow `-only-testing` run included) take a lock shared by every worktree on the machine before they create their simulator, so only one UI suite runs at a time; several at once each run far slower and can time out under the load. A run that has to wait prints one line naming the holder (worktree and scheme) and starts when the lock is free. The lock is released when the run ends, however it ends. A lock whose holder process is gone is stale, and the next run takes it over. `KyoTests` and the build checks don't take the lock. The lock is the symlink `kyo-ui-lock` in `${TMPDIR:-/tmp}`; its target names the holder.
 
+After a UI run, xcodebuild can wait up to ten minutes on a `simctl diagnose` helper that collects simulator diagnostics before it prints its result line, and the run holds the lock the whole time (#210). `scripts/test` bounds that wait, once the top-level suite has reported its result:
+
+- Failed: 60 seconds after the `failed` line it stops xcodebuild, appends `** TEST FAILED **` if xcodebuild hadn't printed it, and exits 65.
+- Passed: 20 seconds after the `passed` line it stops only the `simctl diagnose` helper (a child of this run's xcodebuild, never another run's) and says so on stderr. xcodebuild then finishes by itself, so its `** TEST SUCCEEDED **` line and exit status are the real ones. If it is still running 60 seconds after the `passed` line, the script stops it, appends `** TEST SUCCEEDED **` if needed, says so on stderr, and exits 0, since every test had passed.
+
 Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the `KyoWatchWidgets` extension a linker signature whose identifier is `KyoWatchWidgets` instead of its bundle identifier. The Shortcuts daemon then rejects the extension, WidgetKit asserts in `WatchRecordMemoControl`, and the extension is killed when the Watch app first launches on a fresh simulator (#150). `scripts/test` builds signed for the simulator, which needs no account. The build checks above can stay unsigned because they never launch the app.
 
 ## CI

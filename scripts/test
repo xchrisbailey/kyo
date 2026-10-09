@@ -193,8 +193,17 @@ echo "scripts/test: full log: $log"
 # diagnostics (`simctl diagnose`, 600s timeout) before it prints its result line. Once the
 # top-level suite has reported a failure, give it a grace period, then stop it and report the
 # failure ourselves.
+#
+# A passed run can wait on the same helper, and holds the UI suite lock while it does. There,
+# stopping xcodebuild would lose its result line and exit status, so once the top-level suite has
+# reported a pass and the grace period is up, stop only the helper (a `simctl diagnose` child of
+# this xcodebuild) and let xcodebuild finish by itself. If it is still running at the limit, stop
+# it and report the pass ourselves.
 failed_pattern="^Test Suite '(All tests|Selected tests)' failed"
+passed_pattern="^Test Suite '(All tests|Selected tests)' passed"
 grace=60
+pass_grace=20
+pass_limit=60
 set +e
 # No CODE_SIGNING_ALLOWED=NO on purpose: unsigned builds give the watch widget extension a signature
 # identifier that isn't its bundle identifier, so the Record memo control is rejected and the
@@ -204,7 +213,10 @@ xcodebuild -project "$project" -scheme "$scheme" \
   "$@" test >"$log" 2>&1 &
 xcodebuild_pid=$!
 stopped=0
+passed_stopped=0
+stopped_helper=0
 seconds_since_failure=0
+seconds_since_pass=0
 while kill -0 "$xcodebuild_pid" 2>/dev/null; do
   if grep -qE "$failed_pattern" "$log"; then
     seconds_since_failure=$((seconds_since_failure + 1))
@@ -212,6 +224,19 @@ while kill -0 "$xcodebuild_pid" 2>/dev/null; do
       stopped=1
       stop_xcodebuild
       break
+    fi
+  elif grep -qE "$passed_pattern" "$log"; then
+    seconds_since_pass=$((seconds_since_pass + 1))
+    if [[ $seconds_since_pass -ge $pass_limit ]]; then
+      passed_stopped=1
+      stop_xcodebuild
+      break
+    elif [[ $seconds_since_pass -ge $pass_grace ]] \
+      && pkill -TERM -P "$xcodebuild_pid" -f 'simctl diagnose' 2>/dev/null; then
+      if [[ $stopped_helper -eq 0 ]]; then
+        echo "scripts/test: xcodebuild was still running ${pass_grace}s after the tests passed; stopped its simulator diagnostics helper" >&2
+        stopped_helper=1
+      fi
     fi
   fi
   sleep 1
@@ -224,6 +249,11 @@ if [[ $stopped -eq 1 ]]; then
   echo "scripts/test: xcodebuild was still running ${grace}s after the tests failed; stopped it" >&2
   grep -q '^\*\* TEST FAILED \*\*' "$log" || echo "** TEST FAILED **" >>"$log"
   status=65
+fi
+if [[ $passed_stopped -eq 1 ]]; then
+  echo "scripts/test: xcodebuild was still running ${pass_limit}s after the tests passed; stopped it" >&2
+  grep -q '^\*\* TEST SUCCEEDED \*\*' "$log" || echo "** TEST SUCCEEDED **" >>"$log"
+  status=0
 fi
 
 # Suite results, failures (XCTest and Swift Testing), build errors, and the final result line.

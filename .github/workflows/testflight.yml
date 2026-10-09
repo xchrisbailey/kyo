@@ -2,7 +2,7 @@ name: TestFlight
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 # Uploads go one at a time, and a build that is already uploading is never cancelled.
@@ -14,8 +14,73 @@ permissions:
   contents: read
 
 jobs:
+  # A pushed tag is the release: v<MARKETING_VERSION>, on a commit that is on main. This cheap check
+  # runs before the archive and fails the run unless both hold. A manual run skips the tag checks.
+  # Either way it reads the value the archive is built with: the workflow doesn't run XcodeGen, so
+  # that is the one in the committed project file, and project.yml has to agree with it.
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Full history, so the tagged commit can be checked against origin/main.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check MARKETING_VERSION and the tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse "$SHA^{commit}")
+
+          # The distinct MARKETING_VERSION values in the project file, one per line.
+          built=$(git show "$commit:Kyo.xcodeproj/project.pbxproj" \
+            | sed -n 's/^[[:space:]]*MARKETING_VERSION = \(.*\);[[:space:]]*$/\1/p' \
+            | tr -d '"' | sort -u)
+          if [ "$(printf '%s' "$built" | grep -c . || true)" -ne 1 ]; then
+            echo "::error title=MARKETING_VERSION is inconsistent::Kyo.xcodeproj/project.pbxproj must have exactly one MARKETING_VERSION across its configurations, found: $(printf '%s' "${built:-none}" | tr '\n' ' '). Run xcodegen generate and commit the project."
+            exit 1
+          fi
+          version=$built
+          if ! [[ $version =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            echo "::error title=MARKETING_VERSION is not a version::Expected one to three dot-separated numbers, found: $version"
+            exit 1
+          fi
+
+          declared=$(git show "$commit:project.yml" \
+            | sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*\(.*\)$/\1/p' \
+            | tr -d "\"' " | sort -u)
+          if [ "$declared" != "$version" ]; then
+            echo "::error title=project.yml and the project file disagree::project.yml has MARKETING_VERSION ${declared:-none} but Kyo.xcodeproj has $version, which is what the archive is built with. Run xcodegen generate and commit the project."
+            exit 1
+          fi
+
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            echo "Manual run: building $version without checking a tag."
+            exit 0
+          fi
+
+          if [ "$REF_NAME" != "v$version" ]; then
+            echo "::error title=Tag does not match the version::The tag is $REF_NAME but the project is built as $version, so it should be v$version. Delete the tag, and tag the commit that carries the version."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error title=Tag is not on main::The tagged commit $commit is not an ancestor of origin/main. Merge the version bump to main and tag the merged commit."
+            exit 1
+          fi
+          echo "Releasing $version from $commit, which is on main."
+
   upload:
     name: Archive and upload to TestFlight
+    needs: version
     runs-on: xcode-27
     timeout-minutes: 60
     env:
@@ -62,8 +127,8 @@ jobs:
       # anyway. An unsigned archive carries no entitlements, so revisit this when a target gains an
       # entitlements file.
       # CURRENT_PROJECT_VERSION on the command line overrides every target, so the app, the Watch
-      # app, and both widget extensions share one build number. MARKETING_VERSION stays in
-      # project.yml.
+      # app, and both widget extensions share one build number. MARKETING_VERSION comes from the
+      # committed project file, which the version job has checked against the tag.
       - name: Archive
         if: steps.preflight.outputs.enabled == 'true'
         shell: bash

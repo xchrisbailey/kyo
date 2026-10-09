@@ -122,7 +122,7 @@ struct TodayView: View {
                 .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
                     case .settings:
-                        SettingsSheet(schedule: schedule)
+                        SettingsSheet(schedule: schedule, themes: .shared)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
@@ -398,6 +398,7 @@ struct TodayView: View {
             .padding(.trailing, -12)
             .accessibilityLabel("Settings")
             .accessibilityHint("Opens Settings")
+            .accessibilityIdentifier("open-settings")
         }
     }
 

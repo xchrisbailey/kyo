@@ -5,13 +5,20 @@ import UIKit
 /// or dark setting decides which palette shows. A view reads every color from the theme in its
 /// environment, never from a system color or a literal.
 struct Theme {
+    /// What the device stores to remember the choice, so it never changes for a shipped theme.
+    let id: String
     let name: String
     let headerFont: HeaderFont
     let light: Palette
     let dark: Palette
 
     /// Every theme the app ships.
-    static let all: [Theme] = [.kyo]
+    static let all: [Theme] = [.kyo, .neko]
+
+    /// The shipped theme stored as `id`, or `nil` when none is.
+    static func named(_ id: String) -> Theme? {
+        all.first { $0.id == id }
+    }
 
     /// The palette drawn when the device is in `style`.
     func palette(for style: UIUserInterfaceStyle) -> Palette {
@@ -128,17 +135,42 @@ enum HeaderStyle {
 struct HeaderFont {
     enum Face {
         case system
+        /// A typeface bundled with the app, named by the PostScript names of its semibold and bold
+        /// faces. Naming each weight keeps iOS from picking another face when one is missing.
+        case bundled(semibold: String, bold: String)
+
+        /// The PostScript names this face needs registered with the app.
+        var postScriptNames: [String] {
+            switch self {
+            case .system: []
+            case .bundled(let semibold, let bold): [semibold, bold]
+            }
+        }
     }
 
     var face: Face = .system
+    /// Scales every header size, for a face that reads smaller or larger than the system font at the
+    /// same point size, so its headers look as big as the Kyo theme's.
+    var sizeScale: CGFloat = 1
     var sectionTracking: CGFloat
     var largeTitleTracking: CGFloat
 
     func font(for style: HeaderStyle) -> Font {
-        switch (face, style) {
-        case (.system, .section): .title3.weight(.semibold)
-        case (.system, .largeTitle): .largeTitle.weight(.bold)
-        case (.system, .navigationTitle): .headline
+        switch face {
+        case .system:
+            switch style {
+            case .section: .title3.weight(.semibold)
+            case .largeTitle: .largeTitle.weight(.bold)
+            case .navigationTitle: .headline
+            }
+        case .bundled(let semibold, let bold):
+            // The point sizes are the system text styles' at the default text size, and the font
+            // scales from them with the device text size, as the system styles do.
+            switch style {
+            case .section: .custom(semibold, size: 20 * sizeScale, relativeTo: .title3)
+            case .largeTitle: .custom(bold, size: 34 * sizeScale, relativeTo: .largeTitle)
+            case .navigationTitle: .custom(semibold, size: 17 * sizeScale, relativeTo: .headline)
+            }
         }
     }
 
@@ -155,6 +187,7 @@ extension Theme {
     /// The look Kyo has always had, and the default. Its colors are system colors, not copies, so
     /// they still shift for a sheet's raised background and for Increase Contrast.
     static let kyo = Theme(
+        id: "kyo",
         name: "Kyo",
         headerFont: HeaderFont(sectionTracking: -0.4, largeTitleTracking: -1.2),
         light: Palette(

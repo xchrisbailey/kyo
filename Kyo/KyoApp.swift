@@ -25,7 +25,7 @@ struct KyoApp: App {
             }
             .themedTint()
             .environment(\.theme, themeStore.current)
-            .preferredColorScheme(palettePreference.current.colorScheme)
+            .background(WindowPalette(preference: palettePreference.current))
         }
     }
 

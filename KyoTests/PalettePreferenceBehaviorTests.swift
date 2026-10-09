@@ -1,4 +1,4 @@
-import SwiftUI
+import UIKit
 import XCTest
 
 /// Which palette the app shows: System until a pick, a pick kept in the injected `UserDefaults`, and
@@ -82,9 +82,9 @@ final class PalettePreferenceBehaviorTests: XCTestCase {
         XCTAssertEqual(PalettePreference.allCases.map(\.name), ["System", "Light", "Dark"])
     }
 
-    func testSystemLeavesTheColorSchemeToTheDeviceAndTheOthersFixIt() {
-        XCTAssertNil(PalettePreference.system.colorScheme)
-        XCTAssertEqual(PalettePreference.light.colorScheme, .light)
-        XCTAssertEqual(PalettePreference.dark.colorScheme, .dark)
+    func testSystemLeavesTheWindowsToTheDeviceAndTheOthersFixThem() {
+        XCTAssertEqual(PalettePreference.system.userInterfaceStyle, .unspecified)
+        XCTAssertEqual(PalettePreference.light.userInterfaceStyle, .light)
+        XCTAssertEqual(PalettePreference.dark.userInterfaceStyle, .dark)
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The user's choice of which of a theme's palettes shows. System follows the device's light or dark
 /// setting; Light and Dark keep that palette whatever the device is set to.
@@ -14,10 +15,10 @@ enum PalettePreference: String, CaseIterable {
         }
     }
 
-    /// What the app's color scheme is set to; `nil` hands the choice back to the device.
-    var colorScheme: ColorScheme? {
+    /// What every window of the app is set to; `.unspecified` hands the choice back to the device.
+    var userInterfaceStyle: UIUserInterfaceStyle {
         switch self {
-        case .system: nil
+        case .system: .unspecified
         case .light: .light
         case .dark: .dark
         }

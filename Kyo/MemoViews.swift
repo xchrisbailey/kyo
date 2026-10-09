@@ -79,65 +79,68 @@ struct MemoRow: View {
         shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: memo.text, loadPhoto: loadPhoto))
     }
 
+    /// A tap gesture rather than a `Button`: the swipe is a simultaneous gesture, which doesn't cancel
+    /// a button, so a `Button` would also open the memo when a swipe ends.
     private var rowContents: some View {
-        Button(action: onOpen) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: MemoPresentation.icon(for: memo))
-                    .font(.system(size: 19, weight: .medium))
-                    .foregroundStyle(KyoPalette.accent)
-                    .frame(width: 28, height: 24)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(MemoHighlight.attributed(memo.title, matching: highlight))
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if let snippet {
-                        Text(MemoHighlight.attributed(snippet))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    } else if memo.transcriptState == .transcribing {
-                        HStack(spacing: 6) {
-                            ProgressView()
-                                .controlSize(.mini)
-                            Text("Transcribing…")
-                        }
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: MemoPresentation.icon(for: memo))
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(KyoPalette.accent)
+                .frame(width: 28, height: 24)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(MemoHighlight.attributed(memo.title, matching: highlight))
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                if let snippet {
+                    Text(MemoHighlight.attributed(snippet))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    } else if let detail = memo.detail {
-                        Text(MemoHighlight.attributed(detail, matching: highlight))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        .lineLimit(1)
+                } else if memo.transcriptState == .transcribing {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("Transcribing…")
                     }
-                    if !memo.photoIDs.isEmpty {
-                        MemoRowThumbnails(photoIDs: memo.photoIDs, load: loadThumbnail)
-                            .padding(.top, 3)
-                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                } else if let detail = memo.detail {
+                    Text(MemoHighlight.attributed(detail, matching: highlight))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text(MemoPresentation.time(memo.createdAt))
-                    if memo.kind == .voice {
-                        Text(Memo.formattedDuration(memo.duration))
-                            .monospacedDigit()
-                    }
+                if !memo.photoIDs.isEmpty {
+                    MemoRowThumbnails(photoIDs: memo.photoIDs, load: loadThumbnail)
+                        .padding(.top, 3)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize()
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 55)
-            .frame(maxWidth: .infinity)
-            .background(KyoPalette.cardBackground)
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(MemoPresentation.time(memo.createdAt))
+                if memo.kind == .voice {
+                    Text(Memo.formattedDuration(memo.duration))
+                        .monospacedDigit()
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize()
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 55)
+        .frame(maxWidth: .infinity)
+        .background(KyoPalette.cardBackground)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Opens this memo")
+        .accessibilityAction { onOpen() }
         .accessibilityActions {
             if canShare {
                 Button("Share", action: share)

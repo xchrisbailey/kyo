@@ -1020,16 +1020,19 @@ private struct TaskRow: View {
 
     private var rowContents: some View {
         HStack(spacing: 10) {
-            Button(action: onToggle) {
-                checkboxGlyph
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.text)
-            .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
-            .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
-            .accessibilityAction(named: "Share", share)
+            // Tap gestures rather than `Button`s on this row: the swipe is a simultaneous gesture, which
+            // doesn't cancel a button, so a `Button` would also fire when a swipe ends on it.
+            checkboxGlyph
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onToggle)
+                .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel(task.text)
+                .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
+                .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
+                .accessibilityAction { onToggle() }
+                .accessibilityAction(named: "Share", share)
 
             if isEditing {
                 TextField("Edit task", text: $draft)
@@ -1042,21 +1045,20 @@ private struct TaskRow: View {
                     .accessibilityIdentifier("task-editor:\(task.text)")
                     .accessibilityAction(named: "Share", share)
             } else {
-                Button {
-                    isEditing = true
-                } label: {
-                    Text(task.text)
-                        .font(.body)
-                        .foregroundStyle(task.isComplete ? Color.secondary : Color.primary)
-                        .strikethrough(task.isComplete, color: .secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit task: \(task.text)")
-                .accessibilityHint("Edits this task")
-                .accessibilityAction(named: "Share", share)
+                Text(task.text)
+                    .font(.body)
+                    .foregroundStyle(task.isComplete ? Color.secondary : Color.primary)
+                    .strikethrough(task.isComplete, color: .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { isEditing = true }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Edit task: \(task.text)")
+                    .accessibilityHint("Edits this task")
+                    .accessibilityAction { isEditing = true }
+                    .accessibilityAction(named: "Share", share)
             }
         }
         .padding(.vertical, 12)

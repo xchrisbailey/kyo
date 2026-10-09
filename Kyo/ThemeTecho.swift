@@ -15,13 +15,14 @@ extension Theme {
     /// as on the "Delete habit" row and the recorder's Stop button.
     ///
     /// Caveat reads smaller than the system font at the same point size, so its headers are scaled
-    /// up until they look as large as the Kyo theme's.
+    /// up until they look as large as the Kyo theme's, except the large title, which is kept small enough
+    /// for "September 2026" to fit beside the Month's buttons.
     static let techo = Theme(
         id: "techo",
         name: "Techo",
         headerFont: HeaderFont(
             face: .caveat, sizeScale: 1.3,
-            styleSizeScales: [.section: 1.4, .navigationTitle: 1.55],
+            styleSizeScales: [.section: 1.4, .largeTitle: 0.95, .navigationTitle: 1.55],
             overhangAllowance: 2, sectionTracking: 0, largeTitleTracking: 0
         ),
         light: Palette(

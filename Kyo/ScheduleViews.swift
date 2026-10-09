@@ -3,6 +3,7 @@ import SwiftUI
 /// The Schedule section's card content: a prompt line while Kyo can't read the calendars (Connect,
 /// access off, access unavailable), and Today's events once access is granted, compact until the user shows more.
 struct ScheduleSectionContent: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var schedule: ScheduleStore
 
     var body: some View {
@@ -23,7 +24,7 @@ struct ScheduleSectionContent: View {
             } else if schedule.showsNothingScheduled {
                 Text("Nothing scheduled")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                     .padding(.horizontal, 14)
             } else if schedule.showsEvents {
@@ -33,7 +34,7 @@ struct ScheduleSectionContent: View {
                     } label: {
                         Text(line)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.secondaryText)
                             .lineLimit(1)
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                             .padding(.horizontal, 14)
@@ -50,7 +51,7 @@ struct ScheduleSectionContent: View {
                 if schedule.showsNothingElseToday {
                     Text("Nothing else today")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                         .accessibilityIdentifier("schedule-nothing-else")
@@ -95,7 +96,7 @@ struct ScheduleSectionContent: View {
         Button(action: action) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .padding(.horizontal, 14)
                 .contentShape(Rectangle())
@@ -113,13 +114,13 @@ struct ScheduleSectionContent: View {
         HStack(spacing: 12) {
             Text(text)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
             Spacer(minLength: 8)
             if let button {
                 Button(action: action) {
                     Text(button)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
@@ -132,7 +133,7 @@ struct ScheduleSectionContent: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .frame(width: 32, height: 44)
                     .contentShape(Rectangle())
             }
@@ -147,13 +148,14 @@ struct ScheduleSectionContent: View {
 
     private var divider: some View {
         Rectangle()
-            .fill(Color(uiColor: .separator).opacity(0.55))
+            .fill(theme.separator.opacity(0.55))
             .frame(height: 0.5)
             .accessibilityHidden(true)
     }
 }
 
 private struct ScheduleRow: View {
+    @Environment(\.theme) private var theme
     let row: ScheduleRowPresentation
     let open: () -> Void
 
@@ -186,13 +188,13 @@ private struct ScheduleRow: View {
         if row.state == .inProgress {
             Text(row.timeText)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .lineLimit(1)
                 .fixedSize()
         } else {
             Text(row.timeText)
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(isPast ? .tertiary : .secondary)
+                .foregroundStyle(isPast ? theme.tertiaryText : theme.secondaryText)
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -203,6 +205,7 @@ private struct ScheduleRow: View {
 /// on one line, and never at accessibility sizes; until it's measured it stays out, so a long one can't
 /// widen the row. The Schedule's rows and Month's Day summary rows both draw it.
 struct EventTitleAndLocation: View {
+    @Environment(\.theme) private var theme
     let title: String
     /// The trimmed location, when there is one.
     let location: String?
@@ -217,12 +220,12 @@ struct EventTitleAndLocation: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.body)
-                .foregroundStyle(isPast ? .secondary : .primary)
+                .foregroundStyle(isPast ? theme.secondaryText : theme.primaryText)
                 .lineLimit(2)
             if showsLocation, let location {
                 Text(location)
                     .font(.footnote)
-                    .foregroundStyle(isPast ? .tertiary : .secondary)
+                    .foregroundStyle(isPast ? theme.tertiaryText : theme.secondaryText)
                     .lineLimit(1)
             }
         }
@@ -272,6 +275,7 @@ struct EventDetailSheet: View {
 
 /// The titles of Today's all-day events, to choose which one to open. Its details show on top.
 private struct AllDayEventChooser: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var schedule: ScheduleStore
 
     var body: some View {
@@ -285,7 +289,7 @@ private struct AllDayEventChooser: View {
                             .fill(event.calendarColor.swiftUIColor)
                             .frame(width: 9, height: 9)
                         Text(event.displayTitle)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(theme.primaryText)
                         Spacer(minLength: 0)
                     }
                     .contentShape(Rectangle())
@@ -293,8 +297,10 @@ private struct AllDayEventChooser: View {
                 .accessibilityLabel("\(event.displayTitle), \(event.calendarTitle) calendar")
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Shows event details")
+                .listRowBackground(theme.listRow)
             }
-            .navigationTitle("All day")
+            .themedListBackground()
+            .themedNavigationTitle("All day")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

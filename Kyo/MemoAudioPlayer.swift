@@ -81,6 +81,7 @@ final class MemoAudioPlayer: ObservableObject {
 
 /// The open Voice memo's player, pinned to the bottom of its card: play/pause and a scrubber.
 struct MemoAudioPlayerBar: View {
+    @Environment(\.theme) private var theme
     let loadAudio: () -> Data?
     let duration: TimeInterval
 
@@ -95,9 +96,9 @@ struct MemoAudioPlayerBar: View {
             } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onAccentText)
                     .frame(width: 44, height: 44)
-                    .background(KyoPalette.accent, in: Circle())
+                    .background(theme.accent, in: Circle())
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -120,7 +121,7 @@ struct MemoAudioPlayerBar: View {
                     }
                     isScrubbing = editing
                 }
-                .tint(KyoPalette.accent)
+                .tint(theme.accent)
                 .disabled(!player.canPlay)
                 .accessibilityLabel("Playback position")
                 .accessibilityValue("\(Memo.formattedDuration(shownPosition)) of \(Memo.formattedDuration(player.duration))")
@@ -131,7 +132,7 @@ struct MemoAudioPlayerBar: View {
                 }
                 .font(.caption2)
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .accessibilityHidden(true)
             }
         }

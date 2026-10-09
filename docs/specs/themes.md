@@ -61,18 +61,20 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - **Techo**: light is warm cream paper with blue-black ink text and a red margin-line accent; dark is a deep slate-green chalkboard with chalk-white text and a chalk-yellow accent. Header font: Caveat.
 - Exact values that aren't published (all of Techo, and Neko's choice of kind colors) are chosen at implementation and reviewed from the PR screenshots, in light and dark.
 - Primary text meets WCAG AA contrast, 4.5:1, against every background it sits on, in every theme and both modes. Secondary text, the accent, and the color drawn on the accent meet 3:1. Tertiary text is for hints and disabled states and has no floor. Contrast is measured on the color as drawn, after a translucent color is blended with what's behind it.
-- These floors are what today's look and Catppuccin's published values both meet. A stricter floor would force changing one of them.
+- These floors are ones today's look and Catppuccin's published values can meet almost everywhere; a stricter floor would force changing them. Where the Kyo theme or a published Neko value still misses one, the color is left alone and the pair is recorded in the contrast test with its ratio. The Kyo theme's known miss is white text on its accent in dark.
+- The same 3:1 floor applies to text and glyphs drawn in or on the warning and destructive colors.
 - Geist Mono and Caveat are bundled with the app in the two weights headers use, semibold and bold. Both are under the SIL Open Font License.
 
 ### Header font
 
 - The header font sets section headers and screen titles: the section headers on Today, the large "Today" title, the Month's month name, navigation bar titles, and the day-group and summary titles in Memos and the Month.
 - Navigation bar titles go through one shared title style that every screen uses. iOS gives no direct way to set their font, so if no approach can restyle an open screen at once without touching screens iOS draws, navigation bar titles stay in the system font and the rest of this list stands.
-- Letter spacing belongs to the theme with the font. The Kyo theme keeps today's; Neko and Techo use their fonts' own.
+- Letter spacing belongs to the theme with the font. The Kyo theme keeps today's and Neko uses its font's own. Techo adds a little, because Caveat's last letter reaches past its own width and would otherwise be cut off.
 - Everything else stays in the system font: body text, task, habit and memo text, numbers, and controls.
 - The "kyo" wordmark and the large numerals keep their rounded system design in every theme.
 - The header font scales with the device text size the way headers do today.
-- A theme can adjust its header size so that its headers look the same size as the Kyo theme's. Caveat needs this; it reads smaller than the system font at the same point size.
+- A theme can adjust its header size, for all headers or for one kind, so that its headers look the same size as the Kyo theme's. Caveat needs this; it reads smaller than the system font at the same point size.
+- Navigation bar titles grow with the device text size no further than iOS's own navigation titles do.
 - Headers come from one shared place, so the ad hoc titles in Memos and the Month stop carrying their own font.
 
 ### Reach
@@ -97,7 +99,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - Test the theme choice with an injected `UserDefaults` suite: it starts as Kyo; a pick is read back by a new model on the same defaults; an unknown stored value gives Kyo.
 - Test contrast by computation, to the floors above: for every theme and both modes, primary text, secondary text and the accent against each background they sit on, and the on-accent color against the accent. Colors are resolved for the mode and blended before measuring, so a translucent color isn't read as opaque. A theme added later is covered without a new test.
 - Prior art: the `CollapsedSections` tests (state persisted through injected defaults).
-- One UI test on iPhone: open Settings, pick a theme, relaunch, and find it still selected. A launch variable names the `UserDefaults` suite the choice is kept in, so the test starts clean and the relaunch reads the same suite.
+- UI tests on iPhone cover what the model can't: open Settings, pick a theme, relaunch, and find it still selected; and a bundled header font grows with the device text size. A launch variable names the `UserDefaults` suite the choice is kept in, so the test starts clean and the relaunch reads the same suite.
 - The palette ticket has no behavior to test beyond the existing suites staying green; its review is a before-and-after screenshot comparison showing no change.
 - Build both app schemes.
 

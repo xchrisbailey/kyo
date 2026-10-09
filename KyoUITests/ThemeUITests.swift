@@ -34,6 +34,7 @@ final class ThemeUITests: XCTestCase {
 
         XCTAssertEqual(app.buttons["theme-card-kyo"].label, "Kyo")
         XCTAssertEqual(app.buttons["theme-card-neko"].label, "Neko")
+        XCTAssertEqual(app.buttons["theme-card-techo"].label, "Techo")
     }
 
     func testNekoHeadersGrowWithTheDeviceTextSize() {
@@ -48,6 +49,20 @@ final class ThemeUITests: XCTestCase {
         let large = monthHeaderHeight(in: app)
 
         XCTAssertGreaterThan(large, normal, "a Geist Mono header scales with the text size")
+    }
+
+    func testTechoHeadersGrowWithTheDeviceTextSize() {
+        let app = launchApp()
+        openSettings(in: app)
+        app.buttons["theme-card-techo"].tap()
+        XCTAssertTrue(waitForSelected(app.buttons["theme-card-techo"]))
+        app.buttons["settings-done"].tap()
+        let normal = monthHeaderHeight(in: app)
+
+        relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
+        let large = monthHeaderHeight(in: app)
+
+        XCTAssertGreaterThan(large, normal, "a Caveat header scales with the text size")
     }
 
     // MARK: Helpers

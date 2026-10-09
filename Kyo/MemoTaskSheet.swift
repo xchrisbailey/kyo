@@ -5,6 +5,7 @@ import SwiftUI
 /// one blank task row and **Add another**. Added rows show "Added" and can't be added again while
 /// the sheet is open.
 struct MemoTaskSheet: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var suggestions: MemoTaskSuggestions
 
     @Environment(\.dismiss) private var dismiss
@@ -23,7 +24,7 @@ struct MemoTaskSheet: View {
                         case .noSuggestions:
                             Text("No suggestions")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(theme.secondaryText)
                             rows
                             addAnotherButton
                         }
@@ -35,8 +36,8 @@ struct MemoTaskSheet: View {
                     addToTodayButton
                 }
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Memo → Task")
+            .background(theme.sheetBackground)
+            .themedNavigationTitle("Memo → Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -58,7 +59,7 @@ struct MemoTaskSheet: View {
         HStack(spacing: 10) {
             ProgressView()
             Text("Finding suggested tasks…")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
         }
         .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -78,7 +79,7 @@ struct MemoTaskSheet: View {
                 )
             }
         }
-        .background(KyoPalette.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var addAnotherButton: some View {
@@ -87,10 +88,10 @@ struct MemoTaskSheet: View {
         } label: {
             Label("Add another", systemImage: "plus")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
-                .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                .background(theme.accent.opacity(0.12), in: Capsule())
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -104,9 +105,9 @@ struct MemoTaskSheet: View {
         } label: {
             Text("Add to Today (\(count))")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(theme.onAccentText)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .background(KyoPalette.accent.opacity(count == 0 ? 0.35 : 1), in: Capsule())
+                .background(theme.accent.opacity(count == 0 ? 0.35 : 1), in: Capsule())
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -119,6 +120,7 @@ struct MemoTaskSheet: View {
 
 /// A Suggested task row: a tick, the editable text, and "Added" once it's on Today.
 private struct SuggestedTaskRow: View {
+    @Environment(\.theme) private var theme
     let row: MemoTaskSuggestions.Row
     var focusedRow: FocusState<UUID?>.Binding
     let onToggle: () -> Void
@@ -129,7 +131,7 @@ private struct SuggestedTaskRow: View {
             Button(action: onToggle) {
                 Image(systemName: row.isTicked || row.isAdded ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 24))
-                    .foregroundStyle(row.isTicked || row.isAdded ? KyoPalette.accent : Color.secondary)
+                    .foregroundStyle(row.isTicked || row.isAdded ? theme.accent : theme.secondaryText)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
@@ -141,11 +143,11 @@ private struct SuggestedTaskRow: View {
             if row.isAdded {
                 Text(row.text)
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("Added")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(KyoPalette.accent)
+                    .foregroundStyle(theme.accent)
             } else {
                 TextField(
                     "Task",

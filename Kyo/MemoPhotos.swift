@@ -46,6 +46,7 @@ enum MemoPhotoImages {
 
 /// A square thumbnail of a photo from its small stored copy.
 struct MemoPhotoThumbnail: View {
+    @Environment(\.theme) private var theme
     let photoID: UUID
     let size: CGFloat
     let load: (UUID) -> Data?
@@ -57,7 +58,7 @@ struct MemoPhotoThumbnail: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Color.secondary.opacity(0.15)
+                theme.secondaryText.opacity(0.15)
             }
         }
         .frame(width: size, height: size)
@@ -230,6 +231,7 @@ private struct CameraPicker: UIViewControllerRepresentable {
 
 /// A thumbnail with a button that removes it.
 private struct RemovableMemoPhoto: View {
+    @Environment(\.theme) private var theme
     let photoID: UUID
     let position: Int
     let size: CGFloat
@@ -243,7 +245,7 @@ private struct RemovableMemoPhoto: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, Color.black.opacity(0.6))
+                        .foregroundStyle(theme.onScrim, theme.scrim)
                         .frame(width: 44, height: 44, alignment: .topTrailing)
                         .contentShape(Rectangle())
                 }
@@ -260,6 +262,7 @@ private struct RemovableMemoPhoto: View {
 /// The photos a memo is being given before it exists (the compose sheet and the recorder): their
 /// thumbnails, each removable, and the photo menu while there's room.
 struct MemoPendingPhotos: View {
+    @Environment(\.theme) private var theme
     let photos: [StoredPhoto]
     let onAdd: (StoredPhoto) -> Void
     let onRemove: (UUID) -> Void
@@ -286,10 +289,10 @@ struct MemoPendingPhotos: View {
                         if photos.isEmpty { Text("Add photo") }
                     }
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
-                        .background(KyoPalette.accent.opacity(0.12), in: Capsule())
+                        .background(theme.accent.opacity(0.12), in: Capsule())
                         .contentShape(Capsule())
                 }
                 .accessibilityLabel("Add photo")
@@ -303,6 +306,7 @@ struct MemoPendingPhotos: View {
 /// An open memo's photo carousel: each photo larger, removable, then the add slot while the
 /// memo has fewer than 4.
 struct MemoPhotoCarousel: View {
+    @Environment(\.theme) private var theme
     let photoIDs: [UUID]
     let loadThumbnail: (UUID) -> Data?
     let loadPhoto: (UUID) -> Data?
@@ -333,12 +337,12 @@ struct MemoPhotoCarousel: View {
                             Text("Add photo")
                                 .font(.footnote.weight(.semibold))
                         }
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                         .frame(width: tile, height: tile)
-                        .background(KyoPalette.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(theme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(KyoPalette.accent.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                                .strokeBorder(theme.accent.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
                         }
                         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -354,6 +358,8 @@ struct MemoPhotoCarousel: View {
 }
 
 private struct CarouselPhoto: View {
+
+    @Environment(\.theme) private var theme
     let photoID: UUID
     let position: Int
     let count: Int
@@ -372,7 +378,7 @@ private struct CarouselPhoto: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Color.secondary.opacity(0.15)
+                theme.secondaryText.opacity(0.15)
             }
         }
         .frame(width: size, height: size)
@@ -382,7 +388,7 @@ private struct CarouselPhoto: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 24))
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, Color.black.opacity(0.6))
+                    .foregroundStyle(theme.onScrim, theme.scrim)
                     .frame(width: 44, height: 44, alignment: .center)
                     .contentShape(Rectangle())
             }

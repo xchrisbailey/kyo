@@ -3,6 +3,7 @@ import SwiftUI
 /// Settings → Schedule → Calendars: the device's calendars grouped by account, each with its colour
 /// and a checkmark while its events are shown. Without full access it shows Today's access line.
 struct ScheduleCalendarsView: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var schedule: ScheduleStore
     @Environment(\.dismiss) private var dismiss
 
@@ -11,7 +12,8 @@ struct ScheduleCalendarsView: View {
             if schedule.showsEvents {
                 if schedule.calendarGroups.isEmpty {
                     Text("No calendars")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
+                        .listRowBackground(theme.listRow)
                 }
                 ForEach(schedule.calendarGroups) { group in
                     Section(group.accountTitle) {
@@ -21,15 +23,18 @@ struct ScheduleCalendarsView: View {
                             }
                         }
                     }
+                    .listRowBackground(theme.listRow)
                 }
             } else if schedule.showsSection {
                 Section {
                     ScheduleSectionContent(schedule: schedule)
                         .listRowInsets(EdgeInsets())
                 }
+                .listRowBackground(theme.listRow)
             }
         }
-        .navigationTitle("Calendars")
+        .themedListBackground()
+        .themedNavigationTitle("Calendars")
         .navigationBarTitleDisplayMode(.inline)
         // Hiding the schedule from the access line leaves nothing to choose.
         .onChange(of: schedule.showsSchedule) { _, shows in
@@ -39,6 +44,8 @@ struct ScheduleCalendarsView: View {
 }
 
 private struct ScheduleCalendarRow: View {
+
+    @Environment(\.theme) private var theme
     let calendar: ScheduleCalendar
     let isVisible: Bool
     let toggle: () -> Void
@@ -50,12 +57,12 @@ private struct ScheduleCalendarRow: View {
                     .fill(Color(.sRGB, red: calendar.color.red, green: calendar.color.green, blue: calendar.color.blue, opacity: calendar.color.alpha))
                     .frame(width: 12, height: 12)
                 Text(calendar.title)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(theme.primaryText)
                 Spacer(minLength: 8)
                 if isVisible {
                     Image(systemName: "checkmark")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(KyoPalette.accent)
+                        .foregroundStyle(theme.accent)
                 }
             }
             .frame(minHeight: 44)

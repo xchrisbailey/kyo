@@ -5,6 +5,7 @@ import SwiftUI
 /// the same card, so a past memo has the same actions. Memos load a page at a time as the
 /// list is scrolled, and a row never loads photo or audio bytes.
 struct MemosSheet: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var memoStore: MemoStore
     let languageModel: any OnDeviceLanguageModel
     @ObservedObject var taskList: TaskListStore
@@ -26,9 +27,9 @@ struct MemosSheet: View {
                     .padding(.top, 8)
                     .padding(.bottom, 28)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
+            .background(theme.sheetBackground)
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Memos")
+            .themedNavigationTitle("Memos")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -74,14 +75,14 @@ struct MemosSheet: View {
         if let message = page.noResultsMessage {
             Text(message)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
         } else if page.groups.isEmpty {
             Text("No memos yet")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryText)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
         } else {
@@ -103,15 +104,14 @@ struct MemosSheet: View {
     private func section(_ group: MemoDayGroup) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(group.title)
-                .font(.title3.weight(.semibold))
-                .tracking(-0.4)
+                .headerStyle(.section)
                 .frame(minHeight: 40, alignment: .bottom)
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) {
                 ForEach(Array(group.results.enumerated()), id: \.element.id) { index, result in
                     if index > 0 {
                         Rectangle()
-                            .fill(Color(uiColor: .separator).opacity(0.55))
+                            .fill(theme.separator.opacity(0.55))
                             .frame(height: 0.5)
                             .accessibilityHidden(true)
                     }
@@ -126,7 +126,7 @@ struct MemosSheet: View {
                     )
                 }
             }
-            .background(KyoPalette.cardBackground)
+            .background(theme.card)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .accessibilityElement(children: .contain)
         }

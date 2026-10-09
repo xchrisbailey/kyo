@@ -3,6 +3,7 @@ import SwiftUI
 /// Month: one calendar month as a grid, a legend under it, and the selected day's Day summary.
 /// It shows what `MonthModel` reports and changes nothing but the selection.
 struct MonthView: View {
+    @Environment(\.theme) private var theme
     @ObservedObject var model: MonthModel
     /// Called when a Day summary row that has a target is tapped.
     var onOpen: (MonthSummaryTarget) -> Void = { _ in }
@@ -33,7 +34,7 @@ struct MonthView: View {
             // Seven columns can't hold accessibility-size text, so the grid stops growing at the largest
             // standard size. The header, legend and Day summary keep scaling.
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(theme.listRow, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .contentShape(Rectangle())
             .simultaneousGesture(swipe)
             .accessibilityElement(children: .contain)
@@ -52,9 +53,8 @@ struct MonthView: View {
     /// The controls move below the title when large text leaves them no room beside it.
     private var header: some View {
         let title = Text(model.headerText)
-            .font(.largeTitle.weight(.bold))
-            .tracking(-1.2)
-            .foregroundStyle(.primary)
+            .headerStyle(.largeTitle)
+            .foregroundStyle(theme.primaryText)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("month-header")
         return Group {
@@ -104,7 +104,7 @@ struct MonthView: View {
             ForEach(Array(model.weekdayTitles.enumerated()), id: \.offset) { _, title in
                 Text(title)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(maxWidth: .infinity)
@@ -121,7 +121,7 @@ struct MonthView: View {
             VStack(alignment: .leading, spacing: 4) { legendItems }
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(theme.secondaryText)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 8)
         .accessibilityElement(children: .ignore)
@@ -133,7 +133,7 @@ struct MonthView: View {
     private var legendItems: some View {
         ForEach(MonthKind.allCases, id: \.self) { kind in
             HStack(spacing: 5) {
-                Circle().fill(kind.markColor).frame(width: 7, height: 7)
+                Circle().fill(kind.markColor(in: theme)).frame(width: 7, height: 7)
                 Text(kind.title).lineLimit(1)
             }
             .fixedSize()
@@ -143,6 +143,7 @@ struct MonthView: View {
 
 /// An icon button beside the month header.
 private struct MonthControl: View {
+    @Environment(\.theme) private var theme
     let systemImage: String
     let label: LocalizedStringKey
     let identifier: String
@@ -152,7 +153,7 @@ private struct MonthControl: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -163,6 +164,8 @@ private struct MonthControl: View {
 }
 
 private struct MonthDayCell: View {
+
+    @Environment(\.theme) private var theme
     let day: MonthDay
     let select: () -> Void
     @ScaledMetric(relativeTo: .body) private var cellHeight = 52.0
@@ -175,10 +178,10 @@ private struct MonthDayCell: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                    .foregroundStyle(day.isToday ? Color(uiColor: .systemBackground) : Color.primary)
+                    .foregroundStyle(day.isToday ? theme.todayNumeral : theme.primaryText)
                     .frame(minWidth: 30, minHeight: 30)
                     .background {
-                        if day.isToday { Circle().fill(KyoPalette.accent) }
+                        if day.isToday { Circle().fill(theme.accent) }
                     }
                 HStack(spacing: 3) {
                     ForEach(Array(zip(MonthKind.allCases, day.marks)), id: \.0) { kind, mark in
@@ -190,10 +193,10 @@ private struct MonthDayCell: View {
             .background {
                 if day.isSelected {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(KyoPalette.accent.opacity(0.14))
+                        .fill(theme.accent.opacity(0.14))
                         .overlay {
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(KyoPalette.accent, lineWidth: 1.5)
+                                .strokeBorder(theme.accent, lineWidth: 1.5)
                         }
                 }
             }
@@ -209,6 +212,7 @@ private struct MonthDayCell: View {
 
 /// One fixed slot in a day cell. An empty slot still takes its place so the others stay put.
 private struct MarkSlot: View {
+    @Environment(\.theme) private var theme
     let kind: MonthKind
     let mark: MonthMark
 
@@ -216,8 +220,8 @@ private struct MarkSlot: View {
         ZStack {
             switch mark {
             case .empty: Color.clear
-            case .filled: Circle().fill(kind.markColor)
-            case .hollow: Circle().strokeBorder(kind.markColor, lineWidth: 1.5)
+            case .filled: Circle().fill(kind.markColor(in: theme))
+            case .hollow: Circle().strokeBorder(kind.markColor(in: theme), lineWidth: 1.5)
             }
         }
         .frame(width: 7, height: 7)
@@ -225,15 +229,16 @@ private struct MarkSlot: View {
 }
 
 private struct MonthDaySummaryView: View {
+
+    @Environment(\.theme) private var theme
     let summary: MonthDaySummary
     let onOpen: (MonthSummaryTarget) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(summary.title)
-                .font(.title3.weight(.semibold))
-                .tracking(-0.4)
-                .foregroundStyle(.primary)
+                .headerStyle(.section)
+                .foregroundStyle(theme.primaryText)
                 .accessibilityLabel(summary.accessibilityTitle)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("month-summary-title")
@@ -241,14 +246,14 @@ private struct MonthDaySummaryView: View {
             if summary.isEmpty {
                 Text("Nothing on this day")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.secondaryText)
                     .accessibilityIdentifier("month-summary-empty")
             }
             ForEach(summary.sections) { section in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(section.kind.title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.secondaryText)
                         .accessibilityAddTraits(.isHeader)
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(section.rows) { row in
@@ -256,7 +261,7 @@ private struct MonthDaySummaryView: View {
                                 .opening(row, with: onOpen)
                         }
                     }
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(theme.listRow, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("month-summary-section-\(section.kind.rawValue)")
@@ -270,6 +275,7 @@ private struct MonthDaySummaryView: View {
 /// own label, value and identifier. A habit's line shows its checked state as an indicator, not a control;
 /// an event's shows its calendar dot, its time and its location as the Schedule draws them.
 private struct MonthSummaryRowView: View {
+    @Environment(\.theme) private var theme
     let row: MonthSummaryRow
 
     var body: some View {
@@ -279,7 +285,7 @@ private struct MonthSummaryRowView: View {
                 title
             case .habit(let isChecked):
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isChecked ? KyoPalette.accent : Color.secondary)
+                    .foregroundStyle(isChecked ? theme.accent : theme.secondaryText)
                     .accessibilityHidden(true)
                 title
             case .event(let event, _):
@@ -303,7 +309,7 @@ private struct MonthSummaryRowView: View {
     private var title: some View {
         Text(row.text)
             .font(.body)
-            .foregroundStyle(.primary)
+            .foregroundStyle(theme.primaryText)
     }
 
     @ViewBuilder
@@ -311,13 +317,13 @@ private struct MonthSummaryRowView: View {
         if event.isInProgress {
             Text(event.time)
                 .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(KyoPalette.accent)
+                .foregroundStyle(theme.accent)
                 .lineLimit(1)
                 .fixedSize()
         } else {
             Text(event.time)
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(event.isDimmed ? .tertiary : .secondary)
+                .foregroundStyle(event.isDimmed ? theme.tertiaryText : theme.secondaryText)
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -349,12 +355,12 @@ private extension MonthKind {
     }
 
     /// Each kind has its own hue, but a mark's meaning comes from its slot; color is a second cue.
-    var markColor: Color {
+    func markColor(in theme: Theme) -> Color {
         switch self {
-        case .events: Color(uiColor: .systemGray)
-        case .tasks: KyoPalette.accent
-        case .habits: Color(uiColor: .systemOrange)
-        case .memos: Color(uiColor: .systemIndigo)
+        case .events: theme.kindEvents
+        case .tasks: theme.kindTasks
+        case .habits: theme.kindHabits
+        case .memos: theme.kindMemos
         }
     }
 }

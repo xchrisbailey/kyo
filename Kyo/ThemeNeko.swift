@@ -26,7 +26,7 @@ extension Theme {
             fill: Latte.surface0,
             accent: Latte.mauve,
             controlTint: Latte.mauve,
-            barBackground: Latte.surface0,
+            barBackground: Latte.mantle,
             onAccent: Latte.base,
             onAccentText: Latte.base,
             onControlTint: Latte.base,

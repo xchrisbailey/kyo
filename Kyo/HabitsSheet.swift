@@ -107,8 +107,7 @@ private struct HabitsSheetRow: View {
                     }
                 }
                 .font(.subheadline)
-                // iOS draws the secondary level in a list row as the label at half strength.
-                .foregroundStyle(theme.primaryText.opacity(0.5))
+                .foregroundStyle(theme.rowDetailText)
             }
             Spacer(minLength: 8)
             HabitStatusLabel(weekProgress: overview.weekProgress, streak: overview.streak)

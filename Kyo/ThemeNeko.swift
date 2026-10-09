@@ -20,9 +20,10 @@ extension Theme {
             listRow: Latte.surface0,
             primaryText: Latte.text,
             secondaryText: Latte.subtext1,
+            rowDetailText: Latte.subtext1,
             tertiaryText: Latte.subtext0,
             separator: Latte.surface1,
-            fill: Latte.surface1,
+            fill: Latte.mantle,
             accent: Latte.mauve,
             controlTint: Latte.mauve,
             onAccent: Latte.base,
@@ -46,6 +47,7 @@ extension Theme {
             listRow: Mocha.surface0,
             primaryText: Mocha.text,
             secondaryText: Mocha.subtext1,
+            rowDetailText: Mocha.subtext1,
             tertiaryText: Mocha.subtext0,
             separator: Mocha.surface1,
             fill: Mocha.surface1,
@@ -77,6 +79,7 @@ private enum Latte {
     static let surface1 = UIColor(hex: 0xbcc0cc)
     static let surface0 = UIColor(hex: 0xccd0da)
     static let base = UIColor(hex: 0xeff1f5)
+    static let mantle = UIColor(hex: 0xe6e9ef)
     static let mauve = UIColor(hex: 0x8839ef)
     static let red = UIColor(hex: 0xd20f39)
     static let peach = UIColor(hex: 0xfe640b)

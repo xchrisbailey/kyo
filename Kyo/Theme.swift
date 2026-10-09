@@ -44,6 +44,8 @@ struct Palette {
 
     var primaryText: UIColor
     var secondaryText: UIColor
+    /// The line of detail under a list row's title, such as a habit's schedule.
+    var rowDetailText: UIColor
     /// Hints and disabled states, and the ring of an unchecked circle.
     var tertiaryText: UIColor
     var separator: UIColor
@@ -94,6 +96,7 @@ extension Theme {
     var listRow: Color { color(\.listRow) }
     var primaryText: Color { color(\.primaryText) }
     var secondaryText: Color { color(\.secondaryText) }
+    var rowDetailText: Color { color(\.rowDetailText) }
     var tertiaryText: Color { color(\.tertiaryText) }
     var separator: Color { color(\.separator) }
     var fill: Color { color(\.fill) }
@@ -208,6 +211,8 @@ extension Theme {
             listRow: .secondarySystemGroupedBackground,
             primaryText: .label,
             secondaryText: .secondaryLabel,
+            // iOS draws the secondary level in a list row as the label at half strength.
+            rowDetailText: UIColor.label.withAlphaComponent(0.5),
             tertiaryText: .tertiaryLabel,
             separator: .separator,
             fill: .tertiarySystemFill,
@@ -234,6 +239,8 @@ extension Theme {
             listRow: .secondarySystemGroupedBackground,
             primaryText: .label,
             secondaryText: .secondaryLabel,
+            // iOS draws the secondary level in a list row as the label at half strength.
+            rowDetailText: UIColor.label.withAlphaComponent(0.5),
             tertiaryText: .tertiaryLabel,
             separator: .separator,
             fill: .tertiarySystemFill,

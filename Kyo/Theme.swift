@@ -121,7 +121,7 @@ extension Theme {
 }
 
 /// What a header is: a role on screen, not a size. The theme's header font decides how each looks.
-enum HeaderStyle {
+enum HeaderStyle: Hashable {
     /// A section header on Today, a day group in Memos, the summary title in the Month.
     case section
     /// The large title of Today and the Month's month name.
@@ -152,6 +152,13 @@ struct HeaderFont {
     /// Scales every header size, for a face that reads smaller or larger than the system font at the
     /// same point size, so its headers look as big as the Kyo theme's.
     var sizeScale: CGFloat = 1
+    /// Replaces `sizeScale` for one style, when a face needs more or less than the others: a
+    /// navigation bar title sits small beside its buttons, and a face with thin strokes needs more.
+    var styleSizeScales: [HeaderStyle: CGFloat] = [:]
+    /// Room for a face whose last glyph reaches past its advance and would be cut off by the text's
+    /// own bounds. SwiftUI can only add it as tracking, which falls after every glyph, so it is kept
+    /// small and apart from the letter spacing the face is set with.
+    var overhangAllowance: CGFloat = 0
     var sectionTracking: CGFloat
     var largeTitleTracking: CGFloat
 
@@ -167,11 +174,15 @@ struct HeaderFont {
             // The point sizes are the system text styles' at the default text size, and the font
             // scales from them with the device text size, as the system styles do.
             switch style {
-            case .section: .custom(semibold, size: 20 * sizeScale, relativeTo: .title3)
-            case .largeTitle: .custom(bold, size: 34 * sizeScale, relativeTo: .largeTitle)
-            case .navigationTitle: .custom(semibold, size: 17 * sizeScale, relativeTo: .headline)
+            case .section: .custom(semibold, size: 20 * scale(for: style), relativeTo: .title3)
+            case .largeTitle: .custom(bold, size: 34 * scale(for: style), relativeTo: .largeTitle)
+            case .navigationTitle: .custom(semibold, size: 17 * scale(for: style), relativeTo: .headline)
             }
         }
+    }
+
+    private func scale(for style: HeaderStyle) -> CGFloat {
+        styleSizeScales[style] ?? sizeScale
     }
 
     func tracking(for style: HeaderStyle) -> CGFloat {

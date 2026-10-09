@@ -19,7 +19,11 @@ extension Theme {
     static let techo = Theme(
         id: "techo",
         name: "Techo",
-        headerFont: HeaderFont(face: .caveat, sizeScale: 1.3, sectionTracking: 0, largeTitleTracking: 0),
+        headerFont: HeaderFont(
+            face: .caveat, sizeScale: 1.3,
+            styleSizeScales: [.section: 1.4, .navigationTitle: 1.55],
+            overhangAllowance: 2, sectionTracking: 0, largeTitleTracking: 0
+        ),
         light: Palette(
             screenBackground: Paper.cream,
             sheetBackground: Paper.cream,

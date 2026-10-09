@@ -35,6 +35,14 @@ final class ThemeTechoTests: XCTestCase {
         XCTAssertEqual(Theme.kyo.headerFont.sizeScale, 1)
     }
 
+    /// The Kyo theme's headers are set exactly as before: no extra tracking for glyph overhang and no
+    /// per-style sizes.
+    func testTheKyoThemeAddsNoOverhangAllowanceOrStyleSizes() {
+        XCTAssertEqual(Theme.kyo.headerFont.overhangAllowance, 0)
+        XCTAssertTrue(Theme.kyo.headerFont.styleSizeScales.isEmpty)
+        XCTAssertEqual(Theme.neko.headerFont.overhangAllowance, 0)
+    }
+
     /// In light the accent and destructive are both red, and they meet on screen: the "Delete habit"
     /// row and the recorder's Stop button. They differ enough in lightness to tell apart.
     func testLightAccentAndDestructiveAreTellableApart() {

@@ -69,7 +69,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 - The phone's theme code is built on iOS-only color APIs and is compiled only into the phone app, so the Watch has its own palette for the roles above, keyed by the same theme ids, in code both apps compile. Neko's and Techo's entries are plain color values a test can read; the Kyo theme's are watchOS system colors.
 - Watch views read the current palette from the environment, with the Kyo theme as the default.
 - The default text color is set from the palette once, where the palette enters the Watch's views, so text that names no color takes the theme's.
-- Views in the Watch app take every color from the current Watch palette. No Watch view names a system color or a color literal directly, other than clear, black for the background, and the material above.
+- Views in the Watch app take every color from the current Watch palette. No Watch view names a system color or a color literal directly, other than clear, black for the background, the material above, and the tint, which a bordered button's label is drawn in.
 - The phone's theme files are not refactored for this.
 
 ## Testing Decisions
@@ -77,10 +77,10 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 - Test external behavior through the models the views consume, not view structure. There is no Watch UI test for themes: a Watch UI test can't receive anything from a phone, and none asserts color.
 - Test the Watch's theme model with an injected `UserDefaults` suite: it starts as Kyo; it adopts a received id; a new model on the same defaults reads it back; an unknown id shows Kyo and stays stored; a later known id replaces it.
 - Test parity: for Neko and Techo, each color in the Watch palette equals the phone's dark palette value for the matching role (accent, card, list row, the text levels, warning, destructive, and the labels on accent, warning and destructive fills). A theme added to one side without the other fails.
-- Test contrast on Neko's and Techo's Watch palettes to the phone's floors, against black and against the card: primary text 4.5:1; secondary text and the accent 3:1; a button's label against its fill 3:1. The Kyo theme's Watch colors are watchOS system colors, which a test can't read, so they are not measured.
+- Test contrast on Neko's and Techo's Watch palettes to the phone's floors, against black, the card and a row: primary text 4.5:1; secondary text and the accent 3:1; a button's label against its fill 3:1. The Kyo theme's Watch colors are watchOS system colors, which a test can't read, so they are not measured.
 - Test the phone side through the transport: the published context carries the theme id with the snapshots still in it; it is published at start and again when the theme changes; and publishing a snapshot keeps it. Test the Watch side the same way for both paths a context arrives by, and for a context with no id.
 - Delivery between a real phone and Watch can't be driven in tests; the PR says how the end-to-end path was exercised.
-- A launch variable selects the Watch's theme storage, as collapsed sections have, so a screenshot run can start the Watch app in a chosen theme and an in-memory launch writes nothing lasting.
+- A launch variable gives the Watch's theme its own storage, as collapsed sections have. A launch that sets it takes no feed from a paired phone, so a UI run always starts in the Kyo theme, and an in-memory launch writes nothing lasting. Screenshots in Neko and Techo were taken with a throwaway harness that was not committed.
 - Prior art: `CollapsedSections` and its tests (a per-device choice both apps share), the phone's `ThemeContrastTests` and `ContrastMeasure`, and the transport tests for the habit and memo snapshots.
 - The look is reviewed from Watch simulator screenshots. For the palette ticket: Today and the recorder in the Kyo theme before and after, with no difference. For the follow ticket: the same screens in Neko and in Techo.
 - `scripts/check` runs the Watch UI suite when Watch or shared code changes; it must still pass.

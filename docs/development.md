@@ -47,7 +47,7 @@ Never pass `CODE_SIGNING_ALLOWED=NO` to a test run. An unsigned build gives the 
 
 ## CI
 
-**The test workflows are paused.** `CI`, `UI Tests` and `Watch UI Tests` are disabled in GitHub Actions (`gh workflow disable`), so pull requests and pushes to `main` run nothing but TestFlight. Their files stay in `.github/workflows/` as described below; turn them back on with `gh workflow enable "CI"`, `gh workflow enable "UI Tests"` and `gh workflow enable "Watch UI Tests"`. While they're paused, every PR is checked locally before it merges, with `scripts/check`:
+**The test workflows are paused.** `CI`, `UI Tests` and `Watch UI Tests` are disabled in GitHub Actions (`gh workflow disable`), so pull requests run nothing, and a push to `main` runs only TestFlight, which skips itself unless the push bumps the version. Their files stay in `.github/workflows/` as described below; turn them back on with `gh workflow enable "CI"`, `gh workflow enable "UI Tests"` and `gh workflow enable "Watch UI Tests"`. While they're paused, every PR is checked locally before it merges, with `scripts/check`:
 
 ```sh
 scripts/check                  # the checks the changed paths call for
@@ -100,7 +100,15 @@ To check real device-to-device delivery, boot a paired iPhone and Watch simulato
 
 ## TestFlight
 
-Every push to `main` runs `.github/workflows/testflight.yml`, which archives the `Kyo` scheme (with the Watch app and widgets) unsigned, then signs it with Xcode automatic signing on export and uploads it to TestFlight. It can also be started by hand from the Actions tab (`workflow_dispatch`). The build number is the workflow run number; the marketing version comes from `project.yml`.
+`.github/workflows/testflight.yml` archives the `Kyo` scheme (with the Watch app and widgets) unsigned, then signs it with Xcode automatic signing on export and uploads it to TestFlight. A push to `main` uploads only when it changes `MARKETING_VERSION`. The workflow compares the version before and after the whole push, not just the last commit, and any other push ends green with a notice saying it skipped. The build number is the workflow run number.
+
+The version it compares is the one the archive is built with. The workflow doesn't run XcodeGen, so that is the value in the committed `Kyo.xcodeproj/project.pbxproj`. The run fails with an error if `project.yml` disagrees with the project file, or if the project file's configurations disagree with each other, so a bump needs the regenerated project in the same push. When the commit before a push is missing from the checkout (a new branch or a force push), the version counts as bumped unless its tag exists.
+
+To cut a build, change `MARKETING_VERSION` in `project.yml`, run `xcodegen generate`, and merge both files to `main`. Each build for testers gets its own version (1.1, 1.0.1, and so on). A version that already has a tag can't be bumped to again: the run fails before archiving.
+
+After a successful upload, a separate job tags the built commit `v<version>` and pushes the tag. That job can write to the repository and never sees the App Store Connect secrets; the upload job can only read. Pushing a tag starts no workflow, so a bump never uploads twice.
+
+To ship another build under the current version, start the workflow by hand from the Actions tab (`workflow_dispatch`). A manual run always archives and uploads, whatever the version. It tags the commit too when it runs on `main` and the tag doesn't exist yet, and otherwise skips the tag with a notice.
 
 Signing uses an App Store Connect API key, so no certificates or provisioning profiles are stored. Add these repository secrets to turn it on:
 
@@ -108,4 +116,4 @@ Signing uses an App Store Connect API key, so no certificates or provisioning pr
 - `ASC_ISSUER_ID`: the issuer ID shown above the keys list in App Store Connect.
 - `ASC_KEY_P8`: the full contents of the downloaded `.p8` file.
 
-Until all three exist, the job skips itself with a notice and the push stays green. The app record for `computer.srcery.kyo` must already exist in App Store Connect. If a run fails, the `xcodebuild-logs` artifact holds the archive and export logs.
+Until all three exist, the upload job skips itself with a notice, nothing is tagged, and the push stays green. The app record for `computer.srcery.kyo` must already exist in App Store Connect. If a run fails, the `xcodebuild-logs` artifact holds the archive and export logs.

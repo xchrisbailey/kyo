@@ -5,19 +5,117 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Uploads go one at a time, and a build that is already uploading is never cancelled.
-concurrency:
-  group: testflight
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
 jobs:
+  # A push builds only when it changes MARKETING_VERSION, so every push runs this cheap check
+  # first. A manual run always builds. The comparison covers the whole push, `before` to `sha`, and
+  # reads the value the archive is built with: the workflow doesn't run XcodeGen, so that is the
+  # one in the committed project file, and project.yml has to agree with it.
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      upload: ${{ steps.check.outputs.upload }}
+      version: ${{ steps.check.outputs.version }}
+      tag_exists: ${{ steps.check.outputs.tag_exists }}
+    steps:
+      # Full history, so `before` is there for any push that isn't a force push over it.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare MARKETING_VERSION
+        id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # The distinct MARKETING_VERSION values at a revision, one per line.
+          pbxproj_versions() {
+            git show "$1:Kyo.xcodeproj/project.pbxproj" 2>/dev/null \
+              | sed -n 's/^[[:space:]]*MARKETING_VERSION = \(.*\);[[:space:]]*$/\1/p' \
+              | tr -d '"' | sort -u || true
+          }
+
+          built=$(pbxproj_versions "$SHA")
+          if [ "$(printf '%s' "$built" | grep -c . || true)" -ne 1 ]; then
+            echo "::error title=MARKETING_VERSION is inconsistent::Kyo.xcodeproj/project.pbxproj must have exactly one MARKETING_VERSION across its configurations, found: $(printf '%s' "${built:-none}" | tr '\n' ' '). Run xcodegen generate and commit the project."
+            exit 1
+          fi
+          version=$built
+          if ! [[ $version =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            echo "::error title=MARKETING_VERSION is not a version::Expected one to three dot-separated numbers, found: $version"
+            exit 1
+          fi
+
+          declared=$(git show "$SHA:project.yml" \
+            | sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*\(.*\)$/\1/p' \
+            | tr -d "\"' " | sort -u)
+          if [ "$declared" != "$version" ]; then
+            echo "::error title=project.yml and the project file disagree::project.yml has MARKETING_VERSION ${declared:-none} but Kyo.xcodeproj has $version, which is what the archive is built with. Run xcodegen generate and commit the project."
+            exit 1
+          fi
+
+          tag="v$version"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            tag_exists=true
+          else
+            tag_exists=false
+          fi
+
+          upload=false
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            upload=true
+            if [ "$tag_exists" = true ]; then
+              echo "::notice title=Not tagging::The tag $tag already exists, so this manual build is uploaded without tagging."
+            fi
+          elif [[ $BEFORE =~ ^0*$ ]] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            # A new branch or a force push leaves nothing to compare with, so the version counts as
+            # bumped unless its tag shows it already shipped.
+            if [ "$tag_exists" = true ]; then
+              echo "::notice title=TestFlight upload skipped::The commit before this push (${BEFORE:-none}) isn't in the checkout, and the tag $tag already exists, so $version has shipped."
+            else
+              upload=true
+              echo "::notice title=Version bump assumed::The commit before this push (${BEFORE:-none}) isn't in the checkout, so there is nothing to compare with. Uploading $version, which has no tag yet."
+            fi
+          elif [ "$(pbxproj_versions "$BEFORE")" = "$built" ]; then
+            echo "::notice title=TestFlight upload skipped::MARKETING_VERSION is still $version. Bump it in project.yml, run xcodegen generate, and merge to upload a build, or start the workflow by hand."
+          elif [ "$tag_exists" = true ]; then
+            echo "::error title=Version already tagged::MARKETING_VERSION changed to $version, but the tag $tag already exists. Pick a version that hasn't shipped."
+            exit 1
+          else
+            upload=true
+          fi
+
+          {
+            echo "upload=$upload"
+            echo "version=$version"
+            echo "tag_exists=$tag_exists"
+          } >> "$GITHUB_OUTPUT"
+
   upload:
     name: Archive and upload to TestFlight
+    needs: version
+    if: needs.version.outputs.upload == 'true'
     runs-on: xcode-27
     timeout-minutes: 60
+    # Uploads go one at a time, and a build that is already uploading is never cancelled. The group
+    # is on this job rather than the workflow: a run waiting on it is replaced by a newer waiting
+    # run, and a push that doesn't bump the version must not replace one that does.
+    concurrency:
+      group: testflight
+      cancel-in-progress: false
+    outputs:
+      uploaded: ${{ steps.uploaded.outputs.uploaded }}
     env:
       # Secrets can't be read in a job-level `if`, so the preflight step checks them and later
       # steps gate on its output. The key's contents are only mapped into the steps that need them.
@@ -96,6 +194,13 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             2>&1 | tee "$RUNNER_TEMP/logs/export.log"
 
+      # With the secrets missing every step above is skipped, so only this step says a build went
+      # out, and the tag job waits for it.
+      - name: Record the upload
+        id: uploaded
+        if: steps.preflight.outputs.enabled == 'true'
+        run: echo "uploaded=true" >> "$GITHUB_OUTPUT"
+
       - name: Upload xcodebuild logs
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -108,3 +213,27 @@ jobs:
       - name: Remove App Store Connect API key
         if: always()
         run: rm -rf "$RUNNER_TEMP/asc"
+
+  # Tagging lives in its own job so the job that holds the App Store Connect secrets stays
+  # read-only, and this one, which can write, never sees them. A tag pushed with GITHUB_TOKEN
+  # starts no workflow, and tags aren't a trigger here anyway. Only main is tagged, so a manual
+  # build of another branch doesn't put a release tag on it.
+  tag:
+    name: Tag the release
+    needs: [version, upload]
+    if: >-
+      needs.upload.outputs.uploaded == 'true' &&
+      needs.version.outputs.tag_exists == 'false' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Tag the built commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f "ref=refs/tags/v$VERSION" -f "sha=$GITHUB_SHA"
+          echo "::notice title=Tagged::v$VERSION now points at $GITHUB_SHA."

@@ -41,6 +41,7 @@
 		1B90107340B674D0E9C3DD52 /* CollapsedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9A83FB927DFD8F729E2CAF /* CollapsedSections.swift */; };
 		1C4708A255A322F0B49B52F7 /* WatchEditDeleteSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97630794AA300756D8537B2 /* WatchEditDeleteSyncTests.swift */; };
 		1CF84E7936ED97861DAEFC4C /* MemoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */; };
+		1D2BFCABEBEA2F08C1280DEB /* PalettePreferenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */; };
 		1FD940CE8D55552FCF0BEA28 /* WatchQuickCaptureRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB969864AACBC086BCA311A /* WatchQuickCaptureRoutingTests.swift */; };
 		20E21F3041B152FC4F41004B /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */; };
 		215C9DC387654C789B960567 /* MemoPhotoRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF864DDA32AE3CFBF168ED59 /* MemoPhotoRecord.swift */; };
@@ -58,6 +59,7 @@
 		2A9A8059819F01B1CF72646E /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CF2F78994555897298356A /* QuickCaptureRouter.swift */; };
 		2B01F54FA7312341F059A6F6 /* MemoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F7FB3DC9CFF9AA178FEDD40 /* MemoSync.swift */; };
 		2C46997A778B7FD843955E15 /* EventKitCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6411CA71408C6CCF8053B8F2 /* EventKitCalendarService.swift */; };
+		2C9950CC1ADE227AC9081ED2 /* PalettePreferenceBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610AA05480F2B3F4AEA55961 /* PalettePreferenceBehaviorTests.swift */; };
 		2E0059C35BD9EE604D40A030 /* WatchSyncSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54423967BB4F03CC0CCED61 /* WatchSyncSmokeUITests.swift */; };
 		2F62BF19A2A5BCC61E377CC8 /* Memo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653131DE37B9A35D5F831A52 /* Memo.swift */; };
 		2F96F8110BE9942D44F93831 /* MonthEventUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09A0A0BEDC080CD89190146 /* MonthEventUITests.swift */; };
@@ -114,6 +116,7 @@
 		64270841CB78986B2B965631 /* SpeechSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1AC1B160A330EACC207AC90 /* SpeechSupport.swift */; };
 		64A070B1697D7630D4A46049 /* ControllableMemoFileTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C00D19DAB99E3F95F5DB8D /* ControllableMemoFileTransport.swift */; };
 		65588CC40BB0CEF9F0069C9B /* MonthNavigationBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9273470A8CFB02357394716 /* MonthNavigationBehaviorTests.swift */; };
+		66724E086AE43019A86FDF8A /* PalettePreferenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */; };
 		6695401F3FE9E8CAC5F9D45D /* TaskMonthContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35523860ECACBD7958269B0C /* TaskMonthContent.swift */; };
 		66FBCADDDD2902CA9A3C567F /* MemoHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B378E300FD6EAEEEBE0157BC /* MemoHistory.swift */; };
 		6994C8E44C27EFBCAB72710B /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
@@ -379,6 +382,7 @@
 		2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecordingSession.swift; sourceTree = "<group>"; };
 		320C3D9EDB92F79142AA98BA /* TaskShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskShare.swift; sourceTree = "<group>"; };
 		32DB59904B88906DE30C20F7 /* KyoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoApp.swift; sourceTree = "<group>"; };
+		330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePreferenceStore.swift; sourceTree = "<group>"; };
 		35523860ECACBD7958269B0C /* TaskMonthContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskMonthContent.swift; sourceTree = "<group>"; };
 		371A003D7EE1BFBA7217B297 /* UserDefaultsImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsImport.swift; sourceTree = "<group>"; };
 		379D51CE803E7A615523783C /* MemoTaskSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoTaskSheet.swift; sourceTree = "<group>"; };
@@ -401,6 +405,7 @@
 		5B3969547B09464204F0BFDB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5E056B7B004FFACC5D4B2B1E /* MonthTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthTestSupport.swift; sourceTree = "<group>"; };
 		60F0FA4B0C6B322FE58E2D89 /* ControllableHabitTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableHabitTransport.swift; sourceTree = "<group>"; };
+		610AA05480F2B3F4AEA55961 /* PalettePreferenceBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePreferenceBehaviorTests.swift; sourceTree = "<group>"; };
 		61105DE0FC56426638108B8B /* FakeCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeCalendarService.swift; sourceTree = "<group>"; };
 		63CF2F78994555897298356A /* QuickCaptureRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureRouter.swift; sourceTree = "<group>"; };
 		6411CA71408C6CCF8053B8F2 /* EventKitCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventKitCalendarService.swift; sourceTree = "<group>"; };
@@ -567,6 +572,7 @@
 				116077B52324ACC469E50656 /* MemoViews.swift */,
 				28131AAE7488A3FA49004B8D /* MonthModel.swift */,
 				9306E716C155B8E896399CF2 /* MonthView.swift */,
+				330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */,
 				CA2EE40D25C62334FDE67E3C /* QuickCaptureIntents.swift */,
 				A3D6FE8B1D280DEBF5D66B68 /* ScheduleCalendarsView.swift */,
 				6C2F379BCB2D2C17CB252E8D /* ScheduleStore.swift */,
@@ -625,6 +631,7 @@
 				A9273470A8CFB02357394716 /* MonthNavigationBehaviorTests.swift */,
 				EB9A3A6F407499643C968FF7 /* MonthTasksBehaviorTests.swift */,
 				5E056B7B004FFACC5D4B2B1E /* MonthTestSupport.swift */,
+				610AA05480F2B3F4AEA55961 /* PalettePreferenceBehaviorTests.swift */,
 				9CFCA122DF0277FDE6E428F9 /* QuickCaptureRoutingTests.swift */,
 				8AD08500C13211E7C50D1772 /* ScheduleAccessBehaviorTests.swift */,
 				E6974F2DE46F616F1A9B0F0F /* ScheduleBehaviorTests.swift */,
@@ -1091,6 +1098,7 @@
 				B4E4B7F59D2F4573A7DA4ABA /* MonthModel.swift in Sources */,
 				842CAA497561ECB0DADD70E5 /* MonthView.swift in Sources */,
 				619E9EA6EDDF9C4ACB67F46C /* OnDeviceLanguageModel.swift in Sources */,
+				66724E086AE43019A86FDF8A /* PalettePreferenceStore.swift in Sources */,
 				A4A5FEF9DEB85F7ED996A84F /* QuickCaptureIntents.swift in Sources */,
 				9BAB4E174F4C1993018DA509 /* QuickCaptureRouter.swift in Sources */,
 				EE30E4E345938AC113A5B502 /* ScheduleCalendarsView.swift in Sources */,
@@ -1191,6 +1199,8 @@
 				CFCA650FD4959B7FDE832F7A /* MonthTasksBehaviorTests.swift in Sources */,
 				2A2826EC7A4059C3A52F0702 /* MonthTestSupport.swift in Sources */,
 				0F5397CEF6471032CBA0A5CE /* OnDeviceLanguageModel.swift in Sources */,
+				2C9950CC1ADE227AC9081ED2 /* PalettePreferenceBehaviorTests.swift in Sources */,
+				1D2BFCABEBEA2F08C1280DEB /* PalettePreferenceStore.swift in Sources */,
 				8B7690850F12797030A39752 /* QuickCaptureRouter.swift in Sources */,
 				FB4C7C1B43DBD1238B2142FF /* QuickCaptureRoutingTests.swift in Sources */,
 				EF07848764688B6D9D991405 /* ScheduleAccessBehaviorTests.swift in Sources */,

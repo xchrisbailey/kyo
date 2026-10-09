@@ -16,7 +16,7 @@ struct VoiceRecorderView: View {
         VStack(spacing: 24) {
             HStack {
                 Text("Voice memo")
-                    .font(.headline)
+                    .headerStyle(.navigationTitle)
                     .foregroundStyle(theme.secondaryText)
                 Spacer()
             }

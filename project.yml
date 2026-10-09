@@ -151,7 +151,8 @@ targets:
       - Kyo/MemoMonthContent.swift
       - Kyo/EventMonthContent.swift
       - Kyo/Theme.swift
-      - Kyo/ThemeStyle.swift
+      - Kyo/ThemeStore.swift
+      - Kyo/ThemeEnvironment.swift
       - Kyo/ThemeNeko.swift
       - Kyo/ThemeTecho.swift
       - Kyo/ThemeSelection.swift

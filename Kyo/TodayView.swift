@@ -398,7 +398,7 @@ struct TodayView: View {
             .padding(.trailing, -12)
             .accessibilityLabel("Settings")
             .accessibilityHint("Opens Settings")
-            .accessibilityIdentifier("open-settings")
+            .accessibilityIdentifier("settings-button")
         }
     }
 

@@ -62,5 +62,7 @@ private struct StoreOpenFailedView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .themedText()
+        .background(theme.screenBackground.ignoresSafeArea())
     }
 }

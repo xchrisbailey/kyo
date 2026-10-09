@@ -16,7 +16,7 @@ struct Theme {
     static let all: [Theme] = [.kyo, .neko, .techo]
 
     /// The shipped theme stored as `id`, or `nil` when none is.
-    static func named(_ id: String) -> Theme? {
+    static func withID(_ id: String) -> Theme? {
         all.first { $0.id == id }
     }
 
@@ -83,9 +83,11 @@ extension Theme {
     /// The color for `role`: the light palette's in light and the dark palette's in dark, chosen as
     /// SwiftUI draws it so it follows the device and each sheet's own appearance.
     private func color(_ role: KeyPath<Palette, UIColor>) -> Color {
-        let light = light[keyPath: role]
-        let dark = dark[keyPath: role]
-        return Color(uiColor: UIColor { traits in
+        dynamicColor(light: light[keyPath: role], dark: dark[keyPath: role])
+    }
+
+    private func dynamicColor(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
             (traits.userInterfaceStyle == .dark ? dark : light).resolvedColor(with: traits)
         })
     }
@@ -104,9 +106,7 @@ extension Theme {
     /// `nil` when the theme keeps iOS's tint. A theme sets a tint in both modes or in neither.
     var controlTint: Color? {
         guard let light = light.controlTint, let dark = dark.controlTint else { return nil }
-        return Color(uiColor: UIColor { traits in
-            (traits.userInterfaceStyle == .dark ? dark : light).resolvedColor(with: traits)
-        })
+        return dynamicColor(light: light, dark: dark)
     }
     var onAccent: Color { color(\.onAccent) }
     var onAccentText: Color { color(\.onAccentText) }
@@ -160,7 +160,7 @@ struct HeaderFont {
     var styleSizeScales: [HeaderStyle: CGFloat] = [:]
     /// Room for a face whose last glyph reaches past its advance and would be cut off by the text's
     /// own bounds. SwiftUI can only add it as tracking, which falls after every glyph, so it is kept
-    /// small and apart from the letter spacing the face is set with.
+    /// small. `tracking(for:)` includes it, so that is the whole letter spacing a header gets.
     var overhangAllowance: CGFloat = 0
     var sectionTracking: CGFloat
     var largeTitleTracking: CGFloat
@@ -188,12 +188,14 @@ struct HeaderFont {
         styleSizeScales[style] ?? sizeScale
     }
 
+    /// The total letter spacing for `style`: the face's own plus the overhang allowance.
     func tracking(for style: HeaderStyle) -> CGFloat {
-        switch style {
+        let own: CGFloat = switch style {
         case .section: sectionTracking
         case .largeTitle: largeTitleTracking
         case .navigationTitle: 0
         }
+        return own + overhangAllowance
     }
 }
 

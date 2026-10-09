@@ -62,13 +62,13 @@ final class ThemeChoiceBehaviorTests: XCTestCase {
         XCTAssertEqual(ThemeStore(defaults: defaults).current.id, Theme.kyo.id)
     }
 
-    func testEveryThemeHasItsOwnName() {
+    func testEveryThemeHasItsOwnID() {
         XCTAssertEqual(Set(Theme.all.map(\.id)).count, Theme.all.count)
     }
 
     func testEveryThemeIsFoundByItsId() {
         for theme in Theme.all {
-            XCTAssertEqual(Theme.named(theme.id)?.id, theme.id)
+            XCTAssertEqual(Theme.withID(theme.id)?.id, theme.id)
         }
     }
 }

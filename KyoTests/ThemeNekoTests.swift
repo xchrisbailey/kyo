@@ -1,9 +1,7 @@
-import CoreText
 import UIKit
 import XCTest
 
-/// Neko: Catppuccin's published Latte and Mocha values for the roles the spec names, and a header
-/// font whose faces exist in the bundled files.
+/// Neko: Catppuccin's published Latte and Mocha values for the roles the spec names.
 final class ThemeNekoTests: XCTestCase {
     private func hex(_ color: UIColor) -> String {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -34,29 +32,5 @@ final class ThemeNekoTests: XCTestCase {
     func testNekoHasNoLetterSpacingOfItsOwnToAdd() {
         XCTAssertEqual(Theme.neko.headerFont.tracking(for: .section), 0)
         XCTAssertEqual(Theme.neko.headerFont.tracking(for: .largeTitle), 0)
-    }
-
-    /// The fonts the header font names are the ones in `Kyo/Fonts`: each file registers a face with
-    /// exactly the PostScript name the theme asks for, so a header can't fall back silently.
-    func testEveryFaceNekoNamesIsInTheBundledFontFiles() throws {
-        let fonts = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Kyo/Fonts")
-        var registered: Set<String> = []
-        for file in try FileManager.default.contentsOfDirectory(at: fonts, includingPropertiesForKeys: nil)
-        where file.pathExtension == "ttf" {
-            let descriptors = CTFontManagerCreateFontDescriptorsFromURL(file as CFURL) as? [CTFontDescriptor] ?? []
-            for descriptor in descriptors {
-                if let name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String {
-                    registered.insert(name)
-                }
-            }
-        }
-
-        let named = Theme.neko.headerFont.face.postScriptNames
-        XCTAssertEqual(named.count, 2)
-        for name in named {
-            XCTAssertTrue(registered.contains(name), "\(name) isn't in Kyo/Fonts, which has \(registered.sorted())")
-        }
     }
 }

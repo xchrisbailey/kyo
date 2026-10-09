@@ -37,32 +37,23 @@ final class ThemeUITests: XCTestCase {
         XCTAssertEqual(app.buttons["theme-card-techo"].label, "Techo")
     }
 
-    func testNekoHeadersGrowWithTheDeviceTextSize() {
-        let app = launchApp()
-        openSettings(in: app)
-        app.buttons["theme-card-neko"].tap()
-        XCTAssertTrue(waitForSelected(app.buttons["theme-card-neko"]))
-        app.buttons["settings-done"].tap()
-        let normal = monthHeaderHeight(in: app)
+    /// Geist Mono (Neko) and Caveat (Techo) are bundled faces set through `Font.custom(relativeTo:)`,
+    /// so a header in either grows with the device text size as the system font does.
+    func testHeadersInEveryBundledFaceGrowWithTheDeviceTextSize() {
+        for themeID in ["neko", "techo"] {
+            let app = launchApp()
+            openSettings(in: app)
+            app.buttons["theme-card-\(themeID)"].tap()
+            XCTAssertTrue(waitForSelected(app.buttons["theme-card-\(themeID)"]))
+            app.buttons["settings-done"].tap()
+            let normal = monthHeaderHeight(in: app)
 
-        relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
-        let large = monthHeaderHeight(in: app)
+            relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
+            let large = monthHeaderHeight(in: app)
 
-        XCTAssertGreaterThan(large, normal, "a Geist Mono header scales with the text size")
-    }
-
-    func testTechoHeadersGrowWithTheDeviceTextSize() {
-        let app = launchApp()
-        openSettings(in: app)
-        app.buttons["theme-card-techo"].tap()
-        XCTAssertTrue(waitForSelected(app.buttons["theme-card-techo"]))
-        app.buttons["settings-done"].tap()
-        let normal = monthHeaderHeight(in: app)
-
-        relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
-        let large = monthHeaderHeight(in: app)
-
-        XCTAssertGreaterThan(large, normal, "a Caveat header scales with the text size")
+            XCTAssertGreaterThan(large, normal, "a \(themeID) header scales with the text size")
+            app.terminate()
+        }
     }
 
     // MARK: Helpers
@@ -84,7 +75,7 @@ final class ThemeUITests: XCTestCase {
     }
 
     private func openSettings(in app: XCUIApplication) {
-        let settings = app.buttons["open-settings"]
+        let settings = app.buttons["settings-button"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10))
         settings.tap()
         XCTAssertTrue(app.buttons["theme-card-kyo"].waitForExistence(timeout: 10))

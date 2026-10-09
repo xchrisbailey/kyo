@@ -249,7 +249,8 @@ extension Theme {
             accent: UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1),
             controlTint: nil,
             onAccent: .secondarySystemBackground,
-            onAccentText: .white,
+            // The dark card color, as dark marks on the light mint accent (8.3:1).
+            onAccentText: UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1),
             todayNumeral: .systemBackground,
             warning: .systemOrange,
             onWarning: .white,

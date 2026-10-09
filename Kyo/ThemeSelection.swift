@@ -9,28 +9,42 @@ enum ThemeSelection {
     /// start there and never read a developer's real choice.
     static let suiteEnvironmentKey = "KYO_THEME_SUITE"
 
+    /// Launches that keep the theme away from the device's real choice (in memory, or in a suite of
+    /// their own) publish nothing to the Watch, and never ask for the transport, so a test never
+    /// activates a session or changes a paired Watch's theme.
     @MainActor
-    static func make() -> ThemeStore {
-        ThemeStore(defaults: defaults())
-    }
-
-    @MainActor
-    static func makePalettePreferenceStore() -> PalettePreferenceStore {
-        PalettePreferenceStore(defaults: defaults())
-    }
-
-    private static func defaults() -> UserDefaults {
-        let environment = ProcessInfo.processInfo.environment
-        if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
-            return defaults
+    static func make(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard,
+        transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
+    ) -> ThemeStore {
+        if let isolated = isolatedDefaults(in: environment) {
+            return ThemeStore(defaults: isolated)
         }
-        if KyoModelContainer.isInMemoryRequested {
+        return ThemeStore(defaults: defaults, transport: transport())
+    }
+
+    @MainActor
+    static func makePalettePreferenceStore(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard
+    ) -> PalettePreferenceStore {
+        PalettePreferenceStore(defaults: isolatedDefaults(in: environment) ?? defaults)
+    }
+
+    /// The suite a launch keeps its choices in when it stays away from the device's real ones: the
+    /// named suite, or a throwaway one for an in-memory launch. Nil for an ordinary launch.
+    private static func isolatedDefaults(in environment: [String: String]) -> UserDefaults? {
+        if let suite = environment[suiteEnvironmentKey], let named = UserDefaults(suiteName: suite) {
+            return named
+        }
+        if KyoModelContainer.isInMemoryRequested(in: environment) {
             let suite = "kyo.theme.ui-tests.\(UUID().uuidString)"
-            if let defaults = UserDefaults(suiteName: suite) {
-                defaults.removePersistentDomain(forName: suite)
-                return defaults
+            if let throwaway = UserDefaults(suiteName: suite) {
+                throwaway.removePersistentDomain(forName: suite)
+                return throwaway
             }
         }
-        return .standard
+        return nil
     }
 }

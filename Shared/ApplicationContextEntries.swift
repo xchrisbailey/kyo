@@ -19,5 +19,8 @@ struct ApplicationContextEntries: Equatable, Sendable {
         payloads.mapValues { $0 as Any }
     }
 
-    var isEmpty: Bool { payloads.isEmpty }
+    /// Whether a payload has been set for any of `keys`.
+    func hasPayload(forAnyOf keys: [String]) -> Bool {
+        keys.contains { payloads[$0] != nil }
+    }
 }

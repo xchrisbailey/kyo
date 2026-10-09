@@ -10,12 +10,16 @@ import os
 /// docs/adr/0002-watch-commands-and-phone-reconciliation.md). Watch recordings travel the same
 /// way as files over `transferFile` (see docs/adr/0005-watch-memo-sync.md).
 @MainActor
-final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, MemoFileTransport, WCSessionDelegate {
+final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, ThemeIDTransport, MemoFileTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
     nonisolated static let habitSnapshotKey = "kyo.habitSnapshot"
     nonisolated static let memoSnapshotKey = "kyo.memoSnapshot"
+    /// The phone's theme id, as the UTF-8 bytes of the id string (see
+    /// `docs/adr/0007-watch-follows-the-phone-theme.md`).
+    nonisolated static let themeIDKey = "kyo.themeID"
+    nonisolated static let snapshotKeys = [snapshotKey, habitSnapshotKey, memoSnapshotKey]
     nonisolated static let commandKey = "kyo.taskCommand"
     nonisolated static let habitCommandKey = "kyo.habitCommand"
 
@@ -30,6 +34,8 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     private var habitHandler: (@MainActor (HabitListSnapshot) -> Void)?
     private var latestIncomingMemos: MemoListSnapshot?
     private var memoHandler: (@MainActor (MemoListSnapshot) -> Void)?
+    private var latestIncomingThemeID: String?
+    private var themeIDHandler: (@MainActor (String) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
     private var habitCommandHandler: (@MainActor (HabitCommand) -> Void)?
     /// Encoded commands of either kind, held until the session has activated.
@@ -84,11 +90,46 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         }
     }
 
-    private override init() {
-        session = WCSession.isSupported() ? WCSession.default : nil
+    private override convenience init() {
+        self.init(session: WCSession.isSupported() ? WCSession.default : nil)
+    }
+
+    /// A transport over `session`, which it takes as its delegate and activates. Tests pass `nil`
+    /// to get one that records what it would send and sends nothing.
+    init(session: WCSession?) {
+        self.session = session
         super.init()
         session?.delegate = self
         session?.activate()
+    }
+
+    /// The context the next `updateApplicationContext` writes: the latest payload of every key, or
+    /// `nil` while no snapshot has been published in this process. The theme id rides in every write,
+    /// but never causes the first one: a Watch with nothing stored would otherwise get a theme and
+    /// none of its tasks, habits or memos, from a launch that never built the lists.
+    var contextToWrite: [String: Any]? {
+        guard outgoingContext.hasPayload(forAnyOf: Self.snapshotKeys) else { return nil }
+        return outgoingContext.context
+    }
+
+    /// What a context carries, taken out on the system's thread so it can cross to the main actor.
+    /// The two paths a context arrives by, the one waiting at launch and the one that arrives
+    /// while the app runs, both build it, so a key is read the same way on both.
+    struct ReceivedContext: Sendable {
+        let taskData: Data?
+        let habitData: Data?
+        let memoData: Data?
+        /// The theme id, or `nil` when the context has none or none that reads as an id.
+        let themeID: String?
+
+        init(_ context: [String: Any]) {
+            taskData = context[WatchConnectivityTaskTransport.snapshotKey] as? Data
+            habitData = context[WatchConnectivityTaskTransport.habitSnapshotKey] as? Data
+            memoData = context[WatchConnectivityTaskTransport.memoSnapshotKey] as? Data
+            themeID = (context[WatchConnectivityTaskTransport.themeIDKey] as? Data)
+                .flatMap { String(data: $0, encoding: .utf8) }
+                .flatMap { $0.isEmpty ? nil : $0 }
+        }
     }
 
     func publish(_ snapshot: TaskListSnapshot) {
@@ -119,6 +160,21 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
             logger.log("published memo revision \(snapshot.revision) (\(snapshot.memos.count) memos)")
         } catch {
             logger.error("failed to encode memo snapshot: \(error.localizedDescription)")
+        }
+    }
+
+    /// Publishes the theme id under its own key, merged with the three snapshots in one context
+    /// write (see `docs/adr/0007-watch-follows-the-phone-theme.md`). Like a snapshot, the latest id
+    /// is written again whenever the session activates or the Watch's state changes.
+    func publish(themeID: String) {
+        publishContextEntry(Data(themeID.utf8), forKey: Self.themeIDKey)
+        logger.log("published theme \(themeID)")
+    }
+
+    func setThemeIDHandler(_ handler: @escaping @MainActor (String) -> Void) {
+        themeIDHandler = handler
+        if let latestIncomingThemeID {
+            handler(latestIncomingThemeID)
         }
     }
 
@@ -220,9 +276,9 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         #if os(iOS)
         guard session.isPaired, session.isWatchAppInstalled else { return }
         #endif
-        guard !outgoingContext.isEmpty else { return }
+        guard let context = contextToWrite else { return }
         do {
-            try session.updateApplicationContext(outgoingContext.context)
+            try session.updateApplicationContext(context)
         } catch {
             logger.error("failed to update application context: \(error.localizedDescription)")
         }
@@ -247,6 +303,20 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         latestIncomingMemos = snapshot
         memoHandler?(snapshot)
         logger.log("received memo snapshot revision \(snapshot.revision) (\(snapshot.memos.count) memos)")
+    }
+
+    private func receiveThemeID(_ themeID: String) {
+        latestIncomingThemeID = themeID
+        themeIDHandler?(themeID)
+        logger.log("received theme \(themeID)")
+    }
+
+    /// Applies what a context carries. A key the context lacks changes nothing.
+    func receive(_ context: ReceivedContext) {
+        if let taskData = context.taskData { receive(data: taskData) }
+        if let habitData = context.habitData { receiveHabits(data: habitData) }
+        if let memoData = context.memoData { receiveMemos(data: memoData) }
+        if let themeID = context.themeID { receiveThemeID(themeID) }
     }
 
     private func receiveCommand(data: Data) {
@@ -312,37 +382,29 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
-        let contextData = session.receivedApplicationContext[Self.snapshotKey] as? Data
-        let habitData = session.receivedApplicationContext[Self.habitSnapshotKey] as? Data
-        let memoData = session.receivedApplicationContext[Self.memoSnapshotKey] as? Data
+        let received = ReceivedContext(session.receivedApplicationContext)
         Task { @MainActor in
-            self.sendLatest()
-            self.flushPendingOutgoingCommands()
-            if let contextData {
-                self.receive(data: contextData)
-            }
-            if let habitData {
-                self.receiveHabits(data: habitData)
-            }
-            if let memoData {
-                self.receiveMemos(data: memoData)
-            }
-            // After the received context, so a recording the phone has already confirmed is
-            // retired before the outbox looks for what to send.
-            if self.isActivated {
-                self.activationHandler?()
-            }
+            self.handleActivation(receivedContext: received)
+        }
+    }
+
+    /// What activating the session does: write what's waiting to go out, then apply the context
+    /// that was waiting to come in.
+    func handleActivation(receivedContext received: ReceivedContext) {
+        sendLatest()
+        flushPendingOutgoingCommands()
+        receive(received)
+        // After the received context, so a recording the phone has already confirmed is
+        // retired before the outbox looks for what to send.
+        if isActivated {
+            activationHandler?()
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        let taskData = applicationContext[Self.snapshotKey] as? Data
-        let habitData = applicationContext[Self.habitSnapshotKey] as? Data
-        let memoData = applicationContext[Self.memoSnapshotKey] as? Data
+        let received = ReceivedContext(applicationContext)
         Task { @MainActor in
-            if let taskData { self.receive(data: taskData) }
-            if let habitData { self.receiveHabits(data: habitData) }
-            if let memoData { self.receiveMemos(data: memoData) }
+            self.receive(received)
         }
     }
 

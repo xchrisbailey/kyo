@@ -31,6 +31,16 @@ struct WatchPaletteColor: Sendable {
         WatchPaletteColor(color: color, style: AnyShapeStyle(style), components: nil)
     }
 
+    /// An opaque color from a 0xRRGGBB value, the way the phone's themes name theirs, so the two
+    /// sides' components are computed alike.
+    static func fixed(hex: UInt32) -> WatchPaletteColor {
+        fixed(
+            red: Double((hex >> 16) & 0xff) / 255,
+            green: Double((hex >> 8) & 0xff) / 255,
+            blue: Double(hex & 0xff) / 255
+        )
+    }
+
     /// A color value that a test can read back.
     static func fixed(red: Double, green: Double, blue: Double, opacity: Double = 1) -> WatchPaletteColor {
         let color = Color(.sRGB, red: red, green: green, blue: blue, opacity: opacity)
@@ -79,6 +89,9 @@ struct WatchPalette: Sendable {
     let accent: WatchPaletteColor
     let primaryText: WatchPaletteColor
     let secondaryText: WatchPaletteColor
+    /// Hints and disabled states. No Watch view draws it yet; the palette keeps it so a theme names
+    /// the same text levels on the Watch as on the phone.
+    let tertiaryText: WatchPaletteColor
     let warning: WatchPaletteColor
     /// Also colors recording.
     let destructive: WatchPaletteColor
@@ -92,7 +105,7 @@ struct WatchPalette: Sendable {
     let onDestructive: WatchPaletteColor?
 
     /// Every theme the Watch has a palette for.
-    static let all: [WatchPalette] = [.kyo]
+    static let all: [WatchPalette] = [.kyo, .neko, .techo]
 
     /// The ids of the themes the Watch has a palette for.
     static var themeIDs: [String] { all.map(\.themeID) }
@@ -117,12 +130,53 @@ struct WatchPalette: Sendable {
         accent: .system(.green),
         primaryText: .system(.primary),
         secondaryText: .system(.secondary, style: HierarchicalShapeStyle.secondary),
+        tertiaryText: .system(.secondary, style: HierarchicalShapeStyle.tertiary),
         warning: .system(.orange),
         destructive: .system(.red),
         editTint: .system(.blue),
         onAccent: nil,
         onWarning: nil,
         onDestructive: nil
+    )
+}
+
+extension WatchPalette {
+    /// Neko: Catppuccin Mocha, the same values as Neko's dark palette on the phone (`ThemeNeko.swift`),
+    /// on true black. The label on a filled button is Mocha's Base, as on the phone.
+    static let neko = WatchPalette(
+        themeID: "neko",
+        card: .fixed(hex: 0x313244),
+        listRow: .fixed(hex: 0x313244),
+        divider: .fixed(hex: 0x45475a),
+        accent: .fixed(hex: 0xcba6f7),
+        primaryText: .fixed(hex: 0xcdd6f4),
+        secondaryText: .fixed(hex: 0xbac2de),
+        tertiaryText: .fixed(hex: 0xa6adc8),
+        warning: .fixed(hex: 0xfab387),
+        destructive: .fixed(hex: 0xf38ba8),
+        editTint: .fixed(hex: 0xcba6f7),
+        onAccent: .fixed(hex: 0x1e1e2e),
+        onWarning: .fixed(hex: 0x1e1e2e),
+        onDestructive: .fixed(hex: 0x1e1e2e)
+    )
+
+    /// Techo: the chalkboard, the same values as Techo's dark palette on the phone (`ThemeTecho.swift`),
+    /// on true black. The label on a filled button is the slate, as on the phone.
+    static let techo = WatchPalette(
+        themeID: "techo",
+        card: .fixed(hex: 0x283631),
+        listRow: .fixed(hex: 0x283631),
+        divider: .fixed(hex: 0x3d4b45),
+        accent: .fixed(hex: 0xf2d974),
+        primaryText: .fixed(hex: 0xeef0e4),
+        secondaryText: .fixed(hex: 0xb8c2b6),
+        tertiaryText: .fixed(hex: 0x7f8b83),
+        warning: .fixed(hex: 0xf0a265),
+        destructive: .fixed(hex: 0xf0877d),
+        editTint: .fixed(hex: 0xf2d974),
+        onAccent: .fixed(hex: 0x1d2a26),
+        onWarning: .fixed(hex: 0x1d2a26),
+        onDestructive: .fixed(hex: 0x1d2a26)
     )
 }
 

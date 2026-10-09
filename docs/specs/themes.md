@@ -80,7 +80,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 ### Reach
 
 - A theme colors everything Kyo lays out: Today, the Month, sheets, navigation bars, the Settings list, and control tints.
-- What iOS draws stays as iOS draws it: alerts, context menus, the keyboard, pickers, and the system event detail. These still follow light and dark. Their buttons may pick up the theme's accent as a tint; that's accepted.
+- What iOS draws stays as iOS draws it: alerts, context menus, the keyboard, pickers, and the system event detail. These still follow light and dark (since `docs/specs/palette-preference.md`, the palette the user's preference picks). Their buttons may pick up the theme's accent as a tint; that's accepted.
 - Themes apply to the iPhone and iPad app only. Phone widgets, the watch app, and watch widgets keep the Kyo look. (The watch app is superseded by `docs/specs/watch-themes.md`.)
 
 ### Choosing and remembering
@@ -88,7 +88,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 - Settings gains an **Appearance** group above Schedule. It holds the theme picker and nothing else for now.
 - The picker shows one preview card per theme, with the theme's light and dark colors and its name set in its header font. The current theme is marked as selected.
 - Tapping a card applies the theme immediately, with no confirmation, and Settings itself redraws in it.
-- The app always follows the device's light or dark setting. There is no override.
+- The app always follows the device's light or dark setting. There is no override. (Superseded by `docs/specs/palette-preference.md`.)
 - There is one current theme for the app. On iPad, every window shows it, and picking a theme in one window changes them all.
 - The choice persists in the device's own `UserDefaults`, injected so tests can supply their own, under a key that follows `CODING_STANDARDS.md`. It isn't in the SwiftData store and isn't synced.
 - With nothing stored, the theme is Kyo. A stored value that names no current theme also gives Kyo.
@@ -106,8 +106,8 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 ## Out of Scope
 
 - Theming phone widgets, the watch app, and watch widgets. (The watch app is superseded by `docs/specs/watch-themes.md`; the phone has no widgets a theme could change.)
-- A light, dark, or system override.
-- Font sizing and any other Appearance setting.
+- A light, dark, or system override. (Superseded by `docs/specs/palette-preference.md`.)
+- Font sizing and any other Appearance setting. (A text size setting, #224, was closed as not planned; Kyo follows the device text size.)
 - Syncing the theme between devices.
 - User-made themes, or editing a theme's colors or font.
 - Changing the app icon with the theme.

@@ -99,7 +99,8 @@ private enum Mocha {
     static let blue = UIColor(hex: 0x89b4fa)
 }
 
-private extension UIColor {
+extension UIColor {
+    /// An opaque color from a 0xRRGGBB value, for the themes that name their colors that way.
     convenience init(hex: UInt32) {
         self.init(
             red: CGFloat((hex >> 16) & 0xff) / 255,

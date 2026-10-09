@@ -13,7 +13,7 @@ struct Theme {
     let dark: Palette
 
     /// Every theme the app ships.
-    static let all: [Theme] = [.kyo, .neko]
+    static let all: [Theme] = [.kyo, .neko, .techo]
 
     /// The shipped theme stored as `id`, or `nil` when none is.
     static func named(_ id: String) -> Theme? {

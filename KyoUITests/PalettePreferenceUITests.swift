@@ -15,18 +15,19 @@ final class PalettePreferenceUITests: XCTestCase {
         let app = launchApp()
         openSettings(in: app)
         let palette = app.segmentedControls["palette-picker"]
-        XCTAssertTrue(palette.buttons["System"].isSelected, "a fresh launch follows the device")
-        XCTAssertFalse(palette.buttons["Dark"].isSelected)
+        XCTAssertTrue(segment("System", in: palette).isSelected, "a fresh launch follows the device")
+        XCTAssertFalse(segment("Dark", in: palette).isSelected)
 
-        palette.buttons["Dark"].tap()
+        segment("Dark", in: palette).tap()
 
-        XCTAssertTrue(waitForSelected(palette.buttons["Dark"]), "a tap applies the preference at once")
-        XCTAssertFalse(palette.buttons["System"].isSelected)
+        XCTAssertTrue(waitForSelected(segment("Dark", in: palette)), "a tap applies the preference at once")
+        XCTAssertFalse(segment("System", in: palette).isSelected)
         relaunch(app)
         openSettings(in: app)
 
-        XCTAssertTrue(waitForSelected(app.segmentedControls["palette-picker"].buttons["Dark"]))
-        XCTAssertFalse(app.segmentedControls["palette-picker"].buttons["System"].isSelected)
+        let relaunched = app.segmentedControls["palette-picker"]
+        XCTAssertTrue(waitForSelected(segment("Dark", in: relaunched)))
+        XCTAssertFalse(segment("System", in: relaunched).isSelected)
     }
 
     func testTheControlIsLabelledPalette() {
@@ -38,6 +39,11 @@ final class PalettePreferenceUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// A segment of the native control has no identifier of its own; its name is what it sets.
+    private func segment(_ name: String, in palette: XCUIElement) -> XCUIElement {
+        palette.buttons[name] // label-query: the segments of the system control carry no identifiers
+    }
 
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()

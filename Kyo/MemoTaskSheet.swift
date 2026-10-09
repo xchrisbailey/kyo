@@ -36,6 +36,7 @@ struct MemoTaskSheet: View {
                     addToTodayButton
                 }
             }
+            .themedText()
             .background(theme.sheetBackground)
             .themedNavigationTitle("Memo → Task")
             .navigationBarTitleDisplayMode(.inline)

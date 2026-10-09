@@ -208,7 +208,9 @@ struct WrittenMemoComposeSheet: View {
                 }
                 .padding(20)
             }
-            .background(theme.sheetBackground)
+            .themedText()
+            .themedText()
+        .background(theme.sheetBackground)
             .themedNavigationTitle("Written memo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -341,6 +343,7 @@ struct MemoCardSheet: View {
             }
             .padding(20)
         }
+        .themedText()
         .background(theme.sheetBackground)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if memo.kind == .voice {

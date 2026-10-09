@@ -11,16 +11,19 @@ struct KyoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            switch storeResult {
-            case .success(let container):
-                TodayView(modelContainer: container)
-            case .failure:
-                StoreOpenFailedView {
-                    storeResult = KyoApp.openStore()
+            Group {
+                switch storeResult {
+                case .success(let container):
+                    TodayView(modelContainer: container)
+                case .failure:
+                    StoreOpenFailedView {
+                        storeResult = KyoApp.openStore()
+                    }
                 }
             }
+            .themedTint()
+            .environment(\.theme, themeStore.current)
         }
-        .environment(\.theme, themeStore.current)
     }
 
     /// Opens the store and, for the on-disk one, runs the one-time UserDefaults import before

@@ -9,7 +9,7 @@ struct SettingsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Schedule") {
+                Section {
                     Toggle("Show schedule", isOn: Binding(
                         get: { schedule.showsSchedule },
                         set: { schedule.setShowsSchedule($0) }
@@ -22,6 +22,9 @@ struct SettingsSheet: View {
                     }
                     .disabled(!schedule.showsSchedule)
                     .accessibilityHint("Chooses which calendars the schedule shows")
+                } header: {
+                    Text("Schedule")
+                        .foregroundStyle(theme.secondaryText)
                 }
                 .listRowBackground(theme.listRow)
             }

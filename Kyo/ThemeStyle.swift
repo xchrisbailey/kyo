@@ -32,6 +32,22 @@ private struct HeaderStyleModifier: ViewModifier {
     }
 }
 
+private struct ThemedText: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(theme.primaryText)
+    }
+}
+
+private struct ThemedTint: ViewModifier {
+    @Environment(\.theme) private var theme
+
+    func body(content: Content) -> some View {
+        content.tint(theme.controlTint)
+    }
+}
+
 private struct ThemedNavigationTitle: ViewModifier {
     @Environment(\.theme) private var theme
     let title: LocalizedStringKey
@@ -50,6 +66,18 @@ private struct ThemedNavigationTitle: ViewModifier {
 }
 
 extension View {
+    /// Sets the text color of everything below that names none to the theme's primary text color.
+    /// It goes on a screen's content and not on its navigation bar, so bar buttons keep iOS's own
+    /// styling, disabled state included.
+    func themedText() -> some View {
+        modifier(ThemedText())
+    }
+
+    /// Tints the controls below with the theme's control tint, or leaves iOS's own when it has none.
+    func themedTint() -> some View {
+        modifier(ThemedTint())
+    }
+
     /// Sets text in the theme's header font for `style`. Headers take their font from here, so a
     /// theme with another header font restyles every one of them.
     func headerStyle(_ style: HeaderStyle) -> some View {
@@ -74,6 +102,7 @@ private struct ThemedListBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
+            .themedText()
             .background(theme.sheetBackground)
     }
 }

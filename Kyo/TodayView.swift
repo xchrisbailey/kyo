@@ -106,6 +106,7 @@ struct TodayView: View {
                     .padding(.bottom, 28)
                     .id("main-top")
                 }
+                .themedText()
                 .background(theme.screenBackground)
                 .scrollIndicators(.hidden)
                 .safeAreaInset(edge: .bottom, spacing: 0) {

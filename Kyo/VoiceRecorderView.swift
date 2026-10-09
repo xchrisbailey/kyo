@@ -37,6 +37,7 @@ struct VoiceRecorderView: View {
         .padding(24)
         .frame(maxWidth: 680)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .themedText()
         .background(theme.screenBackground.ignoresSafeArea())
         .interactiveDismissDisabled()
         .task {

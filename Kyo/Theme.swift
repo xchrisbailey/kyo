@@ -44,6 +44,9 @@ struct Palette {
     var fill: UIColor
 
     var accent: UIColor
+    /// The tint of controls that take one: switches, text carets, plain button labels, pickers.
+    /// `nil` leaves iOS's own tint, which is what the Kyo theme uses.
+    var controlTint: UIColor?
     /// A checkmark drawn on a circle filled with the accent.
     var onAccent: UIColor
     /// Text and icons drawn on a solid accent fill: the Add button, the Save capsule, the play button.
@@ -88,6 +91,13 @@ extension Theme {
     var separator: Color { color(\.separator) }
     var fill: Color { color(\.fill) }
     var accent: Color { color(\.accent) }
+    /// `nil` when the theme keeps iOS's tint. A theme sets a tint in both modes or in neither.
+    var controlTint: Color? {
+        guard let light = light.controlTint, let dark = dark.controlTint else { return nil }
+        return Color(uiColor: UIColor { traits in
+            (traits.userInterfaceStyle == .dark ? dark : light).resolvedColor(with: traits)
+        })
+    }
     var onAccent: Color { color(\.onAccent) }
     var onAccentText: Color { color(\.onAccentText) }
     var todayNumeral: Color { color(\.todayNumeral) }
@@ -158,6 +168,7 @@ extension Theme {
             separator: .separator,
             fill: .tertiarySystemFill,
             accent: UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1),
+            controlTint: nil,
             onAccent: .secondarySystemBackground,
             onAccentText: .white,
             todayNumeral: .systemBackground,
@@ -183,6 +194,7 @@ extension Theme {
             separator: .separator,
             fill: .tertiarySystemFill,
             accent: UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1),
+            controlTint: nil,
             onAccent: .secondarySystemBackground,
             onAccentText: .white,
             todayNumeral: .systemBackground,

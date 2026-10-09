@@ -27,6 +27,7 @@ struct MemosSheet: View {
                     .padding(.top, 8)
                     .padding(.bottom, 28)
             }
+            .themedText()
             .background(theme.sheetBackground)
             .scrollDismissesKeyboard(.interactively)
             .themedNavigationTitle("Memos")

@@ -16,12 +16,15 @@ struct ScheduleCalendarsView: View {
                         .listRowBackground(theme.listRow)
                 }
                 ForEach(schedule.calendarGroups) { group in
-                    Section(group.accountTitle) {
+                    Section {
                         ForEach(group.calendars) { calendar in
                             ScheduleCalendarRow(calendar: calendar, isVisible: schedule.isCalendarVisible(calendar.id)) {
                                 schedule.toggleCalendar(calendar.id)
                             }
                         }
+                    } header: {
+                        Text(group.accountTitle)
+                            .foregroundStyle(theme.secondaryText)
                     }
                     .listRowBackground(theme.listRow)
                 }

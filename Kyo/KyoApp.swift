@@ -59,6 +59,7 @@ private struct StoreOpenFailedView: View {
                 .multilineTextAlignment(.center)
             Button("Try again", action: retry)
                 .buttonStyle(.borderedProminent)
+                .foregroundStyle(theme.onControlTint)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

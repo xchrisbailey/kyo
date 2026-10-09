@@ -122,7 +122,7 @@ struct TodayView: View {
                 .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
                     case .settings:
-                        SettingsSheet(schedule: schedule, themes: .shared)
+                        SettingsSheet(schedule: schedule, themes: .shared, palette: .shared)
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:

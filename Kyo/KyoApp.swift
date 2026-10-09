@@ -8,6 +8,8 @@ struct KyoApp: App {
     @State private var storeResult = KyoApp.openStore()
     /// The one theme every window shows.
     @ObservedObject private var themeStore = ThemeStore.shared
+    /// The one palette preference every window follows.
+    @ObservedObject private var palettePreference = PalettePreferenceStore.shared
 
     var body: some Scene {
         WindowGroup {
@@ -23,6 +25,7 @@ struct KyoApp: App {
             }
             .themedTint()
             .environment(\.theme, themeStore.current)
+            .background(WindowPalette(preference: palettePreference.current))
         }
     }
 

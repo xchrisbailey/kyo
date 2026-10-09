@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsSheet: View {
     @ObservedObject var schedule: ScheduleStore
     @ObservedObject var themes: ThemeStore
+    @ObservedObject var palette: PalettePreferenceStore
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -11,6 +12,7 @@ struct SettingsSheet: View {
             List {
                 ThemedListGroup("Appearance") {
                     ThemePicker(store: themes)
+                    PalettePicker(store: palette)
                 }
 
                 ThemedListGroup("Schedule") {

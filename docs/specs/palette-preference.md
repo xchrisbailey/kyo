@@ -41,7 +41,7 @@ Terms follow `GLOSSARY.md`: **Palette preference**, **Theme**. Settings is divid
 ### Reach
 
 - The preference applies to everything inside Kyo: what Kyo lays out, and what iOS draws for it, including alerts, confirmation dialogs, context menus, the keyboard, pickers, the share sheet, the camera, and the system event detail.
-- The preference is set once for the app, on the app's color scheme, not passed to each view. Theme colors already resolve from the system's light or dark trait, and no view reads the color scheme itself; that stays true.
+- The preference is set once per window, on the window's light or dark style, not passed to each view. SwiftUI's preferred color scheme isn't used: with it, an open sheet doesn't return to the device's setting when the user goes back to System. Theme colors already resolve from the system's light or dark trait, and no view reads the color scheme itself; that stays true.
 - A screen that is open when the preference changes redraws in the new palette, including an open sheet, and going back to System returns it to the device's setting without a relaunch.
 - What iOS draws outside the running app stays on the device's setting: the launch screen, the quick-capture controls in Control Center and on the Lock Screen, and the Watch complication. With Dark chosen on a device in light, the launch screen can show light for a moment before Kyo appears. This is a known limit and is accepted.
 - The Apple Watch ignores the preference. It keeps showing the theme's dark palette, and the preference is never sent to it. ADR 0007 is unchanged.

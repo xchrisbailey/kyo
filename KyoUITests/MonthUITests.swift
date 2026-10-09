@@ -184,6 +184,23 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(app.buttons[dayIdentifier()].isSelected)
     }
 
+    func testEveryMonthNameStaysOnOneLineBesideTheControls() throws {
+        let app = launchApp()
+        app.buttons["main-view-month"].tap()
+        let header = app.staticTexts["month-header"]
+        XCTAssertTrue(header.waitForExistence(timeout: 10))
+        let oneLine = header.frame.height  // the current month, at full size
+        let next = app.buttons["month-next"]
+
+        // A year of months passes every long name, with the way back to the current month showing.
+        for _ in 0..<12 {
+            let shown = header.label
+            next.tap()
+            XCTAssertTrue(waitForLabel(of: header, toDiffer: shown))
+            XCTAssertLessThanOrEqual(header.frame.height, oneLine + 1, "\(header.label) wrapped to a second line")
+        }
+    }
+
     private func waitForLabel(of element: XCUIElement, toDiffer label: String) -> Bool {
         let changed = NSPredicate(format: "label != %@", label)
         return XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: changed, object: element)], timeout: 10) == .completed

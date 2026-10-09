@@ -23,6 +23,21 @@ private struct HeaderStyleModifier: ViewModifier {
     }
 }
 
+/// A header's text in the theme's header font, followed by the font's trailing room.
+private struct HeaderText: View {
+    @Environment(\.theme) private var theme
+    let text: Text
+    let style: HeaderStyle
+
+    var body: some View {
+        let header = theme.headerFont
+        let shown = header.trailingRoom.isEmpty ? text : text + Text(header.trailingRoom)
+        shown
+            .font(header.font(for: style))
+            .tracking(header.tracking(for: style))
+    }
+}
+
 private struct ThemedText: ViewModifier {
     @Environment(\.theme) private var theme
 
@@ -52,6 +67,14 @@ private struct ThemedNavigationTitle: ViewModifier {
                         .accessibilityAddTraits(.isHeader)
                 }
             }
+    }
+}
+
+extension Text {
+    /// A header's text, in the theme's header font for `style`, with the room that font needs after
+    /// its last glyph. It goes on the `Text` itself, since that room is part of the text.
+    func headerStyle(_ style: HeaderStyle) -> some View {
+        HeaderText(text: self, style: style)
     }
 }
 

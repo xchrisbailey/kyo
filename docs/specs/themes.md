@@ -69,7 +69,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 
 - The header font sets section headers and screen titles: the section headers on Today, the large "Today" title, the Month's month name, navigation bar titles, and the day-group and summary titles in Memos and the Month.
 - Navigation bar titles go through one shared title style that every screen uses. iOS gives no direct way to set their font, so if no approach can restyle an open screen at once without touching screens iOS draws, navigation bar titles stay in the system font and the rest of this list stands.
-- Letter spacing belongs to the theme with the font. The Kyo theme keeps today's and Neko uses its font's own. Techo adds a little, because Caveat's last letter reaches past its own width and would otherwise be cut off.
+- Letter spacing belongs to the theme with the font. The Kyo theme keeps today's, and Neko and Techo use their fonts' own. Caveat's last letter reaches past its own width and would be cut off at the text's edge, so Techo's headers end with a no-break space that gives it room without adding space between letters.
 - Everything else stays in the system font: body text, task, habit and memo text, numbers, and controls.
 - The "kyo" wordmark and the large numerals keep their rounded system design in every theme.
 - The header font scales with the device text size the way headers do today.

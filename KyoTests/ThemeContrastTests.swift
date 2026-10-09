@@ -43,7 +43,6 @@ final class ThemeContrastTests: XCTestCase {
     /// and suits the role, so the color is left alone and the miss is recorded here. The test fails
     /// if one of these starts to pass, so the entry goes when the color is fixed.
     private let knownShortfalls: Set<String> = [
-        "Kyo dark onAccentText on accent",  // 1.87:1
         "Kyo light onWarning on warning",  // 2.31:1
         "Kyo dark onWarning on warning",  // 2.23:1
         "Kyo light warning on screenBackground",  // 2.07:1
@@ -71,6 +70,14 @@ final class ThemeContrastTests: XCTestCase {
 
     func testAccentMeetsThreeToOneOnEveryBackground() {
         assertEveryTheme(foreground: ("accent", \.accent), on: surfaces, floor: 3)
+    }
+
+    /// Switches, plain buttons and carets are drawn in the control tint on the screen and on the
+    /// surfaces. A theme that keeps iOS's tint has none to measure.
+    func testControlTintMeetsThreeToOneOnEveryBackground() {
+        let themes = Theme.all.filter { $0.light.controlTint != nil && $0.dark.controlTint != nil }
+        XCTAssertTrue(themes.contains { $0.id == "techo" })
+        assertEveryTheme(foreground: ("controlTint", \.controlTintOrAccent), on: surfaces, floor: 3, themes: themes)
     }
 
     func testColorsDrawnOnTheAccentMeetThreeToOneAgainstIt() {
@@ -171,6 +178,9 @@ final class ThemeContrastTests: XCTestCase {
 }
 
 private extension Palette {
+    /// The control tint, for the themes that set one; the others are filtered out before it is read.
+    var controlTintOrAccent: UIColor { controlTint ?? accent }
+
     /// The control tint a test measures against, for a theme that sets one.
     var controlTintOrClear: UIColor { controlTint ?? .clear }
 }

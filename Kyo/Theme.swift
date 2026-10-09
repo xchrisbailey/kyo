@@ -171,9 +171,9 @@ struct HeaderFont {
     /// navigation bar title sits small beside its buttons, and a face with thin strokes needs more.
     var styleSizeScales: [HeaderStyle: CGFloat] = [:]
     /// Room for a face whose last glyph reaches past its advance and would be cut off by the text's
-    /// own bounds. SwiftUI can only add it as tracking, which falls after every glyph, so it is kept
-    /// small. `tracking(for:)` includes it, so that is the whole letter spacing a header gets.
-    var overhangAllowance: CGFloat = 0
+    /// own bounds: a space set after the last glyph, which widens those bounds without adding
+    /// spacing between letters. Empty for a face that needs none.
+    var trailingRoom: String = ""
     var sectionTracking: CGFloat
     var largeTitleTracking: CGFloat
 
@@ -200,14 +200,13 @@ struct HeaderFont {
         styleSizeScales[style] ?? sizeScale
     }
 
-    /// The total letter spacing for `style`: the face's own plus the overhang allowance.
+    /// The letter spacing for `style`: the face's own.
     func tracking(for style: HeaderStyle) -> CGFloat {
-        let own: CGFloat = switch style {
+        switch style {
         case .section: sectionTracking
         case .largeTitle: largeTitleTracking
         case .navigationTitle: 0
         }
-        return own + overhangAllowance
     }
 }
 
@@ -264,7 +263,8 @@ extension Theme {
             controlTint: nil,
             barBackground: nil,
             onAccent: .secondarySystemBackground,
-            onAccentText: .white,
+            // The dark card color, as dark marks on the light mint accent (8.3:1).
+            onAccentText: UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1),
             onControlTint: .white,
             todayNumeral: .systemBackground,
             warning: .systemOrange,

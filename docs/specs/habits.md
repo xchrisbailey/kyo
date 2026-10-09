@@ -77,7 +77,7 @@ Make Habits a real feature within the existing layout. A user adds a habit from 
 - A **See all** link in the Habits section header opens the **Habits sheet**, titled "Habits", with **Done**. The link shows whenever at least one habit exists and is hidden when there are none. Like every section-header link, it stays when the section is collapsed. (#153)
 - The sheet lists every habit in habit order. Each row shows the name, the schedule summary, and a "not due today" marker where it applies. On the right it shows the streak or week progress in Today's format: 🔥 streak for day-based habits, hidden at 0; week progress, then the week streak when it's at least 1, for weekly targets. (#153)
 - The sheet has + to add and tap to edit (both push the habit form), swipe to delete, and drag to reorder in Edit mode. Rows have no check circle: check-offs happen only on Today. (#153)
-- Settings has no Habits entry. The gear button in the Today header, across from the "kyo" wordmark, opens a **Settings** sheet holding only the Schedule group. (#153)
+- Settings has no Habits entry. The gear button in the Today header, across from the "kyo" wordmark, opens a **Settings** sheet holding only the Schedule group. (#153; the Appearance group is added by `docs/specs/themes.md`.)
 
 ### Today's Habits section (iPhone/iPad)
 
@@ -125,7 +125,7 @@ Make Habits a real feature within the existing layout. A user adds a habit from 
 - Archiving or pausing habits, including a vacation mode.
 - Creating, editing, reordering, or deleting habits on Watch.
 - Mixing habits into the Tasks list.
-- Settings groups other than Schedule.
+- Settings groups other than Schedule. (Superseded by `docs/specs/themes.md`, which adds Appearance.)
 - Reminders or notifications for habits.
 
 ## Further Notes

@@ -87,3 +87,11 @@ _Avoid_: Appointment, meeting, calendar item
 **Schedule**:
 Today's events as Kyo shows them, in a compact section at the top of Today.
 _Avoid_: Agenda, events list, calendar
+
+**Theme**:
+A named look the user picks for the app: a light palette, a dark palette, and a header font. The device's light or dark setting decides which palette shows; the Kyo theme is the original look and the default.
+_Avoid_: Skin, style, color scheme, mode
+
+**Header font**:
+The typeface a theme uses for section headers and screen titles; all other text stays in the system font.
+_Avoid_: Title font, display font, heading font

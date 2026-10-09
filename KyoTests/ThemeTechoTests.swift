@@ -41,4 +41,24 @@ final class ThemeTechoTests: XCTestCase {
         let light = Theme.techo.light
         XCTAssertGreaterThanOrEqual(RGBA.contrast(RGBA(light.accent), RGBA(light.destructive)), 1.5)
     }
+
+    private func hex(_ color: UIColor?) -> String {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color?.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "%02x%02x%02x", Int((r * 255).rounded()), Int((g * 255).rounded()), Int((b * 255).rounded()))
+    }
+
+    /// Switches and plain buttons take the control tint. In light that is the pen blue, so an "on"
+    /// switch isn't red; the accent stays the margin-line vermilion for what asks for the accent.
+    func testLightControlsAreTintedPenBlueWhileTheAccentStaysVermilion() {
+        let light = Theme.techo.light
+        XCTAssertEqual(hex(light.controlTint), "33608f", "pen blue")
+        XCTAssertEqual(hex(light.accent), "c8402f", "vermilion")
+    }
+
+    /// In dark the chalk yellow serves as both.
+    func testDarkControlTintIsTheChalkYellowAccent() {
+        let dark = Theme.techo.dark
+        XCTAssertEqual(hex(dark.controlTint), hex(dark.accent))
+    }
 }

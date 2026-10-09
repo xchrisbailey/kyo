@@ -9,7 +9,8 @@ extension Theme {
     /// A paper planner in light and a chalkboard in dark, with the handwritten Caveat for headers.
     ///
     /// Light is cream paper under ink, with a red margin-line accent; cards and rows are a lighter
-    /// sheet laid on it. Dark is a slate-green board under chalk, with a chalk-yellow accent, so
+    /// sheet laid on it. Switches and plain buttons take the pen blue instead of the margin line, so
+    /// an "on" switch doesn't read as a warning and a button doesn't sit close to the wine. Dark is a slate-green board under chalk, with a chalk-yellow accent, so
     /// what is drawn on the accent is dark ink-on-chalk in dark and cream in light. Destructive is
     /// a deep wine against the margin line's vermilion, so the two reds stay apart where they meet,
     /// as on the "Delete habit" row and the recorder's Stop button.
@@ -36,7 +37,7 @@ extension Theme {
             separator: Paper.rule,
             fill: Paper.shade,
             accent: Paper.margin,
-            controlTint: Paper.margin,
+            controlTint: Paper.blue,
             onAccent: Paper.sheet,
             onAccentText: Paper.sheet,
             todayNumeral: Paper.sheet,

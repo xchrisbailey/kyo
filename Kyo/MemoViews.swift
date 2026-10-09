@@ -397,7 +397,8 @@ struct MemoCardSheet: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 26))
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(theme.secondaryText)
+                        // The secondary level of the accent this row sets, not a color of its own.
+                        .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }

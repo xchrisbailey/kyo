@@ -81,7 +81,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 
 - A theme colors everything Kyo lays out: Today, the Month, sheets, navigation bars, the Settings list, and control tints.
 - What iOS draws stays as iOS draws it: alerts, context menus, the keyboard, pickers, and the system event detail. These still follow light and dark. Their buttons may pick up the theme's accent as a tint; that's accepted.
-- Themes apply to the iPhone and iPad app only. Phone widgets, the watch app, and watch widgets keep the Kyo look.
+- Themes apply to the iPhone and iPad app only. Phone widgets, the watch app, and watch widgets keep the Kyo look. (The watch app is superseded by `docs/specs/watch-themes.md`.)
 
 ### Choosing and remembering
 
@@ -105,7 +105,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Month**, **
 
 ## Out of Scope
 
-- Theming phone widgets, the watch app, and watch widgets.
+- Theming phone widgets, the watch app, and watch widgets. (The watch app is superseded by `docs/specs/watch-themes.md`; the phone has no widgets a theme could change.)
 - A light, dark, or system override.
 - Font sizing and any other Appearance setting.
 - Syncing the theme between devices.

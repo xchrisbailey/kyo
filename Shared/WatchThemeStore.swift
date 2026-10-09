@@ -19,7 +19,7 @@ protocol ThemeIDTransport: AnyObject {
 /// Kyo theme until the phone has sent an id, and for an id it has no palette for, which stays
 /// stored so the Watch switches once its app knows that theme.
 @MainActor
-final class WatchThemeModel: ObservableObject {
+final class WatchThemeStore: ObservableObject {
     static let storageKey = "kyo.watchTheme.v1"
 
     @Published private(set) var palette: WatchPalette
@@ -59,18 +59,19 @@ enum WatchThemeSelection {
     @MainActor
     static func make(
         environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard,
         transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
-    ) -> WatchThemeModel {
-        if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
-            return WatchThemeModel(defaults: defaults)
+    ) -> WatchThemeStore {
+        if let suite = environment[suiteEnvironmentKey], let suiteDefaults = UserDefaults(suiteName: suite) {
+            return WatchThemeStore(defaults: suiteDefaults)
         }
-        if environment[KyoModelContainer.inMemoryEnvironmentKey] == "1" {
+        if KyoModelContainer.isInMemoryRequested(in: environment) {
             let suite = "kyo.watch-theme.ui-tests.\(UUID().uuidString)"
-            if let defaults = UserDefaults(suiteName: suite) {
-                defaults.removePersistentDomain(forName: suite)
-                return WatchThemeModel(defaults: defaults)
+            if let throwaway = UserDefaults(suiteName: suite) {
+                throwaway.removePersistentDomain(forName: suite)
+                return WatchThemeStore(defaults: throwaway)
             }
         }
-        return WatchThemeModel(transport: transport())
+        return WatchThemeStore(defaults: defaults, transport: transport())
     }
 }

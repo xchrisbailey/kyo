@@ -266,11 +266,10 @@ struct WatchTodayView: View {
                 } label: {
                     Label("Record", systemImage: "mic.fill")
                         .font(.footnote.weight(.semibold))
-                        .buttonLabelColor(palette.onDestructive)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(palette.destructive.color)
+                .solidFill(.destructive)
                 .disabled(recordingSession == nil)
                 .accessibilityHint("Records a voice memo")
                 .listRow(top: 0, bottom: 5)

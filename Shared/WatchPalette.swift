@@ -11,11 +11,13 @@ struct WatchPaletteColor: Sendable {
         var opacity: Double
     }
 
-    /// For the places SwiftUI takes a `Color`: a button's tint, a strikethrough.
+    /// What a view uses where SwiftUI wants a `Color` and not a style: a button's `tint`, a
+    /// strikethrough's color, and a choice between two roles in one expression, whose branches must
+    /// share a type.
     let color: Color
-    /// For `foregroundStyle`, `fill` and `background`. It differs from `color` only where a view
-    /// draws with a hierarchical style, such as secondary, which SwiftUI resolves against the
-    /// context it's drawn in rather than as a fixed color.
+    /// What a view uses everywhere else: `foregroundStyle`, `fill` and `background`. It differs from
+    /// `color` only where a view draws with a hierarchical style, such as secondary, which SwiftUI
+    /// resolves against the context it's drawn in rather than as a fixed color.
     let style: AnyShapeStyle
     /// The fixed value, or `nil` for a watchOS system color. With a separate light value, the dark one.
     let components: Components?
@@ -89,9 +91,6 @@ struct WatchPalette: Sendable {
     let accent: WatchPaletteColor
     let primaryText: WatchPaletteColor
     let secondaryText: WatchPaletteColor
-    /// Hints and disabled states. No Watch view draws it yet; the palette keeps it so a theme names
-    /// the same text levels on the Watch as on the phone.
-    let tertiaryText: WatchPaletteColor
     let warning: WatchPaletteColor
     /// Also colors recording.
     let destructive: WatchPaletteColor
@@ -132,7 +131,6 @@ struct WatchPalette: Sendable {
         accent: .system(.green),
         primaryText: .system(.primary),
         secondaryText: .system(.secondary, style: HierarchicalShapeStyle.secondary),
-        tertiaryText: .system(.secondary, style: HierarchicalShapeStyle.tertiary),
         warning: .system(.orange),
         destructive: .system(.red),
         editTint: .system(.blue),
@@ -153,7 +151,6 @@ extension WatchPalette {
         accent: .fixed(hex: 0xcba6f7),
         primaryText: .fixed(hex: 0xcdd6f4),
         secondaryText: .fixed(hex: 0xbac2de),
-        tertiaryText: .fixed(hex: 0xa6adc8),
         warning: .fixed(hex: 0xfab387),
         destructive: .fixed(hex: 0xf38ba8),
         editTint: .system(.blue),
@@ -172,7 +169,6 @@ extension WatchPalette {
         accent: .fixed(hex: 0xf2d974),
         primaryText: .fixed(hex: 0xeef0e4),
         secondaryText: .fixed(hex: 0xb8c2b6),
-        tertiaryText: .fixed(hex: 0x7f8b83),
         warning: .fixed(hex: 0xf0a265),
         destructive: .fixed(hex: 0xf0877d),
         editTint: .system(.blue),

@@ -19,6 +19,7 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     /// The phone's theme id, as the UTF-8 bytes of the id string (see
     /// `docs/adr/0007-watch-follows-the-phone-theme.md`).
     nonisolated static let themeIDKey = "kyo.themeID"
+    nonisolated static let snapshotKeys = [snapshotKey, habitSnapshotKey, memoSnapshotKey]
     nonisolated static let commandKey = "kyo.taskCommand"
     nonisolated static let habitCommandKey = "kyo.habitCommand"
 
@@ -107,10 +108,8 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     /// but never causes the first one: a Watch with nothing stored would otherwise get a theme and
     /// none of its tasks, habits or memos, from a launch that never built the lists.
     var contextToWrite: [String: Any]? {
-        let snapshotKeys = [Self.snapshotKey, Self.habitSnapshotKey, Self.memoSnapshotKey]
-        let context = outgoingContext.context
-        guard snapshotKeys.contains(where: { context[$0] != nil }) else { return nil }
-        return context
+        guard outgoingContext.hasPayload(forAnyOf: Self.snapshotKeys) else { return nil }
+        return outgoingContext.context
     }
 
     /// What a context carries, taken out on the system's thread so it can cross to the main actor.

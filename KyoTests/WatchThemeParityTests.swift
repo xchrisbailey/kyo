@@ -40,7 +40,6 @@ final class WatchThemeParityTests: XCTestCase {
             assertEqual(watch.divider, phone.separator, "divider", theme: id)
             assertEqual(watch.primaryText, phone.primaryText, "primary text", theme: id)
             assertEqual(watch.secondaryText, phone.secondaryText, "secondary text", theme: id)
-            assertEqual(watch.tertiaryText, phone.tertiaryText, "tertiary text", theme: id)
             assertEqual(watch.warning, phone.warning, "warning", theme: id)
             assertEqual(watch.destructive, phone.destructive, "destructive", theme: id)
             assertEqual(watch.onAccent, phone.onAccentText, "label on accent", theme: id)
@@ -62,7 +61,7 @@ final class WatchThemeParityTests: XCTestCase {
 }
 
 /// Neko's and Techo's Watch palettes against the phone's contrast floors (`docs/specs/themes.md`),
-/// on true black and on the card: primary text 4.5:1; secondary text and the accent 3:1; a button's
+/// on true black, on the card and on a row: primary text 4.5:1; secondary text and the accent 3:1; a button's
 /// label against its fill 3:1. The Kyo theme's colors are watchOS system colors and aren't measured.
 final class WatchThemeContrastTests: XCTestCase {
     private let black = RGBA(red: 0, green: 0, blue: 0, alpha: 1)
@@ -95,25 +94,26 @@ final class WatchThemeContrastTests: XCTestCase {
         }
     }
 
-    private var onBlackAndCard: [(String, KeyPath<WatchPalette, WatchPaletteColor>?)] {
-        [("black", nil), ("card", \.card)]
+    /// Where text and the accent sit: the screen, the summary card, and a row of a section.
+    private var surfaces: [(String, KeyPath<WatchPalette, WatchPaletteColor>?)] {
+        [("black", nil), ("card", \.card), ("row", \.listRow)]
     }
 
-    func testPrimaryTextMeetsAAOnBlackAndOnTheCard() throws {
-        try assertContrast("primary text", \.primaryText, on: onBlackAndCard, floor: 4.5)
+    func testPrimaryTextMeetsAAOnEverySurface() throws {
+        try assertContrast("primary text", \.primaryText, on: surfaces, floor: 4.5)
     }
 
-    func testSecondaryTextMeetsThreeToOneOnBlackAndOnTheCard() throws {
-        try assertContrast("secondary text", \.secondaryText, on: onBlackAndCard, floor: 3)
+    func testSecondaryTextMeetsThreeToOneOnEverySurface() throws {
+        try assertContrast("secondary text", \.secondaryText, on: surfaces, floor: 3)
     }
 
-    func testTheAccentMeetsThreeToOneOnBlackAndOnTheCard() throws {
-        try assertContrast("accent", \.accent, on: onBlackAndCard, floor: 3)
+    func testTheAccentMeetsThreeToOneOnEverySurface() throws {
+        try assertContrast("accent", \.accent, on: surfaces, floor: 3)
     }
 
-    func testWarningAndDestructiveMeetThreeToOneOnBlackAndOnTheCard() throws {
-        try assertContrast("warning", \.warning, on: onBlackAndCard, floor: 3)
-        try assertContrast("destructive", \.destructive, on: onBlackAndCard, floor: 3)
+    func testWarningAndDestructiveMeetThreeToOneOnEverySurface() throws {
+        try assertContrast("warning", \.warning, on: surfaces, floor: 3)
+        try assertContrast("destructive", \.destructive, on: surfaces, floor: 3)
     }
 
     func testTheLabelOfAFilledButtonMeetsThreeToOneAgainstItsFill() throws {

@@ -38,7 +38,12 @@ enum KyoModelContainer {
     static let inMemoryEnvironmentKey = "KYO_IN_MEMORY_STORE"
 
     static var isInMemoryRequested: Bool {
-        ProcessInfo.processInfo.environment[inMemoryEnvironmentKey] == "1"
+        isInMemoryRequested(in: ProcessInfo.processInfo.environment)
+    }
+
+    /// Whether `environment` asks for an in-memory launch. The one place that rule is written.
+    static func isInMemoryRequested(in environment: [String: String]) -> Bool {
+        environment[inMemoryEnvironmentKey] == "1"
     }
 
     /// Opens Kyo's store: on disk in the app's own container by default, or in memory. The

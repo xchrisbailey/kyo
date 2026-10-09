@@ -108,10 +108,9 @@ struct WatchRecorderView: View {
                 session.discard()
             } label: {
                 Image(systemName: "trash")
-                    .buttonLabelColor(palette.onDestructive)
                     .frame(maxWidth: .infinity)
             }
-            .tint(palette.destructive.color)
+            .solidFill(.destructive)
             .accessibilityLabel("Discard")
             .accessibilityHint("Stops and saves nothing")
 
@@ -120,10 +119,9 @@ struct WatchRecorderView: View {
                     Task { await session.resume() }
                 } label: {
                     Image(systemName: "mic.fill")
-                        .buttonLabelColor(palette.onWarning)
                         .frame(maxWidth: .infinity)
                 }
-                .tint(palette.warning.color)
+                .solidFill(.warning)
                 .accessibilityLabel("Resume")
             }
 
@@ -131,10 +129,9 @@ struct WatchRecorderView: View {
                 session.stop()
             } label: {
                 Image(systemName: "stop.fill")
-                    .buttonLabelColor(palette.onAccent)
                     .frame(maxWidth: .infinity)
             }
-            .tint(palette.accent.color)
+            .solidFill(.accent)
             .accessibilityLabel("Stop")
             .accessibilityHint("Stops and saves the recording")
         }

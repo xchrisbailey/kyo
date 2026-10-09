@@ -20,13 +20,13 @@ final class WatchThemeBehaviorTests: XCTestCase {
     }
 
     func testTheWatchStartsInTheKyoThemeWhenNothingWasReceived() {
-        let model = WatchThemeModel(defaults: makeDefaults())
+        let model = WatchThemeStore(defaults: makeDefaults())
 
         XCTAssertEqual(model.palette.themeID, "kyo")
     }
 
     func testTheWatchAdoptsAReceivedThemeAtOnce() {
-        let model = WatchThemeModel(defaults: makeDefaults())
+        let model = WatchThemeStore(defaults: makeDefaults())
 
         model.receive(themeID: "neko")
 
@@ -35,56 +35,56 @@ final class WatchThemeBehaviorTests: XCTestCase {
 
     func testANewModelOnTheSameDefaultsReadsTheReceivedThemeBack() {
         let defaults = makeDefaults()
-        WatchThemeModel(defaults: defaults).receive(themeID: "techo")
+        WatchThemeStore(defaults: defaults).receive(themeID: "techo")
 
-        XCTAssertEqual(WatchThemeModel(defaults: defaults).palette.themeID, "techo")
+        XCTAssertEqual(WatchThemeStore(defaults: defaults).palette.themeID, "techo")
     }
 
     func testAnIdTheWatchHasNoPaletteForShowsKyoAndStaysStored() {
         let defaults = makeDefaults()
-        let model = WatchThemeModel(defaults: defaults)
+        let model = WatchThemeStore(defaults: defaults)
         model.receive(themeID: "neko")
 
         model.receive(themeID: "a-theme-from-a-newer-phone")
 
         XCTAssertEqual(model.palette.themeID, "kyo")
-        XCTAssertEqual(defaults.string(forKey: WatchThemeModel.storageKey), "a-theme-from-a-newer-phone")
-        XCTAssertEqual(WatchThemeModel(defaults: defaults).palette.themeID, "kyo")
+        XCTAssertEqual(defaults.string(forKey: WatchThemeStore.storageKey), "a-theme-from-a-newer-phone")
+        XCTAssertEqual(WatchThemeStore(defaults: defaults).palette.themeID, "kyo")
     }
 
     func testALaterKnownIdReplacesAnUnknownOne() {
         let defaults = makeDefaults()
-        let model = WatchThemeModel(defaults: defaults)
+        let model = WatchThemeStore(defaults: defaults)
         model.receive(themeID: "a-theme-from-a-newer-phone")
 
         model.receive(themeID: "techo")
 
         XCTAssertEqual(model.palette.themeID, "techo")
-        XCTAssertEqual(WatchThemeModel(defaults: defaults).palette.themeID, "techo")
+        XCTAssertEqual(WatchThemeStore(defaults: defaults).palette.themeID, "techo")
     }
 
     func testAStoredIdTheWatchHasNoPaletteForShowsKyoWithoutRewritingIt() {
         let defaults = makeDefaults()
-        defaults.set("a-theme-from-a-newer-phone", forKey: WatchThemeModel.storageKey)
+        defaults.set("a-theme-from-a-newer-phone", forKey: WatchThemeStore.storageKey)
 
-        let model = WatchThemeModel(defaults: defaults)
+        let model = WatchThemeStore(defaults: defaults)
 
         XCTAssertEqual(model.palette.themeID, "kyo")
-        XCTAssertEqual(defaults.string(forKey: WatchThemeModel.storageKey), "a-theme-from-a-newer-phone")
+        XCTAssertEqual(defaults.string(forKey: WatchThemeStore.storageKey), "a-theme-from-a-newer-phone")
     }
 
     func testAStoredValueOfTheWrongTypeShowsKyo() {
         let defaults = makeDefaults()
-        defaults.set(7, forKey: WatchThemeModel.storageKey)
+        defaults.set(7, forKey: WatchThemeStore.storageKey)
 
-        XCTAssertEqual(WatchThemeModel(defaults: defaults).palette.themeID, "kyo")
+        XCTAssertEqual(WatchThemeStore(defaults: defaults).palette.themeID, "kyo")
     }
 
     // MARK: Arrival
 
     func testATransportDeliveryAfterTheModelExistsChangesTheTheme() {
         let transport = ControllableThemeTransport()
-        let model = WatchThemeModel(defaults: makeDefaults(), transport: transport)
+        let model = WatchThemeStore(defaults: makeDefaults(), transport: transport)
 
         transport.deliver("neko")
 
@@ -95,14 +95,14 @@ final class WatchThemeBehaviorTests: XCTestCase {
         let transport = ControllableThemeTransport()
         transport.deliver("techo")
 
-        let model = WatchThemeModel(defaults: makeDefaults(), transport: transport)
+        let model = WatchThemeStore(defaults: makeDefaults(), transport: transport)
 
         XCTAssertEqual(model.palette.themeID, "techo")
     }
 
     func testTheModelNeverPublishesAThemeToTheTransport() {
         let transport = ControllableThemeTransport()
-        let model = WatchThemeModel(defaults: makeDefaults(), transport: transport)
+        let model = WatchThemeStore(defaults: makeDefaults(), transport: transport)
 
         transport.deliver("neko")
         model.receive(themeID: "techo")

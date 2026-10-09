@@ -15,7 +15,6 @@ final class WatchPaletteTests: XCTestCase {
             accent: fixed(0.6),
             primaryText: fixed(0.7),
             secondaryText: fixed(0.8),
-            tertiaryText: fixed(0.85),
             warning: fixed(0.9),
             destructive: fixed(1.0),
             editTint: fixed(0.3),
@@ -31,7 +30,6 @@ final class WatchPaletteTests: XCTestCase {
         XCTAssertEqual(palette.accent.components, .init(red: 0.6, green: 0.3, blue: 0.15, opacity: 1))
         XCTAssertEqual(palette.primaryText.components, .init(red: 0.7, green: 0.35, blue: 0.175, opacity: 1))
         XCTAssertEqual(palette.secondaryText.components, .init(red: 0.8, green: 0.4, blue: 0.2, opacity: 1))
-        XCTAssertEqual(palette.tertiaryText.components, .init(red: 0.85, green: 0.425, blue: 0.2125, opacity: 1))
         XCTAssertEqual(palette.warning.components, .init(red: 0.9, green: 0.45, blue: 0.225, opacity: 1))
         XCTAssertEqual(palette.destructive.components, .init(red: 1.0, green: 0.5, blue: 0.25, opacity: 1))
         XCTAssertEqual(palette.editTint.components, .init(red: 0.3, green: 0.15, blue: 0.075, opacity: 1))
@@ -44,7 +42,7 @@ final class WatchPaletteTests: XCTestCase {
         let palette = WatchPalette(
             themeID: "test",
             card: fixed(0.1), listRow: fixed(0.1), divider: fixed(0.1), accent: fixed(0.1),
-            primaryText: fixed(0.1), secondaryText: fixed(0.1), tertiaryText: fixed(0.1), warning: fixed(0.1),
+            primaryText: fixed(0.1), secondaryText: fixed(0.1), warning: fixed(0.1),
             destructive: fixed(0.1), editTint: fixed(0.1),
             onAccent: nil, onWarning: nil, onDestructive: nil
         )

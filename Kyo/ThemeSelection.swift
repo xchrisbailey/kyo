@@ -15,18 +15,19 @@ enum ThemeSelection {
     @MainActor
     static func make(
         environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard,
         transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
     ) -> ThemeStore {
-        if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
-            return ThemeStore(defaults: defaults)
+        if let suite = environment[suiteEnvironmentKey], let suiteDefaults = UserDefaults(suiteName: suite) {
+            return ThemeStore(defaults: suiteDefaults)
         }
-        if environment[KyoModelContainer.inMemoryEnvironmentKey] == "1" {
+        if KyoModelContainer.isInMemoryRequested(in: environment) {
             let suite = "kyo.theme.ui-tests.\(UUID().uuidString)"
-            if let defaults = UserDefaults(suiteName: suite) {
-                defaults.removePersistentDomain(forName: suite)
-                return ThemeStore(defaults: defaults)
+            if let throwaway = UserDefaults(suiteName: suite) {
+                throwaway.removePersistentDomain(forName: suite)
+                return ThemeStore(defaults: throwaway)
             }
         }
-        return ThemeStore(transport: transport())
+        return ThemeStore(defaults: defaults, transport: transport())
     }
 }

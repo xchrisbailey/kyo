@@ -75,7 +75,7 @@ Terms follow `GLOSSARY.md`: **Theme**, **Header font**, **Today**, **Section**, 
 ## Testing Decisions
 
 - Test external behavior through the models the views consume, not view structure. There is no Watch UI test for themes: a Watch UI test can't receive anything from a phone, and none asserts color.
-- Test the Watch's theme model with an injected `UserDefaults` suite: it starts as Kyo; it adopts a received id; a new model on the same defaults reads it back; an unknown id shows Kyo and stays stored; a later known id replaces it.
+- Test the Watch's theme store with an injected `UserDefaults` suite: it starts as Kyo; it adopts a received id; a new model on the same defaults reads it back; an unknown id shows Kyo and stays stored; a later known id replaces it.
 - Test parity: for Neko and Techo, each color in the Watch palette equals the phone's dark palette value for the matching role (accent, card, list row, the text levels, warning, destructive, and the labels on accent, warning and destructive fills). A theme added to one side without the other fails.
 - Test contrast on Neko's and Techo's Watch palettes to the phone's floors, against black, the card and a row: primary text 4.5:1; secondary text and the accent 3:1; a button's label against its fill 3:1. The Kyo theme's Watch colors are watchOS system colors, which a test can't read, so they are not measured.
 - Test the phone side through the transport: the published context carries the theme id with the snapshots still in it; it is published at start and again when the theme changes; and publishing a snapshot keeps it. Test the Watch side the same way for both paths a context arrives by, and for a context with no id.

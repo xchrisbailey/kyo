@@ -56,6 +56,9 @@ struct Palette {
     /// The tint of controls that take one: switches, text carets, plain button labels, pickers.
     /// `nil` leaves iOS's own tint, which is what the Kyo theme uses.
     var controlTint: UIColor?
+    /// What a bar pinned over scrolling content, such as the audio player, is drawn on, with a
+    /// separator above it. `nil` leaves the system material, which is what the Kyo theme uses.
+    var barBackground: UIColor?
     /// A checkmark drawn on a circle filled with the accent.
     var onAccent: UIColor
     /// Text and icons drawn on a solid accent fill: the Add button, the Save capsule, the play button.
@@ -109,6 +112,11 @@ extension Theme {
     /// `nil` when the theme keeps iOS's tint. A theme sets a tint in both modes or in neither.
     var controlTint: Color? {
         guard let light = light.controlTint, let dark = dark.controlTint else { return nil }
+        return dynamicColor(light: light, dark: dark)
+    }
+    /// `nil` when the theme keeps the system material. A theme sets one in both modes or in neither.
+    var barBackground: Color? {
+        guard let light = light.barBackground, let dark = dark.barBackground else { return nil }
         return dynamicColor(light: light, dark: dark)
     }
     var onAccent: Color { color(\.onAccent) }
@@ -223,6 +231,7 @@ extension Theme {
             fill: .tertiarySystemFill,
             accent: UIColor(red: 0.22, green: 0.43, blue: 0.34, alpha: 1),
             controlTint: nil,
+            barBackground: nil,
             onAccent: .secondarySystemBackground,
             onAccentText: .white,
             onControlTint: .white,
@@ -252,6 +261,7 @@ extension Theme {
             fill: .tertiarySystemFill,
             accent: UIColor(red: 0.57, green: 0.79, blue: 0.68, alpha: 1),
             controlTint: nil,
+            barBackground: nil,
             onAccent: .secondarySystemBackground,
             // The dark card color, as dark marks on the light mint accent (8.3:1).
             onAccentText: UIColor(red: 0.14, green: 0.14, blue: 0.15, alpha: 1),

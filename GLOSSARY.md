@@ -89,8 +89,12 @@ Today's events as Kyo shows them, in a compact section at the top of Today.
 _Avoid_: Agenda, events list, calendar
 
 **Theme**:
-A named look the user picks for the app: a light palette, a dark palette, and a header font. The device's light or dark setting decides which palette shows; the Kyo theme is the original look and the default. The Apple Watch shows the iPhone's theme, in its dark palette and without the header font.
+A named look the user picks for the app: a light palette, a dark palette, and a header font. The palette preference decides which palette shows; the Kyo theme is the original look and the default. The Apple Watch shows the iPhone's theme, in its dark palette and without the header font.
 _Avoid_: Skin, style, color scheme, mode
+
+**Palette preference**:
+The user's choice of which of a theme's palettes shows: System, which follows the device's light or dark setting and is the default, or always Light, or always Dark. It is one choice for the app, whichever theme is current, and the Apple Watch ignores it.
+_Avoid_: Appearance, mode, color scheme, dark mode, override
 
 **Header font**:
 The typeface a theme uses for section headers and screen titles; all other text stays in the system font.

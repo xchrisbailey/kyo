@@ -17,7 +17,7 @@ struct WatchTodayView: View {
     /// Set while a sheet that has to close first is dismissing, so the recorder opens once it's gone.
     @State private var recordAfterSheetDismissal = false
     @State private var dayBoundaryRefreshToken = 0
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.watchPalette) private var palette
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -139,7 +139,7 @@ struct WatchTodayView: View {
             if taskList.tasks.isEmpty {
                 Text("No tasks yet")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.style)
                     .padding(.vertical, 7)
                     .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -170,7 +170,7 @@ struct WatchTodayView: View {
                         } label: {
                             Label("Edit", systemImage: "pencil")
                         }
-                        .tint(.blue)
+                        .tint(palette.editTint.color)
                     }
                 }
             }
@@ -193,7 +193,7 @@ struct WatchTodayView: View {
             if habitList.todayHabits.isEmpty {
                 Text(habitEmptyMessage)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.style)
                     .padding(.vertical, 7)
                     .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -269,7 +269,7 @@ struct WatchTodayView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .solidFill(.destructive)
                 .disabled(recordingSession == nil)
                 .accessibilityHint("Records a voice memo")
                 .listRow(top: 0, bottom: 5)
@@ -277,7 +277,7 @@ struct WatchTodayView: View {
             if memoList.listedMemos.isEmpty {
                 Text(memoList.hasSynced ? "No memos today" : "Open Kyo on iPhone to sync memos")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.style)
                     .padding(.vertical, 7)
                     .padding(.horizontal, 9)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -294,7 +294,7 @@ struct WatchTodayView: View {
                 if !memoList.hasSynced {
                     Text("Open Kyo on iPhone to sync memos")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText.style)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .listRow(top: 5, bottom: 0)
                 }
@@ -312,7 +312,7 @@ struct WatchTodayView: View {
         VStack(alignment: .leading, spacing: 1) {
             Text("kyo")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText.style)
                 .accessibilityLabel("Kyo")
             Text("Today")
                 .font(.headline.weight(.bold))
@@ -321,7 +321,7 @@ struct WatchTodayView: View {
                 .minimumScaleFactor(0.8)
             Text(taskList.currentDate, format: .dateTime.weekday(.wide).month(.abbreviated).day())
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText.style)
                 .accessibilityLabel(taskList.currentDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -334,20 +334,16 @@ struct WatchTodayView: View {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
-        .background(surface.opacity(colorScheme == .dark ? 0.72 : 0.92), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(palette.card.style, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Today's summary")
     }
 
     private var rowDivider: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.08))
+            .fill(palette.divider.style)
             .frame(height: 0.5)
             .accessibilityHidden(true)
-    }
-
-    private var surface: Color {
-        colorScheme == .dark ? Color(red: 0.14, green: 0.14, blue: 0.15) : .white
     }
 }
 
@@ -395,7 +391,7 @@ private struct WatchTaskRowBackground: View {
     }
 
     let position: Position
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         let radius: CGFloat = 13
@@ -408,7 +404,7 @@ private struct WatchTaskRowBackground: View {
             topTrailingRadius: top,
             style: .continuous
         )
-        .fill(Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.06))
+        .fill(palette.listRow.style)
         .padding(.horizontal, 10)
         .padding(.vertical, -2.5)  // covers the ~5 pt gap watchOS leaves between list rows
     }
@@ -416,13 +412,14 @@ private struct WatchTaskRowBackground: View {
 
 private struct WatchActionBar: View {
     let openAdd: () -> Void
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         HStack(spacing: 6) {
             Button(action: openAdd) {
                 Image(systemName: "plus")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(palette.accent.style)
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
             }
@@ -447,6 +444,7 @@ private struct WatchSectionHeader: View {
     @ObservedObject var sections: CollapsedSections
     /// What the section holds, such as "2/5". Only shown while the section is collapsed.
     let count: WatchCollapsedCount?
+    @Environment(\.watchPalette) private var palette
 
     private var isCollapsed: Bool { sections.isCollapsed(section) }
     private var shownCount: WatchCollapsedCount? { isCollapsed ? count : nil }
@@ -460,14 +458,14 @@ private struct WatchSectionHeader: View {
                     .font(.headline.weight(.semibold))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.style)
                     .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                 Spacer(minLength: 4)
                 if let shownCount {
                     Text(shownCount.text)
                         .font(.system(.caption, design: .rounded, weight: .semibold))
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText.style)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -485,6 +483,7 @@ private struct WatchSectionHeader: View {
 private struct WatchSummaryStat: View {
     let value: String
     let label: String
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         VStack(spacing: 1) {
@@ -495,7 +494,7 @@ private struct WatchSummaryStat: View {
                 .minimumScaleFactor(0.75)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText.style)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -510,6 +509,7 @@ private struct WatchCheckRow: View {
     var onToggle: (() -> Void)? = nil
     var onEdit: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         if let onToggle {
@@ -537,19 +537,19 @@ private struct WatchCheckRow: View {
         HStack(alignment: .top, spacing: 7) {
             Image(systemName: completed ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(completed ? accentColor : Color.secondary)
+                .foregroundStyle(completed ? palette.accent.color : palette.secondaryText.color)
                 .padding(.top, 1)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(.footnote, weight: .regular))
-                    .strikethrough(completed && task, color: .secondary)
-                    .foregroundStyle(completed ? Color.secondary : Color.primary)
+                    .strikethrough(completed && task, color: palette.secondaryText.color)
+                    .foregroundStyle(completed ? palette.secondaryText.color : palette.primaryText.color)
                     .fixedSize(horizontal: false, vertical: true)
                 if let detail {
                     Text(detail)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText.style)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -557,8 +557,6 @@ private struct WatchCheckRow: View {
         }
         .padding(.vertical, 7)
     }
-
-    private var accentColor: Color { .green }
 }
 
 /// A habit row; tapping anywhere on it toggles the check-off. Day-based habits show the flame
@@ -566,6 +564,7 @@ private struct WatchCheckRow: View {
 private struct WatchHabitRow: View {
     let entry: TodayHabit
     let onToggle: () -> Void
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         Button(action: onToggle) {
@@ -583,12 +582,12 @@ private struct WatchHabitRow: View {
         HStack(alignment: .top, spacing: 7) {
             Image(systemName: entry.isCheckedOffToday ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(entry.isCheckedOffToday ? Color.green : Color.secondary)
+                .foregroundStyle(entry.isCheckedOffToday ? palette.accent.color : palette.secondaryText.color)
                 .padding(.top, 1)
                 .accessibilityHidden(true)
             Text(entry.habit.name)
                 .font(.system(.footnote, weight: .regular))
-                .foregroundStyle(entry.isDone ? Color.secondary : Color.primary)
+                .foregroundStyle(entry.isDone ? palette.secondaryText.color : palette.primaryText.color)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             trailingStatus
@@ -598,7 +597,7 @@ private struct WatchHabitRow: View {
 
     @ViewBuilder
     private var trailingStatus: some View {
-        let style = entry.isDone ? Color.secondary : Color.primary
+        let style = entry.isDone ? palette.secondaryText.color : palette.primaryText.color
         if let progress = entry.weekProgress {
             Text("\(progress.count)/\(progress.target)")
                 .font(.caption2.monospacedDigit())
@@ -633,12 +632,13 @@ private struct WatchHabitRow: View {
 
 private struct WatchMemoRow: View {
     let memo: WatchListedMemo
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
             Image(systemName: memo.isPhotoOnly ? "photo" : (memo.isVoice ? "waveform" : "text.alignleft"))
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.green)
+                .foregroundStyle(palette.accent.style)
                 .frame(width: 16)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
@@ -648,7 +648,7 @@ private struct WatchMemoRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(memo.detailLine())
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(palette.secondaryText.style)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -671,6 +671,7 @@ private struct WatchTaskTextSheet: View {
     let buttonLabel: String
     let buttonHint: String
     let save: (String) -> Void
+    @Environment(\.watchPalette) private var palette
 
     init(
         title: String,
@@ -702,7 +703,9 @@ private struct WatchTaskTextSheet: View {
                 Button(buttonLabel) { commit() }
                     .font(.body.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 42)
-                    .tint(.green)
+                    // A bordered button's label is the tint, which the root text style would override.
+                    .foregroundStyle(.tint)
+                    .tint(palette.accent.color)
                     .accessibilityHint(buttonHint)
             }
             .padding(.horizontal, 12)

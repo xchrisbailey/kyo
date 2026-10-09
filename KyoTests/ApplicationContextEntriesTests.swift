@@ -10,7 +10,6 @@ final class ApplicationContextEntriesTests: XCTestCase {
     }
 
     func testStartsEmpty() {
-        XCTAssertTrue(ApplicationContextEntries().isEmpty)
         XCTAssertTrue(ApplicationContextEntries().context.isEmpty)
     }
 
@@ -57,6 +56,18 @@ final class ApplicationContextEntriesTests: XCTestCase {
         entries.set(Data("a2".utf8), forKey: keyA)
 
         XCTAssertEqual(payloads(entries), [keyA: Data("a2".utf8), keyB: Data("b1".utf8), keyC: Data("c1".utf8)])
+    }
+
+    func testItKnowsWhetherAnyOfSomeKeysHasAPayload() {
+        var entries = ApplicationContextEntries()
+        XCTAssertFalse(entries.hasPayload(forAnyOf: [keyA, keyB]))
+
+        entries.set(Data("x".utf8), forKey: "kyo.themeID")
+        XCTAssertFalse(entries.hasPayload(forAnyOf: [keyA, keyB]))
+
+        entries.set(Data("b1".utf8), forKey: keyB)
+        XCTAssertTrue(entries.hasPayload(forAnyOf: [keyA, keyB]))
+        XCTAssertFalse(entries.hasPayload(forAnyOf: [keyA]))
     }
 
     func testTheTransportPublishesEachSnapshotKindUnderItsOwnKey() {

@@ -1,0 +1,191 @@
+import SwiftUI
+
+/// One color a Watch palette names. It is either a watchOS system color, which a test can't read,
+/// or a fixed color value, whose components it can. A surface's opacity belongs to the entry, never
+/// to the view that draws it.
+struct WatchPaletteColor: Sendable {
+    struct Components: Equatable, Sendable {
+        var red: Double
+        var green: Double
+        var blue: Double
+        var opacity: Double
+    }
+
+    /// What a view uses where SwiftUI wants a `Color` and not a style: a button's `tint`, a
+    /// strikethrough's color, and a choice between two roles in one expression, whose branches must
+    /// share a type.
+    let color: Color
+    /// What a view uses everywhere else: `foregroundStyle`, `fill` and `background`. It differs from
+    /// `color` only where a view draws with a hierarchical style, such as secondary, which SwiftUI
+    /// resolves against the context it's drawn in rather than as a fixed color.
+    let style: AnyShapeStyle
+    /// The fixed value, or `nil` for a watchOS system color. With a separate light value, the dark one.
+    let components: Components?
+
+    /// A watchOS system color, or an expression built from one, such as `Color.primary.opacity(0.12)`.
+    static func system(_ color: Color) -> WatchPaletteColor {
+        WatchPaletteColor(color: color, style: AnyShapeStyle(color), components: nil)
+    }
+
+    /// A system color that views draw with `style` where they use a hierarchical style, such as
+    /// `Color.secondary` drawn as `.secondary`.
+    static func system(_ color: Color, style: some ShapeStyle) -> WatchPaletteColor {
+        WatchPaletteColor(color: color, style: AnyShapeStyle(style), components: nil)
+    }
+
+    /// An opaque color from a 0xRRGGBB value, the way the phone's themes name theirs, so the two
+    /// sides' components are computed alike.
+    static func fixed(hex: UInt32) -> WatchPaletteColor {
+        fixed(
+            red: Double((hex >> 16) & 0xff) / 255,
+            green: Double((hex >> 8) & 0xff) / 255,
+            blue: Double(hex & 0xff) / 255
+        )
+    }
+
+    /// A color value that a test can read back.
+    static func fixed(red: Double, green: Double, blue: Double, opacity: Double = 1) -> WatchPaletteColor {
+        let color = Color(.sRGB, red: red, green: green, blue: blue, opacity: opacity)
+        return WatchPaletteColor(
+            color: color,
+            style: AnyShapeStyle(color),
+            components: Components(red: red, green: green, blue: blue, opacity: opacity)
+        )
+    }
+
+    /// An entry with a value for each of the device's appearances. watchOS is always dark, so the
+    /// light value never draws there; the Kyo theme keeps the ones the Watch's code already had.
+    static func appearance(dark: WatchPaletteColor, light: WatchPaletteColor) -> WatchPaletteColor {
+        WatchPaletteColor(
+            color: dark.color,
+            style: AnyShapeStyle(AppearanceStyle(dark: dark.style, light: light.style)),
+            components: dark.components
+        )
+    }
+
+    private struct AppearanceStyle: ShapeStyle {
+        let dark: AnyShapeStyle
+        let light: AnyShapeStyle
+
+        func resolve(in environment: EnvironmentValues) -> AnyShapeStyle {
+            environment.colorScheme == .dark ? dark : light
+        }
+    }
+}
+
+/// The colors the Apple Watch app sets itself, for one theme. A role no view can do without is added
+/// here, never worked around with a system color in the view. The phone's `Palette` is built on
+/// iOS-only color APIs and isn't compiled into the Watch, so the Watch keeps its own, keyed by the
+/// same theme ids.
+struct WatchPalette: Sendable {
+    /// The id of the theme it belongs to.
+    let themeID: String
+
+    /// Today's summary.
+    let card: WatchPaletteColor
+    /// A row of a section.
+    let listRow: WatchPaletteColor
+    /// The line between two rows.
+    let divider: WatchPaletteColor
+
+    let accent: WatchPaletteColor
+    let primaryText: WatchPaletteColor
+    let secondaryText: WatchPaletteColor
+    let warning: WatchPaletteColor
+    /// Also colors recording.
+    let destructive: WatchPaletteColor
+    /// The tint of a task row's Edit swipe action. watchOS draws a swipe action's glyph in white
+    /// whatever a view sets, so a tint that is light on black, as Neko's and Techo's accents are,
+    /// leaves the glyph unreadable. Those themes keep the system blue, as the Kyo theme does.
+    let editTint: WatchPaletteColor
+
+    /// The label drawn on a button filled with the accent, the warning color, or the destructive
+    /// color. `nil` leaves the label to watchOS, which is what the Kyo theme does.
+    let onAccent: WatchPaletteColor?
+    let onWarning: WatchPaletteColor?
+    let onDestructive: WatchPaletteColor?
+
+    /// Every theme the Watch has a palette for.
+    static let all: [WatchPalette] = [.kyo, .neko, .techo]
+
+    /// The ids of the themes the Watch has a palette for.
+    static var themeIDs: [String] { all.map(\.themeID) }
+
+    /// The palette for the theme stored as `id`, or `nil` when the Watch has none for it.
+    static func palette(forThemeID id: String) -> WatchPalette? {
+        all.first { $0.themeID == id }
+    }
+
+    /// The Kyo theme: the look the Watch has always had, in watchOS's own colors and styles.
+    static let kyo = WatchPalette(
+        themeID: "kyo",
+        card: .appearance(
+            dark: .fixed(red: 0.14, green: 0.14, blue: 0.15, opacity: 0.72),
+            light: .fixed(red: 1, green: 1, blue: 1, opacity: 0.92)
+        ),
+        listRow: .appearance(
+            dark: .system(Color.primary.opacity(0.12)),
+            light: .system(Color.primary.opacity(0.06))
+        ),
+        divider: .system(Color.primary.opacity(0.08)),
+        accent: .system(.green),
+        primaryText: .system(.primary),
+        secondaryText: .system(.secondary, style: HierarchicalShapeStyle.secondary),
+        warning: .system(.orange),
+        destructive: .system(.red),
+        editTint: .system(.blue),
+        onAccent: nil,
+        onWarning: nil,
+        onDestructive: nil
+    )
+}
+
+extension WatchPalette {
+    /// Neko: Catppuccin Mocha, the same values as Neko's dark palette on the phone (`ThemeNeko.swift`),
+    /// on true black. The label on a filled button is Mocha's Base, as on the phone.
+    static let neko = WatchPalette(
+        themeID: "neko",
+        card: .fixed(hex: 0x313244),
+        listRow: .fixed(hex: 0x313244),
+        divider: .fixed(hex: 0x45475a),
+        accent: .fixed(hex: 0xcba6f7),
+        primaryText: .fixed(hex: 0xcdd6f4),
+        secondaryText: .fixed(hex: 0xbac2de),
+        warning: .fixed(hex: 0xfab387),
+        destructive: .fixed(hex: 0xf38ba8),
+        editTint: .system(.blue),
+        onAccent: .fixed(hex: 0x1e1e2e),
+        onWarning: .fixed(hex: 0x1e1e2e),
+        onDestructive: .fixed(hex: 0x1e1e2e)
+    )
+
+    /// Techo: the chalkboard, the same values as Techo's dark palette on the phone (`ThemeTecho.swift`),
+    /// on true black. The label on a filled button is the slate, as on the phone.
+    static let techo = WatchPalette(
+        themeID: "techo",
+        card: .fixed(hex: 0x283631),
+        listRow: .fixed(hex: 0x283631),
+        divider: .fixed(hex: 0x3d4b45),
+        accent: .fixed(hex: 0xf2d974),
+        primaryText: .fixed(hex: 0xeef0e4),
+        secondaryText: .fixed(hex: 0xb8c2b6),
+        warning: .fixed(hex: 0xf0a265),
+        destructive: .fixed(hex: 0xf0877d),
+        editTint: .system(.blue),
+        onAccent: .fixed(hex: 0x1d2a26),
+        onWarning: .fixed(hex: 0x1d2a26),
+        onDestructive: .fixed(hex: 0x1d2a26)
+    )
+}
+
+private struct WatchPaletteKey: EnvironmentKey {
+    static let defaultValue = WatchPalette.kyo
+}
+
+extension EnvironmentValues {
+    /// The current Watch palette. The Kyo theme until something sets another.
+    var watchPalette: WatchPalette {
+        get { self[WatchPaletteKey.self] }
+        set { self[WatchPaletteKey.self] = newValue }
+    }
+}

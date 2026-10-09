@@ -8,6 +8,8 @@ final class WatchSectionCollapseUITests: XCTestCase {
     func testTappingTheTasksHeaderCollapsesAndExpandsTheSection() throws {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_COLLAPSED_SECTIONS_SUITE"] = "kyo.collapsed-sections.ui-tests.\(UUID().uuidString)"
+        // A throwaway theme suite takes no feed from a paired phone, so the run is always in the Kyo theme.
+        app.launchEnvironment["KYO_WATCH_THEME_SUITE"] = "kyo.watch-theme.ui-tests.\(UUID().uuidString)"
         app.launch()
 
         let header = app.buttons["section-header-tasks"]

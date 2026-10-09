@@ -9,19 +9,25 @@ enum ThemeSelection {
     /// never read a developer's real choice.
     static let suiteEnvironmentKey = "KYO_THEME_SUITE"
 
+    /// Launches that keep the theme away from the device's real choice (in memory, or in a suite of
+    /// their own) publish nothing to the Watch, and never ask for the transport, so a test never
+    /// activates a session or changes a paired Watch's theme.
     @MainActor
-    static func make() -> ThemeStore {
-        let environment = ProcessInfo.processInfo.environment
-        if let suite = environment[suiteEnvironmentKey], let defaults = UserDefaults(suiteName: suite) {
-            return ThemeStore(defaults: defaults)
+    static func make(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults = .standard,
+        transport: () -> any ThemeIDTransport = { WatchConnectivityTaskTransport.shared }
+    ) -> ThemeStore {
+        if let suite = environment[suiteEnvironmentKey], let suiteDefaults = UserDefaults(suiteName: suite) {
+            return ThemeStore(defaults: suiteDefaults)
         }
-        if KyoModelContainer.isInMemoryRequested {
+        if KyoModelContainer.isInMemoryRequested(in: environment) {
             let suite = "kyo.theme.ui-tests.\(UUID().uuidString)"
-            if let defaults = UserDefaults(suiteName: suite) {
-                defaults.removePersistentDomain(forName: suite)
-                return ThemeStore(defaults: defaults)
+            if let throwaway = UserDefaults(suiteName: suite) {
+                throwaway.removePersistentDomain(forName: suite)
+                return ThemeStore(defaults: throwaway)
             }
         }
-        return ThemeStore()
+        return ThemeStore(defaults: defaults, transport: transport())
     }
 }

@@ -1,6 +1,6 @@
 # 7. The Watch follows the phone's theme through the snapshot context
 
-Status: accepted (specified in `docs/specs/watch-themes.md`; not yet implemented)
+Status: accepted (specified in `docs/specs/watch-themes.md`; implemented in #237 and #238)
 
 ## Context
 

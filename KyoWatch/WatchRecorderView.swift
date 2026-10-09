@@ -11,6 +11,7 @@ struct WatchRecorderView: View {
     let onFinish: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.watchPalette) private var palette
 
     var body: some View {
         Group {
@@ -68,19 +69,19 @@ struct WatchRecorderView: View {
             HStack(spacing: 5) {
                 if session.phase == .paused {
                     Image(systemName: "pause.fill")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(palette.warning.style)
                         .accessibilityHidden(true)
                     Text("Paused")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(palette.warning.style)
                 } else {
                     Circle()
-                        .fill(Color.red)
+                        .fill(palette.destructive.style)
                         .frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                     Text("Recording")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(palette.secondaryText.style)
                 }
             }
             Text(Memo.formattedDuration(session.elapsed))
@@ -90,7 +91,7 @@ struct WatchRecorderView: View {
             if session.isNearCap {
                 Label("Ends in \(Memo.formattedDuration(session.remaining))", systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(palette.warning.style)
                     .accessibilityLabel("Recording ends in \(Int(session.remaining.rounded(.up))) seconds")
             } else {
                 WatchLevelMeter(levels: session.levels, isPaused: session.phase != .recording)
@@ -109,7 +110,7 @@ struct WatchRecorderView: View {
                 Image(systemName: "trash")
                     .frame(maxWidth: .infinity)
             }
-            .tint(.red)
+            .solidFill(.destructive)
             .accessibilityLabel("Discard")
             .accessibilityHint("Stops and saves nothing")
 
@@ -120,7 +121,7 @@ struct WatchRecorderView: View {
                     Image(systemName: "mic.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .tint(.orange)
+                .solidFill(.warning)
                 .accessibilityLabel("Resume")
             }
 
@@ -130,7 +131,7 @@ struct WatchRecorderView: View {
                 Image(systemName: "stop.fill")
                     .frame(maxWidth: .infinity)
             }
-            .tint(.green)
+            .solidFill(.accent)
             .accessibilityLabel("Stop")
             .accessibilityHint("Stops and saves the recording")
         }
@@ -144,7 +145,7 @@ struct WatchRecorderView: View {
         VStack(spacing: 10) {
             Image(systemName: "mic.slash")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(palette.secondaryText.style)
                 .accessibilityHidden(true)
             Text(message)
                 .font(.footnote)
@@ -158,6 +159,7 @@ struct WatchRecorderView: View {
 private struct WatchLevelMeter: View {
     let levels: [Float]
     let isPaused: Bool
+    @Environment(\.watchPalette) private var palette
 
     private static let barCount = 24
 
@@ -168,7 +170,7 @@ private struct WatchLevelMeter: View {
             HStack(alignment: .center, spacing: 2) {
                 ForEach(Array(padded.enumerated()), id: \.offset) { _, level in
                     Capsule()
-                        .fill(isPaused ? Color.secondary : Color.green)
+                        .fill(isPaused ? palette.secondaryText.color : palette.accent.color)
                         .frame(height: max(3, CGFloat(level) * geometry.size.height))
                 }
             }

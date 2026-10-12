@@ -525,6 +525,73 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.laterTasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 3, day: 8))
     }
 
+    func testLaterEditsReschedulesAndDeletionSurviveDiskReopeningWithoutChangingCompletionHistory() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let monday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19)))
+        var edited: DailyTask?
+        var completed: DailyTask?
+        var deletedID: UUID?
+        do {
+            let list: any TaskListBehavior = TaskListStore(modelContainer: try KyoModelContainer.make(storeURL: url),
+                                                          now: { today }, calendar: calendar)
+            let task = try XCTUnwrap(list.addTask(text: "Original"))
+            let done = try XCTUnwrap(list.addTask(text: "Unrelated completion"))
+            completed = try XCTUnwrap(list.toggleTask(id: done.id))
+            _ = list.deferTask(id: task.id, to: friday)
+            let renamed = try XCTUnwrap(list.editTask(id: task.id, text: "  Edited Friday  "))
+            XCTAssertEqual(renamed.id, task.id)
+            XCTAssertEqual(renamed.creationOrder, task.creationOrder)
+            XCTAssertEqual(renamed.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+            XCTAssertFalse(renamed.isComplete)
+            XCTAssertNil(renamed.completedOn)
+            XCTAssertNil(list.editTask(id: task.id, text: " \n "))
+            edited = try XCTUnwrap(list.deferTask(id: task.id, to: monday))
+            XCTAssertEqual(edited?.creationOrder, task.creationOrder)
+            let abandoned = try XCTUnwrap(list.addTask(text: "Delete from Later"))
+            _ = list.deferTask(id: abandoned.id, to: friday)
+            deletedID = abandoned.id
+            XCTAssertEqual(list.deleteTask(id: abandoned.id)?.id, abandoned.id)
+        }
+        let reopened: any TaskListBehavior = TaskListStore(modelContainer: try KyoModelContainer.make(storeURL: url),
+                                                          now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.laterTasks, [try XCTUnwrap(edited)])
+        XCTAssertEqual(reopened.laterTasks.first?.text, "Edited Friday")
+        XCTAssertEqual(reopened.laterTasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 19))
+        XCTAssertEqual(reopened.tasks, [try XCTUnwrap(completed)])
+        XCTAssertNil(reopened.editTask(id: try XCTUnwrap(deletedID), text: "Resurrect"))
+    }
+
+    func testLaterReschedulingReordersByDayAndKeepsCreationOrderWhenDaysMatch() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let monday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19)))
+        let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        let second = try XCTUnwrap(list.addTask(text: "Second"))
+        let third = try XCTUnwrap(list.addTask(text: "Third"))
+        _ = list.deferTask(id: first.id, to: monday)
+        _ = list.deferTask(id: second.id, to: friday)
+        _ = list.deferTask(id: third.id, to: friday)
+        let draft = TaskSchedulingWorkflow(date: monday, now: { today }, calendar: calendar)
+        draft.proposedDate = friday
+        XCTAssertEqual(list.laterTasks.map(\.id), [second.id, third.id, first.id])
+        XCTAssertTrue(draft.confirm { list.deferTask(id: first.id, to: $0) != nil })
+        XCTAssertEqual(list.laterTasks.map(\.id), [first.id, second.id, third.id])
+        XCTAssertEqual(list.laterTasks.map(\.creationOrder), [0, 1, 2])
+        draft.chooseToday()
+        XCTAssertTrue(draft.confirm { list.deferTask(id: first.id, to: $0) != nil })
+        XCTAssertEqual(list.tasks.first?.id, first.id)
+        XCTAssertEqual(list.incompleteCount, 1)
+        XCTAssertEqual(list.laterTasks.map(\.id), [second.id, third.id])
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try KyoModelContainer.make(inMemory: true)
     }

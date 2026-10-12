@@ -28,6 +28,10 @@ _Avoid_: Day view, day detail, agenda
 A one-off text entry that the user checks off, available on Today or deferred to a later day; once available, unfinished tasks carry forward to the next day.
 _Avoid_: Todo, item
 
+**Project**:
+A named body of work, such as building Kyo, that groups related tasks separately from everyday tasks.
+_Avoid_: Category, task list
+
 **Deferred task**:
 A task held out of Today's active list until its planned day arrives. Deferring a task is a one-time choice, not a recurring schedule or a deadline.
 _Avoid_: Snoozed task, recurring task, overdue task

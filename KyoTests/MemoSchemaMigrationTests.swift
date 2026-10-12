@@ -25,7 +25,8 @@ final class MemoSchemaMigrationTests: XCTestCase {
                 migrationPlan: VersionOneOnlyPlan.self,
                 configurations: ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
             )
-            SwiftDataTaskContent(modelContainer: old).save([DailyTask(text: "Written before memos", creationOrder: 0)])
+            old.mainContext.insert(PrePlannedTaskSchema.TaskRecord(task: DailyTask(text: "Written before memos", creationOrder: 0)))
+            try old.mainContext.save()
             SwiftDataHabitContent(modelContainer: old).save([Habit(name: "Stretch", order: 0)])
         }
 
@@ -40,8 +41,8 @@ final class MemoSchemaMigrationTests: XCTestCase {
     }
 
     func testTheMigrationPlanOnlyAddsModels() {
-        XCTAssertEqual(KyoMigrationPlan.schemas.count, 2)
-        XCTAssertEqual(KyoMigrationPlan.stages.count, 1)
+        XCTAssertEqual(KyoMigrationPlan.schemas.count, 3)
+        XCTAssertEqual(KyoMigrationPlan.stages.count, 2)
         let v1 = Set(KyoSchemaV1.models.map { String(describing: $0) })
         let v2 = Set(KyoSchemaV2.models.map { String(describing: $0) })
         XCTAssertTrue(v1.isSubset(of: v2))

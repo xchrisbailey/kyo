@@ -24,31 +24,45 @@ struct TaskCompletionDay: Codable, Hashable, Sendable {
     }
 }
 
+typealias TaskPlannedDay = TaskCompletionDay
+
+extension TaskCompletionDay {
+    func date(in calendar: Calendar) -> Date? {
+        calendar.date(from: DateComponents(era: era, year: year, month: month, day: day))
+    }
+}
+
 struct DailyTask: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let text: String
     let creationOrder: Int64
     let isComplete: Bool
     let completedOn: TaskCompletionDay?
+    let plannedOn: TaskPlannedDay?
 
     init(
         id: UUID = UUID(),
         text: String,
         creationOrder: Int64,
         isComplete: Bool = false,
-        completedOn: TaskCompletionDay? = nil
+        completedOn: TaskCompletionDay? = nil,
+        plannedOn: TaskPlannedDay? = nil
     ) {
         self.id = id
         self.text = text
         self.creationOrder = creationOrder
         self.isComplete = isComplete
         self.completedOn = completedOn
+        self.plannedOn = plannedOn
     }
 }
 
 @MainActor
 protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
+    var laterTasks: [DailyTask] { get }
+    @discardableResult func deferTask(id: UUID, to date: Date) -> DailyTask?
+    @discardableResult func bringTaskToToday(id: UUID) -> DailyTask?
     var taskCount: Int { get }
     var completedCount: Int { get }
     var incompleteCount: Int { get }
@@ -66,6 +80,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     static let storageKey = "kyo.dailyTasks.v1"
 
     @Published private(set) var tasks: [DailyTask] = []
+    @Published private(set) var laterTasks: [DailyTask] = []
     @Published private(set) var currentDate: Date
 
     /// The phone's (and any standalone store's) authoritative persisted list. Unused by a
@@ -90,7 +105,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     /// `storageKey` UserDefaults entry for a `.mirror` (Watch) store.
     private let content: any TaskContentPersistence
     private let now: () -> Date
-    private let calendar: Calendar
+    private let calendarProvider: () -> Calendar
+    private var calendar: Calendar { calendarProvider() }
     private let sync: TaskListSync?
     private let revisionKey: String
     private let outboxKey: String
@@ -120,18 +136,19 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         storageKey: String = TaskListStore.storageKey,
         modelContainer: ModelContainer? = nil,
         now: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current,
+        calendar: Calendar = .autoupdatingCurrent,
+        calendarProvider: (() -> Calendar)? = nil,
         sync: TaskListSync? = nil
     ) {
         self.userDefaults = userDefaults
         self.now = now
-        self.calendar = calendar
+        self.calendarProvider = calendarProvider ?? { calendar }
         self.sync = sync
         self.revisionKey = storageKey + ".revision"
         self.outboxKey = storageKey + ".outbox"
         self.tombstonesKey = storageKey + ".tombstones"
         self.processedCommandIDsKey = storageKey + ".processedCommands"
-        self.currentDate = calendar.startOfDay(for: now())
+        self.currentDate = (calendarProvider?() ?? calendar).startOfDay(for: now())
 
         if case .mirror = sync {
             // The Watch's existing storage key holds its mirrored task list, which is
@@ -199,7 +216,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                 revision = seeded
                 userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
             }
-            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks, acknowledgedCommandIDs: processedCommandIDs))
+            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
         case .mirror(let transport):
             // Registered last: the transport may call the handler synchronously,
             // and everything it touches (baseTasks, outbox, revision, tasks) must already exist.
@@ -264,7 +281,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             text: trimmedText,
             creationOrder: task.creationOrder,
             isComplete: task.isComplete,
-            completedOn: task.completedOn
+            completedOn: task.completedOn,
+            plannedOn: task.plannedOn
         )
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
@@ -318,7 +336,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             text: task.text,
             creationOrder: task.creationOrder,
             isComplete: !task.isComplete,
-            completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar)
+            completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar),
+            plannedOn: task.plannedOn
         )
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
@@ -335,8 +354,45 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         currentDate = calendar.startOfDay(for: now)
         let day = TaskCompletionDay(date: now, calendar: calendar)
         tasks = Self.ordered(currentFullTaskList.filter { task in
-            !task.isComplete || task.completedOn == day
+            task.isComplete ? task.completedOn == day : !isDeferred(task)
         })
+        laterTasks = currentFullTaskList.filter { !$0.isComplete && isDeferred($0) }.sorted {
+            let lhs = $0.plannedOn?.date(in: calendar) ?? currentDate
+            let rhs = $1.plannedOn?.date(in: calendar) ?? currentDate
+            if lhs != rhs { return lhs < rhs }
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
+    private func isDeferred(_ task: DailyTask) -> Bool {
+        guard let planned = task.plannedOn?.date(in: calendar) else { return false }
+        return planned > currentDate
+    }
+
+    @discardableResult
+    func deferTask(id: UUID, to date: Date) -> DailyTask? {
+        guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()) else { return nil }
+        return setPlannedDay(id: id, day: TaskPlannedDay(date: date, calendar: calendar))
+    }
+
+    @discardableResult
+    func bringTaskToToday(id: UUID) -> DailyTask? {
+        setPlannedDay(id: id, day: nil)
+    }
+
+    private func setPlannedDay(id: UUID, day: TaskPlannedDay?) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        guard let index = savedTasks.firstIndex(where: { $0.id == id }),
+              !savedTasks[index].isComplete else { return nil }
+        let task = savedTasks[index]
+        let updated = DailyTask(id: task.id, text: task.text, creationOrder: task.creationOrder,
+                                isComplete: task.isComplete, completedOn: task.completedOn, plannedOn: day)
+        savedTasks[index] = updated
+        refreshForCurrentDay()
+        persist()
+        publishChange()
+        return updated
     }
 
     /// The tasks completed on the day containing `day`, in creation order. Reads the full list, not
@@ -408,7 +464,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     text: task.text,
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
-                    completedOn: completedOn
+                    completedOn: completedOn,
+                            plannedOn: task.plannedOn
                 )
             case .rename(let taskID, let text):
                 guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
@@ -418,7 +475,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     text: text,
                     creationOrder: task.creationOrder,
                     isComplete: task.isComplete,
-                    completedOn: task.completedOn
+                    completedOn: task.completedOn,
+                    plannedOn: task.plannedOn
                 )
             case .delete(let taskID):
                 deletedTaskIDs.insert(taskID)
@@ -437,7 +495,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
         revision = candidate
         userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
-        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks, acknowledgedCommandIDs: processedCommandIDs))
+        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
     }
 
     /// Applies a Watch-originated command on the phone (`.publish` side), per
@@ -465,7 +523,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     text: task.text,
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
-                    completedOn: completedOn
+                    completedOn: completedOn,
+                            plannedOn: task.plannedOn
                 )
             }
         case .rename(let taskID, let text):
@@ -477,7 +536,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     text: trimmedText,
                     creationOrder: task.creationOrder,
                     isComplete: task.isComplete,
-                    completedOn: task.completedOn
+                    completedOn: task.completedOn,
+                    plannedOn: task.plannedOn
                 )
             }
         case .delete(let taskID):

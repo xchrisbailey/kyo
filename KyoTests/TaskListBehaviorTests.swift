@@ -175,6 +175,7 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(tasks.first?.id, id)
         XCTAssertEqual(tasks.first?.text, "Saved before completion support")
         XCTAssertEqual(tasks.first?.completedOn, nil)
+        XCTAssertNil(tasks.first?.plannedOn)
         XCTAssertEqual(tasks.first?.isComplete, false)
     }
 
@@ -285,6 +286,122 @@ final class TaskListBehaviorTests: XCTestCase {
 
         _ = list.addTask(text: "New today")
         XCTAssertEqual(list.collapsedSummary, "0 of 2 done")
+    }
+
+    func testDeferringTaskMovesItOutOfTodayAndCountsUntilItsPlannedDay() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let list = TaskListStore(modelContainer: try makeContainer(), now: { now }, calendar: calendar)
+        let task = try XCTUnwrap(list.addTask(text: "Call Friday"))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+
+        let deferred = try XCTUnwrap(list.deferTask(id: task.id, to: friday))
+        XCTAssertEqual(deferred.id, task.id)
+        XCTAssertEqual(deferred.creationOrder, task.creationOrder)
+        XCTAssertEqual(list.laterTasks, [deferred])
+        XCTAssertTrue(list.tasks.isEmpty)
+        XCTAssertEqual(list.collapsedSummary, "No tasks")
+
+        now = friday
+        list.refreshForCurrentDay()
+        XCTAssertEqual(list.tasks, [deferred])
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 20)))
+        list.refreshForCurrentDay()
+        list.refreshForCurrentDay()
+        XCTAssertEqual(list.tasks, [deferred])
+    }
+
+    func testSchedulingDraftCannotConfirmAPastDayAfterMidnightUntilTodayIsChosen() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11, hour: 23)))
+        let workflow = TaskSchedulingWorkflow(now: { now }, calendar: calendar)
+        var confirmed: Date?
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        XCTAssertFalse(workflow.confirm { confirmed = $0; return true })
+        XCTAssertNil(confirmed)
+        workflow.chooseToday()
+        XCTAssertTrue(workflow.confirm { confirmed = $0; return true })
+        XCTAssertEqual(confirmed, now)
+    }
+
+    func testLaterSortsByPlannedDayThenCreationOrderAndBringToTodayPreservesIdentity() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let monday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19)))
+        let container = try makeContainer()
+        let list = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+        let second = try XCTUnwrap(list.addTask(text: "Second"))
+        let third = try XCTUnwrap(list.addTask(text: "Third"))
+        _ = list.deferTask(id: third.id, to: friday)
+        _ = list.deferTask(id: first.id, to: monday)
+        _ = list.deferTask(id: second.id, to: friday)
+        XCTAssertEqual(list.laterTasks.map(\.id), [second.id, third.id, first.id])
+        let restored = try XCTUnwrap(list.bringTaskToToday(id: second.id))
+        XCTAssertEqual(restored, second)
+        XCTAssertEqual(list.tasks, [second])
+        XCTAssertEqual(TaskListStore(modelContainer: container, now: { today }, calendar: calendar).laterTasks.map(\.id),
+                       [third.id, first.id])
+    }
+
+    func testCompletedAndPastDateDeferralDoNotMutateTasksOrCompletionHistory() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let yesterday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 10)))
+        let tomorrow = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let list = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+        let active = try XCTUnwrap(list.addTask(text: "Active"))
+        XCTAssertNil(list.deferTask(id: active.id, to: yesterday))
+        XCTAssertEqual(list.tasks, [active])
+        let completed = try XCTUnwrap(list.toggleTask(id: active.id))
+        XCTAssertNil(list.deferTask(id: completed.id, to: tomorrow))
+        XCTAssertNil(list.bringTaskToToday(id: completed.id))
+        XCTAssertEqual(list.tasksCompleted(on: today), [completed])
+        XCTAssertEqual(list.completedCount, 1)
+    }
+
+    func testPlannedCalendarDaySurvivesDiskReopeningAndTimeZoneChange() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        var detroit = Calendar(identifier: .gregorian)
+        detroit.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        let today = try XCTUnwrap(detroit.date(from: DateComponents(year: 2026, month: 10, day: 11, hour: 12)))
+        let friday = try XCTUnwrap(detroit.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        var id: UUID?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let list = TaskListStore(modelContainer: container, now: { today }, calendar: detroit)
+            id = try XCTUnwrap(list.addTask(text: "Persist Friday")).id
+            _ = list.deferTask(id: try XCTUnwrap(id), to: friday)
+        }
+        var tokyo = Calendar(identifier: .gregorian)
+        tokyo.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let container = try KyoModelContainer.make(storeURL: url)
+        let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: tokyo)
+        XCTAssertEqual(reopened.laterTasks.first?.id, id)
+        XCTAssertEqual(reopened.laterTasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+        XCTAssertTrue(reopened.tasks.isEmpty)
+    }
+
+    func testLiveTimeZoneChangeKeepsSelectedDayAndUsesTheNewLocalToday() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        var now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-11T12:00:00Z"))
+        let list = TaskListStore(modelContainer: try makeContainer(), now: { now }, calendarProvider: { calendar })
+        let workflow = TaskSchedulingWorkflow(now: { now }, calendarProvider: { calendar })
+        let task = try XCTUnwrap(list.addTask(text: "Tokyo Friday"))
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        workflow.proposedDate = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+        XCTAssertEqual(list.laterTasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+        now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-15T16:00:00Z"))
+        list.refreshForCurrentDay()
+        XCTAssertEqual(list.tasks.first?.id, task.id)
+        XCTAssertTrue(list.laterTasks.isEmpty)
     }
 
     private func makeContainer() throws -> ModelContainer {

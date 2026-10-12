@@ -136,6 +136,12 @@ struct TodayView: View {
                         }
                     case .later:
                         LaterSheet(taskList: taskList)
+                    case .scheduleTaskDraft:
+                        TaskSchedulingSheet(onConfirm: { date in
+                            guard taskList.addTask(text: taskDraft, plannedFor: date) != nil else { return false }
+                            abandonTaskDraft()
+                            return true
+                        })
                     case .scheduleTask(let id):
                         TaskSchedulingSheet(onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
                     case .allHabits:
@@ -301,7 +307,14 @@ struct TodayView: View {
                 }
                 if isShowingTaskDraft {
                     if !taskList.tasks.isEmpty { rowDivider }
-                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                    TaskDraftRow(
+                        text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
+                        schedule: {
+                            isTaskDraftFocused = false
+                            activeSheet = .scheduleTaskDraft
+                        },
+                        cancel: abandonTaskDraft
+                    )
                         .id("task-draft")
                         .onAppear {
                             guard revealTaskDraftWhenShown else { return }
@@ -559,6 +572,7 @@ private enum TodayPreviewSheet: Identifiable {
     case allHabits
     case later
     case scheduleTask(UUID)
+    case scheduleTaskDraft
 
     var id: String {
         switch self {
@@ -570,6 +584,7 @@ private enum TodayPreviewSheet: Identifiable {
         case .allMemos: "allMemos"
         case .allHabits: "allHabits"
         case .later: "later"
+        case .scheduleTaskDraft: "scheduleTaskDraft"
         case .scheduleTask(let id): "scheduleTask:\(id.uuidString)"
         }
     }
@@ -580,6 +595,8 @@ private struct TaskDraftRow: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let submit: () -> Void
+    let schedule: () -> Void
+    let cancel: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -596,6 +613,21 @@ private struct TaskDraftRow: View {
                 .onSubmit(submit)
                 .accessibilityLabel("New task")
                 .accessibilityIdentifier("new-task")
+
+            Button("Planned day", systemImage: "calendar", action: schedule)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.accent)
+                .frame(width: 44, height: 44)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("new-task-schedule")
+
+            Button("Cancel task", systemImage: "xmark", action: cancel)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.secondaryText)
+                .frame(width: 44, height: 44)
+                .accessibilityIdentifier("new-task-cancel")
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)

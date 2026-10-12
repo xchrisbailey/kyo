@@ -39,6 +39,26 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(reopened.laterTasks, [planned])
     }
 
+    func testTodayCreationAndRejectedDraftsKeepOrdinaryTaskBehavior() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let yesterday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 10)))
+        let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+
+        XCTAssertNil(list.addTask(text: " \n\t ", plannedFor: today))
+        XCTAssertNil(list.addTask(text: "Past", plannedFor: yesterday))
+        XCTAssertTrue(list.tasks.isEmpty)
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        let scheduled = try XCTUnwrap(list.addTask(text: "Friday at 3", plannedFor: today))
+        let ordinary = try XCTUnwrap(list.addTask(text: "October 16"))
+        XCTAssertEqual(list.tasks, [scheduled, ordinary])
+        XCTAssertEqual(list.tasks.map(\.text), ["Friday at 3", "October 16"])
+        XCTAssertEqual(list.tasks.map(\.creationOrder), [0, 1])
+        XCTAssertEqual(list.taskCount, 2)
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        XCTAssertNil(ordinary.plannedOn)
+    }
+
     func testBlankInputDoesNotCreateATask() throws {
         let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer())
 

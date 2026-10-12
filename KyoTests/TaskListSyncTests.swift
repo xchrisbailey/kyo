@@ -21,6 +21,34 @@ final class TaskListSyncTests: XCTestCase {
         XCTAssertEqual(watch.taskCount, 3)
     }
 
+    func testScheduledCreationNeverExposesFutureTaskOnWatchAndEmergesFromItsCache() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let transport = ControllableTaskTransport()
+        let phone = try makePhone(transport: transport, now: { now }, calendar: calendar)
+        let defaults = try makeDefaults()
+        let watch = try makeWatch(defaults: defaults, transport: transport, now: { now }, calendar: calendar)
+        var visibleTasks: [DailyTask] = []
+        let observation = watch.$tasks.sink { visibleTasks.append(contentsOf: $0) }
+        defer { observation.cancel() }
+
+        let planned = try XCTUnwrap(phone.addTask(text: "Call Friday", plannedFor: friday))
+
+        XCTAssertTrue(visibleTasks.isEmpty)
+        XCTAssertTrue(phone.tasks.isEmpty)
+        XCTAssertTrue(watch.tasks.isEmpty)
+        XCTAssertEqual(watch.laterTasks, [planned])
+        let ordinary = try XCTUnwrap(phone.addTask(text: "Today"))
+        XCTAssertEqual(watch.tasks, [ordinary])
+        transport.disconnect()
+        now = friday
+        let restarted = try makeWatch(defaults: defaults, transport: ControllableTaskTransport(), now: { now }, calendar: calendar)
+        XCTAssertEqual(restarted.tasks, [planned, ordinary])
+        XCTAssertEqual(restarted.tasks.map(\.creationOrder), [0, 1])
+        XCTAssertTrue(restarted.laterTasks.isEmpty)
+    }
+
     func testPhoneEditsDeletesAndCompletionChangesReachWatch() throws {
         let transport = ControllableTaskTransport()
         let phone = try makePhone(transport: transport)

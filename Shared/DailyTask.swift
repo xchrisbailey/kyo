@@ -402,6 +402,12 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         return Self.ordered(currentFullTaskList.filter { $0.isComplete && $0.completedOn == completionDay })
     }
 
+    /// Incomplete tasks with this planned day, including ones already available on Today.
+    func tasksPlanned(on day: Date) -> [DailyTask] {
+        let plannedDay = TaskPlannedDay(date: day, calendar: calendar)
+        return Self.ordered(currentFullTaskList.filter { !$0.isComplete && $0.plannedOn == plannedDay })
+    }
+
     /// The start of each day in `days` on which at least one task was completed.
     func daysWithCompletedTask(in days: [Date]) -> Set<Date> {
         let completionDays = Set(currentFullTaskList.compactMap { $0.isComplete ? $0.completedOn : nil })

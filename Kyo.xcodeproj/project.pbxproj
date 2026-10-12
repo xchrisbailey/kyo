@@ -131,6 +131,7 @@
 		6994C8E44C27EFBCAB72710B /* DailyTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31A4E18D0934A2E38524F0A /* DailyTask.swift */; };
 		699D08DAD3AC9B97649CBDA8 /* WatchCollapsedCountBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC3D16FE3D497CED5BB83656 /* WatchCollapsedCountBehaviorTests.swift */; };
 		69C979DEC09339A60891C1C2 /* HabitStoragePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24CFFEB5475D65547523A1B5 /* HabitStoragePersistenceTests.swift */; };
+		6AA35000CEE896FF935BB422 /* MonthPlannedTasksUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 792B92AE31C241B6777F8DF2 /* MonthPlannedTasksUITests.swift */; };
 		6C8FB585FBC6B17CF77C6753 /* EventMonthContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13ACD94073675F0AAD4CA16C /* EventMonthContent.swift */; };
 		6DA2729C683161EC607AA627 /* TaskScheduling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266600354E5CCFBCBEAF3620 /* TaskScheduling.swift */; };
 		6DC4AD66CCFE45220A8F9AE9 /* FakeAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D660711035D5BF26DF7475 /* FakeAudioRecorder.swift */; };
@@ -456,6 +457,7 @@
 		76674F08352CEE5EF6DD8DB9 /* MemoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoStore.swift; sourceTree = "<group>"; };
 		76E463F30284905F00EE9752 /* KyoWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KyoWidgetsBundle.swift; sourceTree = "<group>"; };
 		77E9F4B5905CE4F84E22931F /* FoundationOnDeviceLanguageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationOnDeviceLanguageModel.swift; sourceTree = "<group>"; };
+		792B92AE31C241B6777F8DF2 /* MonthPlannedTasksUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthPlannedTasksUITests.swift; sourceTree = "<group>"; };
 		795AA8E7C946522C7EC078BB /* WatchPaletteViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPaletteViews.swift; sourceTree = "<group>"; };
 		7D1E3D79E6A4FF747E6E8DCB /* ThemeChoiceBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeChoiceBehaviorTests.swift; sourceTree = "<group>"; };
 		82A83C12F7FCA3E3EDB669EB /* SectionCollapseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCollapseUITests.swift; sourceTree = "<group>"; };
@@ -719,6 +721,7 @@
 				F03EDD307CE59DF5F2A81BF3 /* MemoUITests.swift */,
 				A09A0A0BEDC080CD89190146 /* MonthEventUITests.swift */,
 				E5D0F3E3B7611E621296C665 /* MonthMemoUITests.swift */,
+				792B92AE31C241B6777F8DF2 /* MonthPlannedTasksUITests.swift */,
 				1F6F9F8123D66511CA8C7543 /* MonthUITests.swift */,
 				148FF7761115C467F7019B97 /* PalettePreferenceUITests.swift */,
 				0167112DC57A51C725650C9A /* ScheduleCalendarsUITests.swift */,
@@ -1091,6 +1094,7 @@
 				3527FC336F5A59D91E02574A /* MemoUITests.swift in Sources */,
 				2F96F8110BE9942D44F93831 /* MonthEventUITests.swift in Sources */,
 				5E4AB266D0D5ED01CA771F85 /* MonthMemoUITests.swift in Sources */,
+				6AA35000CEE896FF935BB422 /* MonthPlannedTasksUITests.swift in Sources */,
 				424B1E767B128D8541975C2D /* MonthUITests.swift in Sources */,
 				E0C94998685BC6F8FA5E24FC /* PalettePreferenceUITests.swift in Sources */,
 				FA474485C92C5E70C6EDFACC /* ScheduleCalendarsUITests.swift in Sources */,

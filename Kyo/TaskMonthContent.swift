@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 
-/// The tasks completed on each day, for Month. Open tasks never appear: a day is marked, and a row is
-/// listed, only for a task completed on it.
+/// Incomplete planned tasks and completion-day history for Month. A task has only its current
+/// state here: completing it removes its planned row and adds the actual completion-day row.
 @MainActor
 struct TaskMonthContent: MonthContentSource {
     let kind = MonthKind.tasks
@@ -19,14 +19,25 @@ struct TaskMonthContent: MonthContentSource {
 
     func content(on days: [Date]) -> [Date: MonthKindDay] {
         var content: [Date: MonthKindDay] = [:]
-        for day in taskList.daysWithCompletedTask(in: days) {
-            let tasks = taskList.tasksCompleted(on: day)
+        for day in days {
+            let planned = taskList.tasksPlanned(on: day)
+            let completed = taskList.tasksCompleted(on: day)
+            guard !planned.isEmpty || !completed.isEmpty else { continue }
+            let phrases = [
+                planned.isEmpty ? nil : MonthKindDay.countPhrase(planned.count, one: "task planned", other: "tasks planned"),
+                completed.isEmpty ? nil : MonthKindDay.countPhrase(completed.count, one: "task completed", other: "tasks completed")
+            ].compactMap { $0 }
             content[day] = MonthKindDay(
-                mark: .filled,
-                phrase: MonthKindDay.countPhrase(tasks.count, one: "task completed", other: "tasks completed"),
-                rows: tasks.map { MonthSummaryRow(id: "task-\($0.id.uuidString)", text: $0.text, accessibilityValue: "Completed") }
+                mark: planned.isEmpty ? .filled : (completed.isEmpty ? .hollow : .mixed),
+                phrase: phrases.joined(separator: ", "),
+                rows: planned.map { row($0, isComplete: false) } + completed.map { row($0, isComplete: true) }
             )
         }
         return content
     }
+    private func row(_ task: DailyTask, isComplete: Bool) -> MonthSummaryRow {
+        MonthSummaryRow(id: "task-\(task.id.uuidString)", text: task.text,
+                        kind: .task(isComplete: isComplete), accessibilityValue: isComplete ? "Completed" : "Planned")
+    }
+
 }

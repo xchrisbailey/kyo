@@ -409,13 +409,15 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     /// The tasks completed on the day containing `day`, in creation order. Reads the full list, not
     /// Today's, so it answers for any past day.
-    func tasksCompleted(on day: Date) -> [DailyTask] {
+    func tasksCompleted(on day: Date, calendar: Calendar? = nil) -> [DailyTask] {
+        let calendar = calendar ?? self.calendar
         let completionDay = TaskCompletionDay(date: day, calendar: calendar)
         return Self.ordered(currentFullTaskList.filter { $0.isComplete && $0.completedOn == completionDay })
     }
 
     /// Incomplete tasks with this planned day, including ones already available on Today.
-    func tasksPlanned(on day: Date) -> [DailyTask] {
+    func tasksPlanned(on day: Date, calendar: Calendar? = nil) -> [DailyTask] {
+        let calendar = calendar ?? self.calendar
         let plannedDay = TaskPlannedDay(date: day, calendar: calendar)
         return Self.ordered(currentFullTaskList.filter { !$0.isComplete && $0.plannedOn == plannedDay })
     }

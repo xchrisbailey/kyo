@@ -25,7 +25,7 @@ struct MonthEventPresentation: Equatable, Sendable {
 final class EventMonthContent: MonthContentSource {
     let kind = MonthKind.events
     private let schedule: ScheduleStore
-    private let calendar: Calendar
+    private var calendar: Calendar
     private let changeSubject = PassthroughSubject<Void, Never>()
     private var subscriptions = Set<AnyCancellable>()
     /// The first and last day Month last asked about, which is the month a read is for.
@@ -80,6 +80,11 @@ final class EventMonthContent: MonthContentSource {
         return result
     }
 
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
+        self.calendar = calendar
+        return content(on: days)
+    }
+
     /// An event is on a day when it overlaps the span from the day's start to the next day's start.
     /// An event that ends at midnight, as an all-day event does, isn't on the day that follows.
     private static func event(_ event: ScheduleEvent, overlaps start: Date, upTo next: Date) -> Bool {
@@ -99,7 +104,7 @@ final class EventMonthContent: MonthContentSource {
                 accessibilityLabel: "All day: \(event.displayTitle)"
             )
         }
-        let presentation = schedule.presentation(of: event, on: day)
+        let presentation = schedule.presentation(of: event, on: day, calendar: calendar)
         return MonthSummaryRow(
             id: id, text: event.displayTitle,
             kind: .event(

@@ -120,9 +120,13 @@ struct MonthView: View {
 
     /// The four kinds in slot order. It reflows to a column at large text sizes.
     private var legend: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 14) { legendItems }
-            VStack(alignment: .leading, spacing: 4) { legendItems }
+        VStack(alignment: .leading, spacing: 4) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) { legendItems }
+                VStack(alignment: .leading, spacing: 4) { legendItems }
+            }
+            Text("Tasks: hollow planned, filled completed, split both")
+                .font(.caption2)
         }
         .font(.caption)
         .foregroundStyle(theme.secondaryText)

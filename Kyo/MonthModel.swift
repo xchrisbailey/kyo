@@ -26,7 +26,7 @@ enum MonthSummaryTarget: Equatable, Sendable {
 /// One line in the Day summary. What a row is decides what it draws and whether it can be tapped.
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     enum Kind: Equatable, Sendable {
-        /// Text alone, as a completed task is listed.
+        /// Text alone, without a state indicator.
         case plain
         /// A planned or completed task, drawn with a state label, never a checkbox.
         case task(isComplete: Bool)
@@ -97,6 +97,14 @@ protocol MonthContentSource {
     var changes: AnyPublisher<Void, Never> { get }
     /// What the kind holds on each of `days` (each a start of day). A day it holds nothing on can be left out.
     func content(on days: [Date]) -> [Date: MonthKindDay]
+    /// Month's current calendar defines every requested day boundary and returned key.
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay]
+}
+
+extension MonthContentSource {
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
+        content(on: days)
+    }
 }
 
 struct MonthDay: Equatable {
@@ -286,7 +294,7 @@ final class MonthModel: ObservableObject {
         let shown = Set(days)
         var result: [Date: [MonthKind: MonthKindDay]] = [:]
         for source in sources {
-            for (day, content) in source.content(on: days) where shown.contains(day) {
+            for (day, content) in source.content(on: days, calendar: calendar) where shown.contains(day) {
                 if day > today && source.kind != .events {
                     // Planned work can appear ahead; recorded completions cannot.
                     guard source.kind == .tasks else { continue }

@@ -18,10 +18,18 @@ struct TaskMonthContent: MonthContentSource {
     }
 
     func content(on days: [Date]) -> [Date: MonthKindDay] {
+        taskContent(on: days, calendar: nil)
+    }
+
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
+        taskContent(on: days, calendar: calendar)
+    }
+
+    private func taskContent(on days: [Date], calendar: Calendar?) -> [Date: MonthKindDay] {
         var content: [Date: MonthKindDay] = [:]
         for day in days {
-            let planned = taskList.tasksPlanned(on: day)
-            let completed = taskList.tasksCompleted(on: day)
+            let planned = taskList.tasksPlanned(on: day, calendar: calendar)
+            let completed = taskList.tasksCompleted(on: day, calendar: calendar)
             guard !planned.isEmpty || !completed.isEmpty else { continue }
             let phrases = [
                 planned.isEmpty ? nil : MonthKindDay.countPhrase(planned.count, one: "task planned", other: "tasks planned"),

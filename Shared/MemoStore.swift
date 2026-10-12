@@ -212,6 +212,11 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     }
 
     func memos(on date: Date) -> [Memo] {
+        memos(on: date, calendar: calendar)
+    }
+
+    /// Query the saved civil day using the caller's day boundary; stored memo days never move.
+    func memos(on date: Date, calendar: Calendar) -> [Memo] {
         let day = TaskCompletionDay(date: date, calendar: calendar)
         let year = day.year
         let month = day.month
@@ -224,6 +229,10 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     }
 
     func daysWithMemos(from first: Date, through last: Date) -> Set<Date> {
+        daysWithMemos(from: first, through: last, calendar: calendar)
+    }
+
+    func daysWithMemos(from first: Date, through last: Date, calendar: Calendar) -> Set<Date> {
         let lower = Self.dayKey(TaskCompletionDay(date: first, calendar: calendar))
         let upper = Self.dayKey(TaskCompletionDay(date: last, calendar: calendar))
         guard lower <= upper else { return [] }

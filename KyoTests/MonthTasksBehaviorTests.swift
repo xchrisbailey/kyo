@@ -1,6 +1,6 @@
 import XCTest
 
-/// Tasks completed in Month, driven through the Month model with a real task list on in-memory
+/// Planned tasks and completion history in Month, driven through the Month model with real in-memory
 /// storage. Today is Tuesday 6 October 2026 unless a test moves the clock.
 @MainActor
 final class MonthTasksBehaviorTests: MonthTestCase {
@@ -159,6 +159,51 @@ final class MonthTasksBehaviorTests: MonthTestCase {
         XCTAssertEqual(taskRows(in: model), ["Fixed Friday"])
         XCTAssertEqual(try taskMark(9, in: model), .hollow)
         XCTAssertEqual(try taskMark(8, in: model), .empty)
+    }
+
+    func testLiveZoneChangeKeepsTaskHabitAndMemoCivilDaysWhileEventsFollowTheirInstants() async throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        let detroit = calendar
+        var now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-09T03:00:00Z")) // October 8, 11 PM Detroit
+        let container = try KyoModelContainer.make(inMemory: true)
+        let tasks = TaskListStore(modelContainer: container, now: { now }, calendarProvider: { calendar })
+        let task = try XCTUnwrap(tasks.addTask(text: "Planned ninth"))
+        _ = tasks.deferTask(id: task.id, to: try XCTUnwrap(detroit.date(from: DateComponents(year: 2026, month: 10, day: 9))))
+        let habits = HabitListStore(modelContainer: container, now: { now }, calendar: detroit)
+        let habit = try XCTUnwrap(habits.addHabit(name: "Daily"))
+        _ = habits.toggleCheckOff(id: habit.id)
+        let memos = MemoStore(modelContainer: container, now: { now }, calendar: detroit)
+        let memo = try XCTUnwrap(memos.addWrittenMemo(text: "Saved on eighth"))
+        let eventStart = now
+        let event = ScheduleEvent(id: ScheduleEventID(eventID: "late", occurrenceDate: eventStart), title: "Late event",
+                                  start: eventStart, end: eventStart.addingTimeInterval(1800), calendarID: "work", calendarTitle: "Work")
+        let service = FakeCalendarService(access: .fullAccess, events: [event])
+        let suite = "MonthMixedZone.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+        let schedule = ScheduleStore(service: service, now: { now }, calendar: detroit,
+                                     locale: Locale(identifier: "en_US"), defaults: defaults)
+        now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-10-10T16:00:00Z"))
+        await schedule.refresh()
+        let model = MonthModel(now: { now }, calendarProvider: { calendar }, locale: Locale(identifier: "en_US"), sources: [
+            TaskMonthContent(taskList: tasks), HabitMonthContent(habits: habits, calendar: detroit),
+            MemoMonthContent(store: memos), EventMonthContent(schedule: schedule, calendar: detroit)
+        ])
+        model.select(try XCTUnwrap(detroit.date(from: DateComponents(year: 2026, month: 10, day: 8))))
+        try await eventually("the Detroit event") { model.selectedSummary.sections.first { $0.kind == .events }?.rows.count == 1 }
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        model.refresh()
+        XCTAssertEqual(model.selectedSummary.sections.first { $0.kind == .habits }?.rows.first?.accessibilityValue, "Checked off")
+        XCTAssertEqual(model.selectedSummary.sections.first { $0.kind == .memos }?.rows.first?.target, .memo(memo.id))
+        XCTAssertEqual(try day(8, in: model).marks[2], .filled)
+        XCTAssertEqual(try day(9, in: model).marks[2], .empty)
+        model.select(try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 9))))
+        try await eventually("the Tokyo event") { model.selectedSummary.sections.first { $0.kind == .events }?.rows.count == 1 }
+        XCTAssertEqual(taskRows(in: model), ["Planned ninth"])
+        XCTAssertEqual(model.selectedSummary.sections.first { $0.kind == .events }?.rows.first?.event?.time.contains("12:00"), true)
+        XCTAssertNil(model.selectedSummary.sections.first { $0.kind == .memos })
+        XCTAssertEqual(memos.memo(id: memo.id)?.day, TaskCompletionDay(era: 1, year: 2026, month: 10, day: 8))
     }
 
     // MARK: Marks

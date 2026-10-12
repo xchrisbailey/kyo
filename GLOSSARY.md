@@ -13,7 +13,7 @@ One calendar month shown as a grid of days, each marked with what it holds: even
 _Avoid_: Calendar, past days, history
 
 **Section**:
-One of the titled groups Today is divided into: Schedule, Tasks, Habits, and Memos.
+One of the titled groups Today is divided into: Schedule, Tasks, Projects, Habits, and Memos.
 _Avoid_: Group, card, list
 
 **Collapsed section**:

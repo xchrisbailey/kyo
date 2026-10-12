@@ -124,7 +124,7 @@ final class DeferredTaskUITests: XCTestCase {
         XCTAssertFalse(app.buttons["task-scheduling-interpret"].isEnabled)
         XCTAssertFalse(app.buttons["task-scheduling-confirm"].isEnabled)
         app.swipeDown()
-        app.buttons["task-scheduling-today"].tap()
+        chooseToday(in: app)
         XCTAssertTrue(app.buttons["task-scheduling-confirm"].isEnabled)
         app.buttons["task-scheduling-confirm"].tap()
         XCTAssertTrue(task.waitForExistence(timeout: 5))
@@ -228,7 +228,7 @@ final class DeferredTaskUITests: XCTestCase {
         app.buttons["task-scheduling-confirm"].tap()
         XCTAssertEqual(savedDay.label, formatter.string(from: nextDay))
         reschedule.tap()
-        app.buttons["task-scheduling-today"].tap()
+        chooseToday(in: app)
         XCTAssertEqual(preview.label, formatter.string(from: Date.now))
         app.buttons["task-scheduling-confirm"].tap()
         XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
@@ -248,6 +248,18 @@ final class DeferredTaskUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Abandoned task"].exists) // label-query: deleted task must not appear on Today
         app.buttons["section-link-tasks"].tap()
         XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
+    }
+
+    private func chooseToday(in app: XCUIApplication) {
+        let today = app.buttons["task-scheduling-today"]
+        if !today.exists {
+            // Compact sheets may keep Today below the visible Form cells. Avoid the date wheels.
+            let form = app.collectionViews.firstMatch
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85))
+                .press(forDuration: 0.1, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.2)))
+        }
+        XCTAssertTrue(today.waitForExistence(timeout: 5))
+        today.tap()
     }
 
     @discardableResult

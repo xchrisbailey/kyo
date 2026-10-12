@@ -26,6 +26,49 @@ final class DeferredTaskUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Changed task"].exists) // label-query: edited future task stays off Today
     }
 
+    func testLaterReschedulingPreviewsFullDateAndOnlyConfirmationChangesTheTask() {
+        let app = XCUIApplication()
+        let originalDay = openLaterWithDeferredTask(app, text: "Reschedule task")
+        let reschedule = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "later-task-reschedule-")).firstMatch
+        XCTAssertTrue(reschedule.waitForExistence(timeout: 5))
+        guard reschedule.exists else { return }
+        reschedule.tap()
+        let nextDay = Calendar.current.date(byAdding: .day, value: 14, to: Date.now)!
+        chooseDate(nextDay, in: app)
+        let preview = app.staticTexts["task-planned-day-preview"]
+        let formatter = DateFormatter()
+        formatter.dateStyle = .full
+        XCTAssertEqual(preview.label, formatter.string(from: nextDay))
+        app.buttons["task-scheduling-cancel"].tap()
+        let savedDay = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "later-task-planned-day-")).firstMatch
+        XCTAssertEqual(savedDay.label, originalDay)
+        reschedule.tap()
+        chooseDate(nextDay, in: app)
+        app.buttons["task-scheduling-confirm"].tap()
+        XCTAssertEqual(savedDay.label, formatter.string(from: nextDay))
+        reschedule.tap()
+        app.buttons["task-scheduling-today"].tap()
+        XCTAssertEqual(preview.label, formatter.string(from: Date.now))
+        app.buttons["task-scheduling-confirm"].tap()
+        XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
+        app.buttons["later-done"].tap()
+        XCTAssertTrue(app.buttons["Reschedule task"].waitForExistence(timeout: 5)) // label-query: choosing Today makes this task available
+    }
+
+    func testLaterDeletionRemovesTaskWithoutMakingItAvailableOnToday() {
+        let app = XCUIApplication()
+        openLaterWithDeferredTask(app, text: "Abandoned task")
+        let delete = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "later-task-delete-")).firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        guard delete.exists else { return }
+        delete.tap()
+        XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
+        app.buttons["later-done"].tap()
+        XCTAssertFalse(app.buttons["Abandoned task"].exists) // label-query: deleted task must not appear on Today
+        app.buttons["section-link-tasks"].tap()
+        XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
+    }
+
     @discardableResult
     private func openLaterWithDeferredTask(_ app: XCUIApplication, text: String) -> String {
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

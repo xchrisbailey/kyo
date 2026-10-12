@@ -4,6 +4,7 @@ struct LaterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var taskList: TaskListStore
     @State private var editingTask: DailyTask?
+    @State private var reschedulingTask: DailyTask?
 
     var body: some View {
         NavigationStack {
@@ -25,15 +26,26 @@ struct LaterSheet: View {
                         Button("Edit") { editingTask = task }
                             .buttonStyle(.borderless)
                             .accessibilityIdentifier("later-task-edit-\(task.id.uuidString)")
+                        Button("Reschedule") { reschedulingTask = task }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("later-task-reschedule-\(task.id.uuidString)")
                         Button("Bring to Today") { taskList.bringTaskToToday(id: task.id) }
                             .buttonStyle(.borderless)
                             .accessibilityIdentifier("task-bring-to-today-\(task.id.uuidString)")
+                        Button("Delete", role: .destructive) { taskList.deleteTask(id: task.id) }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("later-task-delete-\(task.id.uuidString)")
                     }
                 }
             }
             .sheet(item: $editingTask) { task in
                 LaterTaskEditSheet(task: task) { text in
                     taskList.editTask(id: task.id, text: text) != nil
+                }
+            }
+            .sheet(item: $reschedulingTask) { task in
+                TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent)) { date in
+                    taskList.deferTask(id: task.id, to: date) != nil
                 }
             }
             .navigationTitle("Later")

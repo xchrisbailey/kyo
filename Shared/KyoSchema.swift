@@ -7,7 +7,7 @@ enum KyoSchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self]
+        [PrePlannedTaskSchema.TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self]
     }
 }
 
@@ -22,14 +22,24 @@ enum KyoSchemaV2: VersionedSchema {
     }
 }
 
+/// Version 3 adds optional planned-day attributes to tasks.
+enum KyoSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
+         MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self]
+    }
+}
+
 enum KyoMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [KyoSchemaV1.self, KyoSchemaV2.self]
+        [KyoSchemaV1.self, KyoSchemaV2.self, KyoSchemaV3.self]
     }
 
-    /// Adding a model is a lightweight migration: existing tasks and habits are untouched.
+    /// New models and optional task attributes migrate without replacing existing content.
     static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: KyoSchemaV1.self, toVersion: KyoSchemaV2.self)]
+        [.lightweight(fromVersion: KyoSchemaV1.self, toVersion: KyoSchemaV2.self),
+         .lightweight(fromVersion: KyoSchemaV2.self, toVersion: KyoSchemaV3.self)]
     }
 }
 
@@ -64,12 +74,66 @@ enum KyoModelContainer {
     }
 
     private static func make(configuration: (Schema) -> ModelConfiguration) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: KyoSchemaV2.self)
+        let schema = Schema(versionedSchema: KyoSchemaV3.self)
         let configuration = configuration(schema)
         return try ModelContainer(
             for: schema,
             migrationPlan: KyoMigrationPlan.self,
             configurations: configuration
         )
+    }
+}
+
+/// Frozen task shape used by installations before planned days.
+enum PrePlannedTaskSchema {
+    @Model
+    final class TaskRecord {
+        var id: UUID = UUID()
+        var text: String = ""
+        var creationOrder: Int64 = 0
+        var isComplete: Bool = false
+        var completedEra: Int?
+        var completedYear: Int?
+        var completedMonth: Int?
+        var completedDay: Int?
+
+        init(task: DailyTask) {
+            id = task.id
+            text = task.text
+            creationOrder = task.creationOrder
+            isComplete = task.isComplete
+            completedEra = task.completedOn?.era
+            completedYear = task.completedOn?.year
+            completedMonth = task.completedOn?.month
+            completedDay = task.completedOn?.day
+        }
+
+        var completedOn: TaskCompletionDay? {
+            guard let completedYear, let completedMonth, let completedDay else { return nil }
+            return TaskCompletionDay(era: completedEra, year: completedYear, month: completedMonth, day: completedDay)
+        }
+
+        var task: DailyTask {
+            DailyTask(
+                id: id,
+                text: text,
+                creationOrder: creationOrder,
+                isComplete: isComplete,
+                completedOn: completedOn
+            )
+        }
+
+        /// Copies `task`'s fields onto this record, touching a property only when it differs so an
+        /// unchanged record stays clean.
+        func update(from task: DailyTask) {
+            if text != task.text { text = task.text }
+            if creationOrder != task.creationOrder { creationOrder = task.creationOrder }
+            if isComplete != task.isComplete { isComplete = task.isComplete }
+            let day = task.completedOn
+            if completedEra != day?.era { completedEra = day?.era }
+            if completedYear != day?.year { completedYear = day?.year }
+            if completedMonth != day?.month { completedMonth = day?.month }
+            if completedDay != day?.day { completedDay = day?.day }
+        }
     }
 }

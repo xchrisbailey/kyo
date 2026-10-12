@@ -9,11 +9,12 @@ enum MonthKind: String, CaseIterable, Sendable {
     case memos
 }
 
-/// What a kind's slot in a day cell shows. Only habits use `hollow`.
+/// What a kind's slot shows: planned tasks and unchecked habits are hollow.
 enum MonthMark: Equatable, Sendable {
     case empty
     case filled
     case hollow
+    case mixed
 }
 
 /// What tapping a Day summary row opens.
@@ -25,8 +26,10 @@ enum MonthSummaryTarget: Equatable, Sendable {
 /// One line in the Day summary. What a row is decides what it draws and whether it can be tapped.
 struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     enum Kind: Equatable, Sendable {
-        /// Text alone, as a completed task is listed.
+        /// Text alone, without a state indicator.
         case plain
+        /// A planned or completed task, drawn with a state label, never a checkbox.
+        case task(isComplete: Bool)
         /// A habit, with whether it was checked off that day. Drawn with an indicator, not a control.
         case habit(isChecked: Bool)
         /// A memo, which opens in the memo sheet.
@@ -54,7 +57,7 @@ struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     /// What tapping the row opens. A row without one is plain.
     var target: MonthSummaryTarget? {
         switch kind {
-        case .plain, .habit: nil
+        case .plain, .task, .habit: nil
         case .memo(let id): .memo(id)
         case .event(_, let target): .event(target)
         }
@@ -94,6 +97,14 @@ protocol MonthContentSource {
     var changes: AnyPublisher<Void, Never> { get }
     /// What the kind holds on each of `days` (each a start of day). A day it holds nothing on can be left out.
     func content(on days: [Date]) -> [Date: MonthKindDay]
+    /// Month's current calendar defines every requested day boundary and returned key.
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay]
+}
+
+extension MonthContentSource {
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
+        content(on: days)
+    }
 }
 
 struct MonthDay: Equatable {
@@ -150,7 +161,13 @@ final class MonthModel: ObservableObject {
     @Published private var contents: [Date: [MonthKind: MonthKindDay]] = [:]
 
     private let now: () -> Date
-    private let calendar: Calendar
+    private let calendarProvider: () -> Calendar
+    private var previousCalendar: Calendar
+    private var calendar: Calendar {
+        var calendar = calendarProvider()
+        calendar.locale = locale
+        return calendar
+    }
     private let locale: Locale
     private let sources: [any MonthContentSource]
     private let sleep: Sleep
@@ -158,16 +175,19 @@ final class MonthModel: ObservableObject {
 
     init(
         now: @escaping () -> Date = Date.init,
-        calendar: Calendar = .current,
+        calendar: Calendar = .autoupdatingCurrent,
+        calendarProvider: (() -> Calendar)? = nil,
         locale: Locale = .current,
         sources: [any MonthContentSource] = [],
         sleep: @escaping Sleep = { seconds in try await Task.sleep(for: .seconds(seconds)) }
     ) {
-        var calendar = calendar
+        let providedCalendar = calendar
+        var calendar = calendarProvider?() ?? calendar
         calendar.locale = locale
         let today = calendar.startOfDay(for: now())
         self.now = now
-        self.calendar = calendar
+        self.calendarProvider = calendarProvider ?? { providedCalendar }
+        self.previousCalendar = Self.snapshot(calendar)
         self.locale = locale
         self.sources = sources
         self.sleep = sleep
@@ -233,7 +253,7 @@ final class MonthModel: ObservableObject {
 
     /// Selects `day` if the shown month holds it. A cell outside the month can't be selected.
     func select(_ day: Date) {
-        let start = calendar.startOfDay(for: day)
+        let start = synchronizeCalendar().startOfDay(for: day)
         guard daysOfShownMonth.contains(start) else { return }
         chosenDay = start
     }
@@ -244,6 +264,7 @@ final class MonthModel: ObservableObject {
 
     /// Shows the current month with Today selected, as Month opens each time and as the jump-back control does.
     func showCurrentMonth() {
+        let calendar = synchronizeCalendar()
         let today = calendar.startOfDay(for: now())
         shownMonth = Self.startOfMonth(containing: today, in: calendar)
         chosenDay = today
@@ -267,24 +288,59 @@ final class MonthModel: ObservableObject {
 
     /// Asks every source again about the shown month's days.
     func refresh() {
+        let calendar = synchronizeCalendar()
         today = calendar.startOfDay(for: now())
         let days = daysOfShownMonth
         let shown = Set(days)
         var result: [Date: [MonthKind: MonthKindDay]] = [:]
         for source in sources {
-            for (day, content) in source.content(on: days) where shown.contains(day) {
-                // Only events can be on a day after Today; anything else recorded there is ignored.
-                guard day <= today || source.kind == .events else { continue }
-                result[day, default: [:]][source.kind] = content
+            for (day, content) in source.content(on: days, calendar: calendar) where shown.contains(day) {
+                if day > today && source.kind != .events {
+                    // Planned work can appear ahead; recorded completions cannot.
+                    guard source.kind == .tasks else { continue }
+                    let planned = content.rows.filter { $0.kind == .task(isComplete: false) }
+                    guard !planned.isEmpty else { continue }
+                    result[day, default: [:]][source.kind] = MonthKindDay(
+                        mark: .hollow,
+                        phrase: MonthKindDay.countPhrase(planned.count, one: "task planned", other: "tasks planned"),
+                        rows: planned
+                    )
+                } else {
+                    result[day, default: [:]][source.kind] = content
+                }
             }
         }
         contents = result
     }
 
     private func showMonth(offsetBy months: Int) {
+        let calendar = synchronizeCalendar()
         guard let month = calendar.date(byAdding: .month, value: months, to: shownMonth) else { return }
         shownMonth = Self.startOfMonth(containing: month, in: calendar)
         refresh()
+    }
+
+    /// Freeze the old zone before reading a new one: an autoupdating calendar cannot serve
+    /// as the reference for preserving the civil day the user selected.
+    private static func snapshot(_ calendar: Calendar) -> Calendar {
+        var snapshot = Calendar(identifier: calendar.identifier)
+        snapshot.timeZone = calendar.timeZone
+        snapshot.locale = calendar.locale
+        snapshot.firstWeekday = calendar.firstWeekday
+        snapshot.minimumDaysInFirstWeek = calendar.minimumDaysInFirstWeek
+        return snapshot
+    }
+
+    private func synchronizeCalendar() -> Calendar {
+        let calendar = calendar
+        if calendar.timeZone != previousCalendar.timeZone {
+            let shown = previousCalendar.dateComponents([.era, .year, .month], from: shownMonth)
+            let chosen = previousCalendar.dateComponents([.era, .year, .month, .day], from: chosenDay)
+            shownMonth = calendar.date(from: shown) ?? shownMonth
+            chosenDay = calendar.date(from: chosen) ?? chosenDay
+        }
+        previousCalendar = Self.snapshot(calendar)
+        return calendar
     }
 
     // MARK: Building days

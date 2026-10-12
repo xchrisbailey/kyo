@@ -134,6 +134,16 @@ struct TodayView: View {
                         if let memo = memoStore.memo(id: id) {
                             MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
                         }
+                    case .later:
+                        LaterSheet(taskList: taskList, languageModel: languageModel)
+                    case .scheduleTaskDraft:
+                        TaskSchedulingSheet(languageModel: languageModel, onConfirm: { date in
+                            guard taskList.addTask(text: taskDraft, plannedFor: date) != nil else { return false }
+                            abandonTaskDraft()
+                            return true
+                        })
+                    case .scheduleTask(let id):
+                        TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:
@@ -272,7 +282,10 @@ struct TodayView: View {
             note: "For today",
             collapsedSummary: taskList.collapsedSummary,
             section: .tasks,
-            sections: sections
+            sections: sections,
+            linkTitle: "Later",
+            linkHint: "Opens deferred tasks",
+            linkAction: { activeSheet = .later }
         ) {
             VStack(spacing: 0) {
                 if taskList.tasks.isEmpty && !isShowingTaskDraft {
@@ -288,12 +301,20 @@ struct TodayView: View {
                         task: task,
                         onToggle: { taskList.toggleTask(id: task.id) },
                         onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
-                        onDelete: { _ = taskList.deleteTask(id: task.id) }
+                        onDelete: { _ = taskList.deleteTask(id: task.id) },
+                        onDoLater: { activeSheet = .scheduleTask(task.id) }
                     )
                 }
                 if isShowingTaskDraft {
                     if !taskList.tasks.isEmpty { rowDivider }
-                    TaskDraftRow(text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft)
+                    TaskDraftRow(
+                        text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
+                        schedule: {
+                            isTaskDraftFocused = false
+                            activeSheet = .scheduleTaskDraft
+                        },
+                        cancel: abandonTaskDraft
+                    )
                         .id("task-draft")
                         .onAppear {
                             guard revealTaskDraftWhenShown else { return }
@@ -549,6 +570,9 @@ private enum TodayPreviewSheet: Identifiable {
     case memo(UUID)
     case allMemos
     case allHabits
+    case later
+    case scheduleTask(UUID)
+    case scheduleTaskDraft
 
     var id: String {
         switch self {
@@ -559,6 +583,9 @@ private enum TodayPreviewSheet: Identifiable {
         case .memo(let id): "memo:\(id.uuidString)"
         case .allMemos: "allMemos"
         case .allHabits: "allHabits"
+        case .later: "later"
+        case .scheduleTaskDraft: "scheduleTaskDraft"
+        case .scheduleTask(let id): "scheduleTask:\(id.uuidString)"
         }
     }
 }
@@ -568,6 +595,8 @@ private struct TaskDraftRow: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
     let submit: () -> Void
+    let schedule: () -> Void
+    let cancel: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
@@ -584,6 +613,21 @@ private struct TaskDraftRow: View {
                 .onSubmit(submit)
                 .accessibilityLabel("New task")
                 .accessibilityIdentifier("new-task")
+
+            Button("Planned day", systemImage: "calendar", action: schedule)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.accent)
+                .frame(width: 44, height: 44)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("new-task-schedule")
+
+            Button("Cancel task", systemImage: "xmark", action: cancel)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(theme.secondaryText)
+                .frame(width: 44, height: 44)
+                .accessibilityIdentifier("new-task-cancel")
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
@@ -924,6 +968,7 @@ private struct TaskRow: View {
     let onToggle: () -> Void
     let onEdit: (String) -> Bool
     let onDelete: () -> Void
+    let onDoLater: () -> Void
 
     @State private var isEditing = false
     @State private var draft = ""
@@ -968,6 +1013,10 @@ private struct TaskRow: View {
         }
         .clipped()
         .contextMenu {
+            if !task.isComplete {
+                Button("Do later", systemImage: "calendar", action: onDoLater)
+                    .accessibilityIdentifier("task-do-later-\(task.id.uuidString)")
+            }
             Button("Share", systemImage: "square.and.arrow.up", action: share)
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
         }

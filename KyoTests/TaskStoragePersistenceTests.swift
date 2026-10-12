@@ -3,6 +3,66 @@ import XCTest
 
 @MainActor
 final class TaskStoragePersistenceTests: XCTestCase {
+    private enum PrePlannedSchema: VersionedSchema {
+        static let versionIdentifier = Schema.Version(2, 0, 0)
+        static var models: [any PersistentModel.Type] {
+            [PrePlannedTaskSchema.TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self,
+             HabitScheduleRecord.self, MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self]
+        }
+    }
+
+    func testInstalledPrePlannedDayDatabaseUpgradesWithoutLosingTaskCompletionOrOtherContent() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let completed = DailyTask(text: "Completed before upgrade", creationOrder: 1, isComplete: true,
+                                  completedOn: TaskCompletionDay(date: today, calendar: calendar))
+        do {
+            let schema = Schema(versionedSchema: PrePlannedSchema.self)
+            let old = try ModelContainer(for: schema, configurations:
+                ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none))
+            old.mainContext.insert(PrePlannedTaskSchema.TaskRecord(task: DailyTask(text: "Ordinary", creationOrder: 0)))
+            old.mainContext.insert(PrePlannedTaskSchema.TaskRecord(task: completed))
+            try old.mainContext.save()
+            SwiftDataHabitContent(modelContainer: old).save([Habit(name: "Stretch", order: 0)])
+            _ = MemoStore(modelContainer: old).addWrittenMemo(text: "Remember before upgrade")
+        }
+        let container = try KyoModelContainer.make(storeURL: url)
+        let list = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(list.tasks.map(\.text), ["Ordinary", "Completed before upgrade"])
+        XCTAssertTrue(list.tasks.allSatisfy { $0.plannedOn == nil })
+        XCTAssertEqual(list.tasksCompleted(on: today), [completed])
+        XCTAssertEqual(SwiftDataHabitContent(modelContainer: container).load().map(\.name), ["Stretch"])
+        XCTAssertEqual(MemoStore(modelContainer: container).memos.map(\.title), ["Remember before upgrade"])
+    }
+
+    func testScheduledCreationSurvivesDiskReopeningWithIdentityTextAndOrder() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        var planned: DailyTask?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let list: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+            _ = list.addTask(text: "First")
+            planned = try XCTUnwrap(list.addTask(text: "Call Friday", plannedFor: friday))
+            _ = list.addTask(text: "Third")
+        }
+        let container = try KyoModelContainer.make(storeURL: url)
+        let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.laterTasks, [try XCTUnwrap(planned)])
+        XCTAssertEqual(reopened.laterTasks.first?.creationOrder, 1)
+        XCTAssertEqual(reopened.tasks.map(\.text), ["First", "Third"])
+        XCTAssertEqual(reopened.taskCount, 2)
+    }
+
     func testTasksSeededWithTheSameIDLoadOnce() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let id = UUID()

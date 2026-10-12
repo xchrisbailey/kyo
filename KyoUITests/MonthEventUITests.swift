@@ -24,6 +24,8 @@ final class MonthEventUITests: XCTestCase {
         let running = row("review")
         XCTAssertEqual(running.label, "Now, Design review, Work calendar")
 
+        // Bring the row above the floating bottom bar before opening it.
+        app.scrollViews.firstMatch.swipeUp()
         running.tap()
 
         let title = app.descendants(matching: .any)["event-detail-title"]

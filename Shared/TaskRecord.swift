@@ -16,6 +16,11 @@ final class TaskRecord {
     var completedMonth: Int?
     var completedDay: Int?
 
+    var plannedEra: Int?
+    var plannedYear: Int?
+    var plannedMonth: Int?
+    var plannedDay: Int?
+
     init(task: DailyTask) {
         id = task.id
         text = task.text
@@ -25,11 +30,20 @@ final class TaskRecord {
         completedYear = task.completedOn?.year
         completedMonth = task.completedOn?.month
         completedDay = task.completedOn?.day
+        plannedEra = task.plannedOn?.era
+        plannedYear = task.plannedOn?.year
+        plannedMonth = task.plannedOn?.month
+        plannedDay = task.plannedOn?.day
     }
 
     var completedOn: TaskCompletionDay? {
         guard let completedYear, let completedMonth, let completedDay else { return nil }
         return TaskCompletionDay(era: completedEra, year: completedYear, month: completedMonth, day: completedDay)
+    }
+
+    var plannedOn: TaskPlannedDay? {
+        guard let plannedYear, let plannedMonth, let plannedDay else { return nil }
+        return TaskPlannedDay(era: plannedEra, year: plannedYear, month: plannedMonth, day: plannedDay)
     }
 
     var task: DailyTask {
@@ -38,7 +52,8 @@ final class TaskRecord {
             text: text,
             creationOrder: creationOrder,
             isComplete: isComplete,
-            completedOn: completedOn
+            completedOn: completedOn,
+            plannedOn: plannedOn
         )
     }
 
@@ -48,6 +63,11 @@ final class TaskRecord {
         if text != task.text { text = task.text }
         if creationOrder != task.creationOrder { creationOrder = task.creationOrder }
         if isComplete != task.isComplete { isComplete = task.isComplete }
+        let planned = task.plannedOn
+        if plannedEra != planned?.era { plannedEra = planned?.era }
+        if plannedYear != planned?.year { plannedYear = planned?.year }
+        if plannedMonth != planned?.month { plannedMonth = planned?.month }
+        if plannedDay != planned?.day { plannedDay = planned?.day }
         let day = task.completedOn
         if completedEra != day?.era { completedEra = day?.era }
         if completedYear != day?.year { completedYear = day?.year }

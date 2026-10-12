@@ -92,3 +92,11 @@ publishes, because the snapshot always carries the full list, not a delta.
   retry safely without duplicating or resurrecting tasks. See
   `docs/adr/0002-watch-commands-and-phone-reconciliation.md` for the full design and
   reconciliation rule.
+
+## Planned-day extension (#245)
+
+Snapshots include Today's tasks and future incomplete deferred tasks, at both initial publication
+and subsequent changes. Watch caches retain planned calendar days and filter availability locally,
+so planned tasks emerge offline. Past completions remain stored on the phone and are omitted from
+this payload. The phone remains the sole authoritative writer; revision, acknowledgment, outbox
+replay and tombstone rules are unchanged.

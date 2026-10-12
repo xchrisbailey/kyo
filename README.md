@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Swift-6-orange" alt="Swift 6">
 </p>
 
-Kyo (今日, "today") has no calendar grid, no backlog, and no projects. It opens on Today and stays there: what's on your calendar, what you mean to get done, the habits that are due, and the thoughts you captured along the way. Tomorrow starts fresh, with yesterday's unfinished tasks carried over.
+Kyo (今日, "today") opens on Today with your events, available tasks, habits, and memos. Plan future tasks in Later and look across days in Month. Once a task becomes available, unfinished work carries forward to tomorrow.
 
 ## Download
 
@@ -41,7 +41,11 @@ Today's events from the calendars already on your device, in a compact section a
 
 ### Tasks
 
-A plain list of things to do today. Type a task, press Return, and check it off when it's done. Finished tasks drop to the bottom. Whatever you don't finish carries forward to tomorrow on its own.
+Type a task, press Return, and check it off when it's done. Finished tasks drop to the bottom, and unfinished available tasks carry forward to tomorrow.
+
+On iPhone and iPad, choose a planned day while adding a task or use **Do later** on an existing task. Both use the same scheduling workflow: choose a weekday, one week out, one month out, or an exact date, then review the full date and confirm. When Apple Intelligence is available, you can also describe when in a separate scheduling field for on-device interpretation. Task text stays intact, and quick choices and the date picker work without AI.
+
+Future tasks stay in **Later**, ordered by planned day, and stay out of Today's list and counts until that day arrives. From Later, edit their text, reschedule, delete, or bring them to Today. A planned day is a one-time choice of when a task becomes available.
 
 ### Habits
 
@@ -58,6 +62,10 @@ Capture a thought by typing it or saying it.
 
 Transcription, memo titles, and suggested tasks all run on your device. Titles and suggested tasks need Apple Intelligence.
 
+### Month
+
+On iPhone and iPad, Month is a read-only overview of your events, tasks, habits, and memos. It distinguishes tasks planned for a day from tasks completed on that day. Select a day to see its Day summary, then open an event or memo for details.
+
 ### Quick capture
 
 Start a memo without opening the app first:
@@ -69,7 +77,9 @@ Start a memo without opening the app first:
 
 ### Apple Watch
 
-The Watch app shows Today's tasks, habits, and memos. You can add, edit, check off, and delete tasks, check off habits, and record voice memos from your wrist. Recordings are sent to your iPhone, which transcribes them, even if the phone was out of reach when you recorded.
+The Watch app shows Today's available tasks, habits, and memos. You can add, edit, check off, and delete tasks, check off habits, and record voice memos from your wrist. Recordings are sent to your iPhone, which transcribes them, even if the phone was out of reach when you recorded.
+
+Scheduling and Later are on iPhone and iPad. Future tasks already synchronized to the Watch become available on their planned day even while the phone is out of reach.
 
 ## Privacy
 

@@ -1015,7 +1015,7 @@ private struct TaskRow: View {
         .contextMenu {
             if !task.isComplete {
                 Button("Do later", systemImage: "calendar", action: onDoLater)
-                    .accessibilityIdentifier("task-do-later")
+                    .accessibilityIdentifier("task-do-later-\(task.id.uuidString)")
             }
             Button("Share", systemImage: "square.and.arrow.up", action: share)
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)

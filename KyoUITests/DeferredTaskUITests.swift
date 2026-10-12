@@ -111,7 +111,7 @@ final class DeferredTaskUITests: XCTestCase {
         let task = app.buttons["Keep Friday in task text"] // label-query: task text must stay separate from scheduling input
         XCTAssertTrue(task.waitForExistence(timeout: 10))
         task.press(forDuration: 1)
-        app.buttons["task-do-later"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
         let unavailable = app.staticTexts["task-scheduling-unavailable"]
         XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
         let description = app.textFields["task-scheduling-description"]
@@ -139,7 +139,7 @@ final class DeferredTaskUITests: XCTestCase {
         let task = app.buttons["Quick choices task"] // label-query: task text is the subject of the flow
         XCTAssertTrue(task.waitForExistence(timeout: 10))
         task.press(forDuration: 1)
-        app.buttons["task-do-later"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
         let weekday = app.buttons["task-scheduling-weekday"]
         XCTAssertTrue(weekday.waitForExistence(timeout: 5))
         XCTAssertEqual(weekday.label, "Weekday")
@@ -169,7 +169,7 @@ final class DeferredTaskUITests: XCTestCase {
         app.buttons["task-scheduling-cancel"].tap()
         XCTAssertTrue(task.waitForExistence(timeout: 5))
         task.press(forDuration: 1)
-        app.buttons["task-do-later"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
         XCTAssertTrue(week.waitForExistence(timeout: 5))
         week.tap()
         XCTAssertEqual(preview.label, formatter.string(from: nextWeek))
@@ -258,7 +258,7 @@ final class DeferredTaskUITests: XCTestCase {
         let task = app.buttons[text]
         XCTAssertTrue(task.waitForExistence(timeout: 10))
         task.press(forDuration: 1)
-        app.buttons["task-do-later"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
         let future = Calendar.current.date(byAdding: .day, value: 7, to: Date.now)!
         chooseDate(future, in: app)
         let preview = app.staticTexts["task-planned-day-preview"].label
@@ -293,7 +293,7 @@ final class DeferredTaskUITests: XCTestCase {
         let task = app.buttons["Deferred task"] // label-query: task text is the subject of the flow
         XCTAssertTrue(task.waitForExistence(timeout: 10))
         task.press(forDuration: 1)
-        let laterAction = app.buttons["task-do-later"]
+        let laterAction = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch
         XCTAssertTrue(laterAction.waitForExistence(timeout: 5))
         laterAction.tap()
         XCTAssertTrue(app.staticTexts["task-planned-day-preview"].waitForExistence(timeout: 5))

@@ -240,10 +240,16 @@ final class ScheduleStore: ObservableObject {
     /// "Now" while running, "Until 9:00 AM" for an event that started before Today and has ended,
     /// otherwise the start time. No countdowns.
     func timeText(for event: ScheduleEvent) -> String {
-        switch state(of: event) {
+        timeText(for: event, state: state(of: event), dayBoundary: currentDate, calendar: calendar)
+    }
+
+    private func timeText(
+        for event: ScheduleEvent, state: ScheduleEventState, dayBoundary: Date, calendar: Calendar
+    ) -> String {
+        switch state {
         case .inProgress: "Now"
-        case .past where event.start < currentDate: "Until \(formatted(event.end))"
-        case .past, .upcoming: formatted(event.start)
+        case .past where event.start < dayBoundary: "Until \(formatted(event.end, calendar: calendar))"
+        case .past, .upcoming: formatted(event.start, calendar: calendar)
         }
     }
 
@@ -279,7 +285,7 @@ final class ScheduleStore: ObservableObject {
     func presentation(of event: ScheduleEvent, on day: Date, calendar: Calendar? = nil) -> ScheduleRowPresentation {
         guard let calendar else {
             if day == self.calendar.startOfDay(for: now()) { return presentation(of: event) }
-            let time = formatted(event.start)
+            let time = timeText(for: event, state: .upcoming, dayBoundary: day, calendar: self.calendar)
             return ScheduleRowPresentation(
                 event: event, state: .upcoming, timeText: time,
                 accessibilityLabel: accessibilityLabel(for: event, at: time), location: trimmedLocation(of: event)
@@ -287,12 +293,7 @@ final class ScheduleStore: ObservableObject {
         }
         let today = calendar.startOfDay(for: now())
         let state: ScheduleEventState = day == today ? self.state(of: event) : .upcoming
-        let time: String
-        switch state {
-        case .inProgress: time = "Now"
-        case .past where event.start < today: time = "Until \(formatted(event.end, calendar: calendar))"
-        case .past, .upcoming: time = formatted(event.start, calendar: calendar)
-        }
+        let time = timeText(for: event, state: state, dayBoundary: today, calendar: calendar)
         let label = accessibilityLabel(for: event, at: time) + (state == .past ? ", ended" : "")
         return ScheduleRowPresentation(
             event: event, state: state, timeText: time,

@@ -14,7 +14,7 @@ final class MonthPlannedTasksUITests: XCTestCase {
         let checkbox = app.buttons["Future Month task"] // label-query: the task's saved text is the subject
         XCTAssertTrue(checkbox.waitForExistence(timeout: 10))
         checkbox.press(forDuration: 1)
-        app.buttons["task-do-later"].tap()
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
         let calendar = Calendar.current
         let date = try XCTUnwrap(calendar.date(byAdding: .day, value: 7, to: Date.now))
         let wheels = app.datePickers["task-planned-day-picker"].pickerWheels

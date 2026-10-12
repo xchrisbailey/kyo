@@ -19,24 +19,22 @@ final class MemoMonthContent: MonthContentSource {
     func content(on days: [Date]) -> [Date: MonthKindDay] {
         guard let first = days.min(), let last = days.max() else { return [:] }
         return Dictionary(uniqueKeysWithValues: store.daysWithMemos(from: first, through: last).map { day in
-            let memos = store.memos(on: day)
-            return (day, MonthKindDay(
-                mark: .filled,
-                phrase: MonthKindDay.countPhrase(memos.count, one: "memo", other: "memos"),
-                rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, kind: .memo($0.id)) }
-            ))
-        })
-    }
-    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
-        guard let first = days.min(), let last = days.max() else { return [:] }
-        return Dictionary(uniqueKeysWithValues: store.daysWithMemos(from: first, through: last, calendar: calendar).map { day in
-            let memos = store.memos(on: day, calendar: calendar)
-            return (day, MonthKindDay(
-                mark: .filled,
-                phrase: MonthKindDay.countPhrase(memos.count, one: "memo", other: "memos"),
-                rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, kind: .memo($0.id)) }
-            ))
+            (day, content(for: store.memos(on: day)))
         })
     }
 
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
+        guard let first = days.min(), let last = days.max() else { return [:] }
+        return Dictionary(uniqueKeysWithValues: store.daysWithMemos(from: first, through: last, calendar: calendar).map { day in
+            (day, content(for: store.memos(on: day, calendar: calendar)))
+        })
+    }
+
+    private func content(for memos: [Memo]) -> MonthKindDay {
+        MonthKindDay(
+            mark: .filled,
+            phrase: MonthKindDay.countPhrase(memos.count, one: "memo", other: "memos"),
+            rows: memos.map { MonthSummaryRow(id: "memo-\($0.id.uuidString)", text: $0.title, kind: .memo($0.id)) }
+        )
+    }
 }

@@ -70,6 +70,7 @@ protocol TaskListBehavior: AnyObject {
     /// ones included), "No tasks" when Today has none.
     var collapsedSummary: String { get }
     @discardableResult func addTask(text: String) -> DailyTask?
+    @discardableResult func addTask(text: String, plannedFor date: Date) -> DailyTask?
     @discardableResult func editTask(id: UUID, text: String) -> DailyTask?
     @discardableResult func deleteTask(id: UUID) -> DailyTask?
     @discardableResult func toggleTask(id: UUID) -> DailyTask?
@@ -235,6 +236,17 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     @discardableResult
     func addTask(text: String) -> DailyTask? {
+        createTask(text: text, plannedOn: nil)
+    }
+
+    @discardableResult
+    func addTask(text: String, plannedFor date: Date) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()) else { return nil }
+        return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar))
+    }
+
+    private func createTask(text: String, plannedOn: TaskPlannedDay?) -> DailyTask? {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return nil }
 
@@ -249,7 +261,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         }
 
         let creationOrder = (savedTasks.map(\.creationOrder).max() ?? -1) + 1
-        let task = DailyTask(text: trimmedText, creationOrder: creationOrder)
+        let task = DailyTask(text: trimmedText, creationOrder: creationOrder, plannedOn: plannedOn)
         savedTasks.append(task)
         refreshForCurrentDay()
         persist()

@@ -17,6 +17,28 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.incompleteCount, 2)
     }
 
+    func testCreatingAPlannedTaskSavesDirectlyIntoLaterAndSurvivesReopening() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let container = try makeContainer()
+        let list: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+
+        let planned = try XCTUnwrap(list.addTask(text: "  Call Friday  ", plannedFor: friday))
+
+        XCTAssertEqual(list.tasks, [first])
+        XCTAssertEqual(list.taskCount, 1)
+        XCTAssertEqual(list.incompleteCount, 1)
+        XCTAssertEqual(list.laterTasks, [planned])
+        XCTAssertEqual(planned.text, "Call Friday")
+        XCTAssertEqual(planned.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+        XCTAssertEqual(planned.creationOrder, 1)
+        let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.tasks, [first])
+        XCTAssertEqual(reopened.laterTasks, [planned])
+    }
+
     func testBlankInputDoesNotCreateATask() throws {
         let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer())
 

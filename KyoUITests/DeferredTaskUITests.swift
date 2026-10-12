@@ -99,6 +99,34 @@ final class DeferredTaskUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["later-empty"].waitForExistence(timeout: 5))
     }
 
+    func testUnavailableInterpretationKeepsTaskTextSeparateAndManualChoicesUsable() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let entry = app.textFields["new-task"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.typeText("Keep Friday in task text\n")
+        let task = app.buttons["Keep Friday in task text"] // label-query: task text must stay separate from scheduling input
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        task.press(forDuration: 1)
+        app.buttons["task-do-later"].tap()
+        let unavailable = app.staticTexts["task-scheduling-unavailable"]
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+        let description = app.textFields["task-scheduling-description"]
+        description.tap()
+        description.typeText("one month out")
+        XCTAssertFalse(app.buttons["task-scheduling-interpret"].isEnabled)
+        XCTAssertFalse(app.buttons["task-scheduling-confirm"].isEnabled)
+        app.swipeDown()
+        app.buttons["task-scheduling-today"].tap()
+        XCTAssertTrue(app.buttons["task-scheduling-confirm"].isEnabled)
+        app.buttons["task-scheduling-confirm"].tap()
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        XCTAssertEqual(task.value as? String, "Not completed")
+    }
+
     func testQuickChoicesPreviewFullDatesAndOnlyConfirmMovesTaskToLater() throws {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

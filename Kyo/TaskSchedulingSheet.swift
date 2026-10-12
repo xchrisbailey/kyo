@@ -3,10 +3,12 @@ import SwiftUI
 struct TaskSchedulingSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var workflow: TaskSchedulingWorkflow
+    @State private var interpretationTask: Task<Void, Never>?
+    @FocusState private var isDescriptionFocused: Bool
     let onConfirm: (Date) -> Bool
 
-    init(date: Date? = nil, onConfirm: @escaping (Date) -> Bool) {
-        _workflow = StateObject(wrappedValue: TaskSchedulingWorkflow(date: date))
+    init(date: Date? = nil, languageModel: any OnDeviceLanguageModel = FoundationOnDeviceLanguageModel(), onConfirm: @escaping (Date) -> Bool) {
+        _workflow = StateObject(wrappedValue: TaskSchedulingWorkflow(date: date, languageModel: languageModel))
         self.onConfirm = onConfirm
     }
 
@@ -41,6 +43,29 @@ struct TaskSchedulingSheet: View {
                     Button("Today", action: workflow.chooseToday)
                         .accessibilityIdentifier("task-scheduling-today")
                 }
+                Section("Describe a planned day") {
+                    TextField("For example, next Friday", text: $workflow.schedulingDescription, axis: .vertical)
+                        .focused($isDescriptionFocused)
+                        .lineLimit(1...4)
+                        .accessibilityIdentifier("task-scheduling-description")
+                    if let unavailable = workflow.availabilityMessage {
+                        Text(unavailable)
+                            .font(.footnote)
+                            .accessibilityIdentifier("task-scheduling-unavailable")
+                    }
+                    Button("Interpret") {
+                        isDescriptionFocused = false
+                        interpretationTask?.cancel()
+                        interpretationTask = Task { await workflow.interpretDescription() }
+                    }
+                    .disabled(workflow.isInterpreting || workflow.availabilityMessage != nil ||
+                              workflow.schedulingDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("task-scheduling-interpret")
+                    if workflow.isInterpreting {
+                        ProgressView("Interpreting…")
+                            .accessibilityIdentifier("task-scheduling-interpreting")
+                    }
+                }
                 if let message = workflow.message {
                     Section {
                         Text(message)
@@ -48,16 +73,26 @@ struct TaskSchedulingSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Do later")
+            .onDisappear {
+                interpretationTask?.cancel()
+                workflow.cancel()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        interpretationTask?.cancel()
+                        workflow.cancel()
+                        dismiss()
+                    }
                         .accessibilityIdentifier("task-scheduling-cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Confirm") {
                         if workflow.confirm(onConfirm) { dismiss() }
                     }
+                    .disabled(!workflow.canConfirm)
                     .accessibilityIdentifier("task-scheduling-confirm")
                 }
             }

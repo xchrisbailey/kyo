@@ -18,6 +18,17 @@ final class FakeOnDeviceLanguageModel: OnDeviceLanguageModel {
         case failure
     }
 
+    enum SchedulingAnswer {
+        case interpretation(TaskSchedulingInterpretation)
+        case failure
+    }
+
+    var schedulingAnswer: SchedulingAnswer = .interpretation(.unsupported)
+    var holdsSchedulingRequests = false
+    private(set) var receivedSchedulingDescriptions: [String] = []
+    private(set) var receivedSchedulingContexts: [TaskSchedulingContext] = []
+    private var pendingSchedulingRequests: [Int: CheckedContinuation<Void, Never>] = [:]
+
     var availability: OnDeviceLanguageAvailability = .available
     var answer: Answer = .suggestions([])
     /// What `textBudget` answers, in tokens (characters).
@@ -76,4 +87,22 @@ final class FakeOnDeviceLanguageModel: OnDeviceLanguageModel {
         pendingTitleRequest?.resume()
         pendingTitleRequest = nil
     }
+    func interpretSchedule(_ description: String, context: TaskSchedulingContext) async throws -> TaskSchedulingInterpretation {
+        let index = receivedSchedulingDescriptions.count
+        let answer = schedulingAnswer
+        receivedSchedulingDescriptions.append(description)
+        receivedSchedulingContexts.append(context)
+        if holdsSchedulingRequests {
+            await withCheckedContinuation { pendingSchedulingRequests[index] = $0 }
+        }
+        switch answer {
+        case .interpretation(let interpretation): return interpretation
+        case .failure: throw Failure()
+        }
+    }
+
+    func finishPendingSchedulingRequest(at index: Int = 0) {
+        pendingSchedulingRequests.removeValue(forKey: index)?.resume()
+    }
+
 }

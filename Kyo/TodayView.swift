@@ -135,15 +135,15 @@ struct TodayView: View {
                             MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
                         }
                     case .later:
-                        LaterSheet(taskList: taskList)
+                        LaterSheet(taskList: taskList, languageModel: languageModel)
                     case .scheduleTaskDraft:
-                        TaskSchedulingSheet(onConfirm: { date in
+                        TaskSchedulingSheet(languageModel: languageModel, onConfirm: { date in
                             guard taskList.addTask(text: taskDraft, plannedFor: date) != nil else { return false }
                             abandonTaskDraft()
                             return true
                         })
                     case .scheduleTask(let id):
-                        TaskSchedulingSheet(onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
+                        TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:

@@ -3,6 +3,7 @@ import SwiftUI
 struct LaterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var taskList: TaskListStore
+    var languageModel: any OnDeviceLanguageModel = FoundationOnDeviceLanguageModel()
     @State private var editingTask: DailyTask?
     @State private var reschedulingTask: DailyTask?
 
@@ -44,7 +45,7 @@ struct LaterSheet: View {
                 }
             }
             .sheet(item: $reschedulingTask) { task in
-                TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent)) { date in
+                TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent), languageModel: languageModel) { date in
                     taskList.deferTask(id: task.id, to: date) != nil
                 }
             }

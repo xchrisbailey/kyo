@@ -89,12 +89,13 @@ The XcodeGen version is pinned in the workflow (`XCODEGEN_VERSION`). If the proj
 
 On iPhone and iPad, tasks, habits, and memos live in one SwiftData store. Its models follow CloudKit's rules, with sync switched off (`docs/adr/0004-swiftdata-cloudkit-ready-storage.md`). The Watch keeps its own caches in UserDefaults.
 
-The paired iPhone and Watch stay in sync over WatchConnectivity. The phone is the single writer: it publishes a snapshot of the current day's tasks, habits, and memos after every change, and the Watch mirrors it. Changes made on the Watch become commands sent back to the phone, and Watch voice recordings travel to the phone as files. The ADRs record the rules:
+The paired iPhone and Watch stay in sync over WatchConnectivity. The phone is the single writer: it publishes task, habit, and memo snapshots after changes, and the Watch mirrors them. Task snapshots include Today's tasks and future incomplete tasks with their planned days. The Watch caches both and filters availability using its local Today, so previously synchronized tasks become available on their planned day without a live phone connection. Changes made on the Watch become commands sent back to the phone, and Watch voice recordings travel to the phone as files. The ADRs record the rules:
 
 - `docs/adr/0001-phone-authoritative-task-snapshots.md`: snapshot reconciliation.
 - `docs/adr/0002-watch-commands-and-phone-reconciliation.md`: how Watch-originated commands are applied and acknowledged.
 - `docs/adr/0003-habit-sync.md`: the habit snapshot and its trimmed log.
 - `docs/adr/0005-watch-memo-sync.md`: the memo snapshot and the recording outbox.
+- `docs/adr/0008-task-planned-days-and-date-interpretation.md`: fixed calendar-day scheduling and on-device date intent.
 
 To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a paired device), install both apps, launch the Watch app, then run the `KyoUITests` target with `KYO_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).
 

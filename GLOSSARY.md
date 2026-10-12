@@ -5,11 +5,11 @@ A personal daily planner for iPhone, iPad, and Apple Watch that presents one day
 ## Language
 
 **Today**:
-The current day as the user's device clock sees it; the only day the user acts on. Other days are looked at through the Month, never changed.
+The current day as the user's device clock sees it; the day whose available tasks, habits, and memos the user acts on. Other days are looked at through the Month; deferred tasks are managed through Later.
 _Avoid_: Current date, day view
 
 **Month**:
-One calendar month shown as a grid of days, each marked with what it holds: events, tasks completed, habits, and memos. It is an overview on iPhone and iPad; nothing is added or checked off from it, though a day's memos and events can be opened.
+One calendar month shown as a grid of days, each marked with what it holds: events, tasks planned or completed, habits, and memos. It is an overview on iPhone and iPad; nothing is added or checked off from it, though a day's memos and events can be opened.
 _Avoid_: Calendar, past days, history
 
 **Section**:
@@ -21,12 +21,24 @@ A section the user has closed down to its header; it stays collapsed until the u
 _Avoid_: Folded, hidden, minimized
 
 **Day summary**:
-What the Month shows for the day the user selects: its events, the tasks completed on it, its habits and whether each was checked off, and its memos.
+What the Month shows for the day the user selects: its events, tasks planned for or completed on it, its habits and whether each was checked off, and its memos.
 _Avoid_: Day view, day detail, agenda
 
 **Task**:
-A one-off text entry for a day that the user checks off; unfinished tasks carry forward to the next day.
+A one-off text entry that the user checks off, available on Today or deferred to a later day; once available, unfinished tasks carry forward to the next day.
 _Avoid_: Todo, item
+
+**Deferred task**:
+A task held out of Today's active list until its planned day arrives. Deferring a task is a one-time choice, not a recurring schedule or a deadline.
+_Avoid_: Snoozed task, recurring task, overdue task
+
+**Planned day**:
+The calendar day on which a deferred task becomes available on Today.
+_Avoid_: Due date, deadline
+
+**Later**:
+The list of deferred tasks ordered by planned day, where the user can change them or bring them back to Today.
+_Avoid_: Backlog, future day view
 
 **Habit**:
 A recurring practice the user defines once and checks off on each day its schedule makes it due; a missed habit never carries forward.

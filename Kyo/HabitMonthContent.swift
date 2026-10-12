@@ -28,6 +28,10 @@ final class HabitMonthContent: MonthContentSource {
     }
 
     func content(on days: [Date]) -> [Date: MonthKindDay] {
+        content(on: days, calendar: calendar)
+    }
+
+    func content(on days: [Date], calendar: Calendar) -> [Date: MonthKindDay] {
         var result: [Date: MonthKindDay] = [:]
         for day in days {
             let checkOffDay = TaskCompletionDay(date: day, calendar: calendar)

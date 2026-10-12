@@ -147,8 +147,9 @@ final class ScheduleStore: ObservableObject {
     }
 
     /// A time of day in the device's locale format.
-    private func formatted(_ date: Date) -> String {
-        date.formatted(
+    private func formatted(_ date: Date, calendar: Calendar? = nil) -> String {
+        let calendar = calendar ?? self.calendar
+        return date.formatted(
             Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: calendar, timeZone: calendar.timeZone)
         )
     }
@@ -275,12 +276,27 @@ final class ScheduleStore: ObservableObject {
     /// A row for `event` as the Day summary shows it on `day` (a start of day). On Today it is the
     /// Schedule's own row. Now, ended and dimming are relative to Today, so on any other day the row
     /// is the start time alone and reads as `.upcoming`, which is neither running nor ended.
-    func presentation(of event: ScheduleEvent, on day: Date) -> ScheduleRowPresentation {
-        if day == calendar.startOfDay(for: now()) { return presentation(of: event) }
-        let time = formatted(event.start)
+    func presentation(of event: ScheduleEvent, on day: Date, calendar: Calendar? = nil) -> ScheduleRowPresentation {
+        guard let calendar else {
+            if day == self.calendar.startOfDay(for: now()) { return presentation(of: event) }
+            let time = formatted(event.start)
+            return ScheduleRowPresentation(
+                event: event, state: .upcoming, timeText: time,
+                accessibilityLabel: accessibilityLabel(for: event, at: time), location: trimmedLocation(of: event)
+            )
+        }
+        let today = calendar.startOfDay(for: now())
+        let state: ScheduleEventState = day == today ? self.state(of: event) : .upcoming
+        let time: String
+        switch state {
+        case .inProgress: time = "Now"
+        case .past where event.start < today: time = "Until \(formatted(event.end, calendar: calendar))"
+        case .past, .upcoming: time = formatted(event.start, calendar: calendar)
+        }
+        let label = accessibilityLabel(for: event, at: time) + (state == .past ? ", ended" : "")
         return ScheduleRowPresentation(
-            event: event, state: .upcoming, timeText: time,
-            accessibilityLabel: accessibilityLabel(for: event, at: time),
+            event: event, state: state, timeText: time,
+            accessibilityLabel: label,
             location: trimmedLocation(of: event)
         )
     }

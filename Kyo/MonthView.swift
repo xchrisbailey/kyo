@@ -120,16 +120,20 @@ struct MonthView: View {
 
     /// The four kinds in slot order. It reflows to a column at large text sizes.
     private var legend: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 14) { legendItems }
-            VStack(alignment: .leading, spacing: 4) { legendItems }
+        VStack(alignment: .leading, spacing: 4) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) { legendItems }
+                VStack(alignment: .leading, spacing: 4) { legendItems }
+            }
+            Text("Tasks: hollow planned, filled completed, split both")
+                .font(.caption2)
         }
         .font(.caption)
         .foregroundStyle(theme.secondaryText)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 8)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Marks on each day, in order: events, tasks, habits, memos")
+        .accessibilityLabel("Marks on each day, in order: events, tasks, habits, memos. Hollow task marks mean planned, filled mean completed, split mean both.")
         .accessibilityIdentifier("month-legend")
     }
 
@@ -225,6 +229,10 @@ private struct MarkSlot: View {
             case .empty: Color.clear
             case .filled: Circle().fill(kind.markColor(in: theme))
             case .hollow: Circle().strokeBorder(kind.markColor(in: theme), lineWidth: 1.5)
+            case .mixed:
+                Circle().strokeBorder(kind.markColor(in: theme), lineWidth: 1.5)
+                Circle().fill(kind.markColor(in: theme))
+                    .mask(Rectangle().frame(width: 3.5).offset(x: -1.75))
             }
         }
         .frame(width: 7, height: 7)
@@ -285,6 +293,16 @@ private struct MonthSummaryRowView: View {
             switch row.kind {
             case .plain, .memo:
                 title
+            case .task(let isComplete):
+                Image(systemName: isComplete ? "checkmark.circle.fill" : "calendar")
+                    .foregroundStyle(theme.kindTasks)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    title
+                    Text(isComplete ? "Completed" : "Planned")
+                        .font(.caption)
+                        .foregroundStyle(theme.secondaryText)
+                }
             case .habit(let isChecked):
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isChecked ? theme.accent : theme.secondaryText)

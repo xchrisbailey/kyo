@@ -39,6 +39,30 @@ final class TaskStoragePersistenceTests: XCTestCase {
         XCTAssertEqual(MemoStore(modelContainer: container).memos.map(\.title), ["Remember before upgrade"])
     }
 
+    func testScheduledCreationSurvivesDiskReopeningWithIdentityTextAndOrder() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        var planned: DailyTask?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let list: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+            _ = list.addTask(text: "First")
+            planned = try XCTUnwrap(list.addTask(text: "Call Friday", plannedFor: friday))
+            _ = list.addTask(text: "Third")
+        }
+        let container = try KyoModelContainer.make(storeURL: url)
+        let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.laterTasks, [try XCTUnwrap(planned)])
+        XCTAssertEqual(reopened.laterTasks.first?.creationOrder, 1)
+        XCTAssertEqual(reopened.tasks.map(\.text), ["First", "Third"])
+        XCTAssertEqual(reopened.taskCount, 2)
+    }
+
     func testTasksSeededWithTheSameIDLoadOnce() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let id = UUID()

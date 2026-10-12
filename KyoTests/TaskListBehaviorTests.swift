@@ -17,6 +17,48 @@ final class TaskListBehaviorTests: XCTestCase {
         XCTAssertEqual(list.incompleteCount, 2)
     }
 
+    func testCreatingAPlannedTaskSavesDirectlyIntoLaterAndSurvivesReopening() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let container = try makeContainer()
+        let list: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        let first = try XCTUnwrap(list.addTask(text: "First"))
+
+        let planned = try XCTUnwrap(list.addTask(text: "  Call Friday  ", plannedFor: friday))
+
+        XCTAssertEqual(list.tasks, [first])
+        XCTAssertEqual(list.taskCount, 1)
+        XCTAssertEqual(list.incompleteCount, 1)
+        XCTAssertEqual(list.laterTasks, [planned])
+        XCTAssertEqual(planned.text, "Call Friday")
+        XCTAssertEqual(planned.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+        XCTAssertEqual(planned.creationOrder, 1)
+        let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.tasks, [first])
+        XCTAssertEqual(reopened.laterTasks, [planned])
+    }
+
+    func testTodayCreationAndRejectedDraftsKeepOrdinaryTaskBehavior() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let yesterday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 10)))
+        let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+
+        XCTAssertNil(list.addTask(text: " \n\t ", plannedFor: today))
+        XCTAssertNil(list.addTask(text: "Past", plannedFor: yesterday))
+        XCTAssertTrue(list.tasks.isEmpty)
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        let scheduled = try XCTUnwrap(list.addTask(text: "Friday at 3", plannedFor: today))
+        let ordinary = try XCTUnwrap(list.addTask(text: "October 16"))
+        XCTAssertEqual(list.tasks, [scheduled, ordinary])
+        XCTAssertEqual(list.tasks.map(\.text), ["Friday at 3", "October 16"])
+        XCTAssertEqual(list.tasks.map(\.creationOrder), [0, 1])
+        XCTAssertEqual(list.taskCount, 2)
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        XCTAssertNil(ordinary.plannedOn)
+    }
+
     func testBlankInputDoesNotCreateATask() throws {
         let list: any TaskListBehavior = TaskListStore(modelContainer: try makeContainer())
 
@@ -402,6 +444,127 @@ final class TaskListBehaviorTests: XCTestCase {
         list.refreshForCurrentDay()
         XCTAssertEqual(list.tasks.first?.id, task.id)
         XCTAssertTrue(list.laterTasks.isEmpty)
+    }
+
+    func testWeekdayChoiceIncludesTodayAndOnlySavesAfterConfirmation() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        let list = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+        let task = try XCTUnwrap(list.addTask(text: "Sunday task"))
+        let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+        workflow.choose(.weekday(1))
+        XCTAssertEqual(workflow.proposedDate, today)
+        XCTAssertEqual(list.tasks, [task])
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+        XCTAssertEqual(list.tasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 11))
+    }
+
+    func testOneWeekChoiceUsesCalendarDaysAcrossBothDaylightSavingBoundaries() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        for (month, day, expectedDay) in [(3, 7, 14), (10, 31, 7)] {
+            let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: 12)))
+            let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+            workflow.choose(.weeks(1))
+            let expectedMonth = month == 10 ? 11 : 3
+            let expected = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: expectedMonth, day: expectedDay)))
+            XCTAssertEqual(workflow.proposedDate, expected)
+            let list = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+            let task = try XCTUnwrap(list.addTask(text: "Next week"))
+            XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+            XCTAssertTrue(list.tasks.isEmpty)
+            XCTAssertEqual(list.laterTasks.first?.plannedOn,
+                           TaskPlannedDay(era: 1, year: 2026, month: expectedMonth, day: expectedDay))
+        }
+    }
+
+    func testOneMonthChoiceClampsMonthEndIncludingLeapYearsAndYearRollover() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        for (year, month, day, expectedYear, expectedMonth, expectedDay) in [
+            (2026, 1, 31, 2026, 2, 28), (2028, 1, 31, 2028, 2, 29),
+            (2026, 3, 31, 2026, 4, 30), (2026, 12, 15, 2027, 1, 15)
+        ] {
+            let today = try XCTUnwrap(calendar.date(from: DateComponents(year: year, month: month, day: day)))
+            let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+            workflow.choose(.months(1))
+            let expected = try XCTUnwrap(calendar.date(from: DateComponents(year: expectedYear, month: expectedMonth, day: expectedDay)))
+            XCTAssertEqual(workflow.proposedDate, expected)
+            let container = try makeContainer()
+            let list = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+            let task = try XCTUnwrap(list.addTask(text: "Next month"))
+            XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+            let reopened = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+            XCTAssertEqual(reopened.laterTasks.first?.plannedOn,
+                           TaskPlannedDay(era: 1, year: expectedYear, month: expectedMonth, day: expectedDay))
+            XCTAssertEqual(reopened.laterTasks.first?.id, task.id)
+        }
+    }
+
+    func testNextCalendarWeekWeekdayHonorsFirstWeekdayAndBareWeekdayCanStayInThisWeek() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 11)))
+        for (firstWeekday, expectedDay) in [(1, 23), (2, 16)] {
+            calendar.firstWeekday = firstWeekday
+            let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+            workflow.choose(.nextWeekday(6))
+            XCTAssertEqual(workflow.proposedDate,
+                           calendar.date(from: DateComponents(year: 2026, month: 10, day: expectedDay)))
+            var saved: Date?
+            XCTAssertTrue(workflow.confirm { saved = $0; return true })
+            XCTAssertEqual(saved, workflow.proposedDate)
+            workflow.choose(.weekday(6))
+            XCTAssertEqual(workflow.proposedDate,
+                           calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        }
+    }
+
+    func testExplicitCalendarDatePreviewRejectsOverflowAndAllowsManualCorrection() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2028, month: 1, day: 31)))
+        let leapDay = try XCTUnwrap(calendar.date(from: DateComponents(year: 2028, month: 2, day: 29)))
+        let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+        workflow.choose(.date(year: 2028, month: 2, day: 29))
+        XCTAssertEqual(workflow.proposedDate, leapDay)
+        for intent in [TaskSchedulingIntent.date(year: 2028, month: 2, day: 30),
+                       .date(year: 2028, month: 13, day: 1), .date(year: 2028, month: 1, day: 0),
+                       .date(year: 0, month: 1, day: 1), .weekday(0), .nextWeekday(8)] {
+            workflow.choose(intent)
+            var saved = false
+            XCTAssertFalse(workflow.confirm { _ in saved = true; return true })
+            XCTAssertFalse(saved)
+            XCTAssertNotNil(workflow.message)
+            workflow.proposedDate = leapDay
+            XCTAssertTrue(workflow.confirm { $0 == leapDay })
+        }
+        workflow.choose(.date(year: 2027, month: 2, day: 29))
+        workflow.chooseToday()
+        XCTAssertTrue(workflow.confirm { $0 == today })
+        workflow.choose(.date(year: 2028, month: 1, day: 30))
+        XCTAssertFalse(workflow.confirm { _ in XCTFail("Past intent must not save"); return true })
+    }
+
+    func testRelativeDayIntentPreviewsTomorrowAndKeepsDraftChangesUncommitted() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 3, day: 7, hour: 23)))
+        let tomorrow = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 3, day: 8)))
+        let list = TaskListStore(modelContainer: try makeContainer(), now: { today }, calendar: calendar)
+        let task = try XCTUnwrap(list.addTask(text: "Tomorrow task"))
+        let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar)
+        workflow.choose(.days(1))
+        XCTAssertEqual(workflow.proposedDate, tomorrow)
+        workflow.choose(.weeks(1))
+        workflow.choose(.months(1))
+        XCTAssertEqual(list.tasks, [task])
+        XCTAssertTrue(list.laterTasks.isEmpty)
+        workflow.choose(.days(1))
+        XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+        XCTAssertEqual(list.laterTasks.first?.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 3, day: 8))
     }
 
     func testLaterEditsReschedulesAndDeletionSurviveDiskReopeningWithoutChangingCompletionHistory() throws {

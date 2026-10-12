@@ -112,6 +112,10 @@ final class DeferredTaskUITests: XCTestCase {
         XCTAssertTrue(task.waitForExistence(timeout: 10))
         task.press(forDuration: 1)
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-later-")).firstMatch.tap()
+        // Scroll beside the date wheels so the gesture moves the Form, rather than a wheel.
+        let form = app.collectionViews.firstMatch
+        form.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.85))
+            .press(forDuration: 0.1, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.2)))
         let unavailable = app.staticTexts["task-scheduling-unavailable"]
         XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
         let description = app.textFields["task-scheduling-description"]

@@ -16,7 +16,7 @@ struct TaskSchedulingSheet: View {
         NavigationStack {
             Form {
                 Section("Quick choices") {
-                    Menu("Weekday") {
+                    Menu {
                         ForEach(0..<7, id: \.self) { offset in
                             let weekday = (workflow.calendar.firstWeekday - 1 + offset) % 7 + 1
                             Button(workflow.calendar.weekdaySymbols[weekday - 1]) {
@@ -24,6 +24,10 @@ struct TaskSchedulingSheet: View {
                             }
                             .accessibilityIdentifier("task-scheduling-weekday-\(weekday)")
                         }
+                    } label: {
+                        Text("Weekday")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityIdentifier("task-scheduling-weekday")
                     Button("One week out") { workflow.choose(.weeks(1)) }

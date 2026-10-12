@@ -1,7 +1,9 @@
 import Combine
 import Foundation
 
-enum TaskSchedulingIntent {
+/// Calendar intent resolved against local Today. Weekdays use Calendar's 1...7 numbering;
+/// nextWeekday selects that weekday in the following calendar week, rather than its next occurrence.
+enum TaskSchedulingIntent: Equatable, Sendable {
     case weekday(Int)
     case nextWeekday(Int)
     case days(Int)

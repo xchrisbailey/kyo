@@ -13,6 +13,22 @@ struct TaskSchedulingSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Quick choices") {
+                    Menu("Weekday") {
+                        ForEach(0..<7, id: \.self) { offset in
+                            let weekday = (workflow.calendar.firstWeekday - 1 + offset) % 7 + 1
+                            Button(workflow.calendar.weekdaySymbols[weekday - 1]) {
+                                workflow.choose(.weekday(weekday))
+                            }
+                            .accessibilityIdentifier("task-scheduling-weekday-\(weekday)")
+                        }
+                    }
+                    .accessibilityIdentifier("task-scheduling-weekday")
+                    Button("One week out") { workflow.choose(.weeks(1)) }
+                        .accessibilityIdentifier("task-scheduling-one-week")
+                    Button("One month out") { workflow.choose(.months(1)) }
+                        .accessibilityIdentifier("task-scheduling-one-month")
+                }
                 Section("Planned day") {
                     DatePicker("Choose a date", selection: $workflow.proposedDate, displayedComponents: .date)
                         .datePickerStyle(.wheel)

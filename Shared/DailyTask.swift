@@ -429,7 +429,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         currentDate = calendar.startOfDay(for: now)
         let day = TaskCompletionDay(date: now, calendar: calendar)
         tasks = Self.ordered(currentFullTaskList.filter { task in
-            !task.isUnscheduled && (task.isComplete ? task.completedOn == day : !isDeferred(task))
+            task.isComplete ? task.completedOn == day : !task.isUnscheduled && !isDeferred(task)
         })
         laterTasks = currentFullTaskList.filter { !$0.isUnscheduled && !$0.isComplete && isDeferred($0) }.sorted {
             let lhs = $0.plannedOn?.date(in: calendar) ?? currentDate
@@ -482,7 +482,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     func tasksCompleted(on day: Date, calendar: Calendar? = nil) -> [DailyTask] {
         let calendar = calendar ?? self.calendar
         let completionDay = TaskCompletionDay(date: day, calendar: calendar)
-        return Self.ordered(currentFullTaskList.filter { !$0.isUnscheduled && $0.isComplete && $0.completedOn == completionDay })
+        return Self.ordered(currentFullTaskList.filter { $0.isComplete && $0.completedOn == completionDay })
     }
 
     /// Incomplete tasks with this planned day, including ones already available on Today.
@@ -494,7 +494,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     /// The start of each day in `days` on which at least one task was completed.
     func daysWithCompletedTask(in days: [Date]) -> Set<Date> {
-        let completionDays = Set(currentFullTaskList.compactMap { !$0.isUnscheduled && $0.isComplete ? $0.completedOn : nil })
+        let completionDays = Set(currentFullTaskList.compactMap { $0.isComplete ? $0.completedOn : nil })
         return Set(days.map { calendar.startOfDay(for: $0) }.filter {
             completionDays.contains(TaskCompletionDay(date: $0, calendar: calendar))
         })

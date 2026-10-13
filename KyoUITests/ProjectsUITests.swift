@@ -140,16 +140,17 @@ final class ProjectsUITests: XCTestCase {
     }
     private func tapRevealed(_ control: XCUIElement, in app: XCUIApplication) {
         let scroll = app.scrollViews.firstMatch
-        for _ in 0..<8 {
+        for _ in 0..<16 {
             let bottom = app.buttons["add-item"].frame.minY - 12
             if control.isHittable && control.frame.maxY < bottom && control.frame.minY >= scroll.frame.minY {
                 control.tap()
                 return
             }
-            if control.frame.maxY >= bottom { scroll.swipeUp() }
-            else { scroll.swipeDown() }
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: control.frame.maxY >= bottom ? 0.4 : 0.8))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
-        XCTFail("Control remained outside the visible Today scroll area: \(control.identifier)")
+        XCTFail("Control remained outside the visible Today scroll area: \(control.identifier), frame \(control.frame), scroll \(scroll.frame)")
     }
 
     private func selectTheme(_ id: String, palette: String, in app: XCUIApplication) {

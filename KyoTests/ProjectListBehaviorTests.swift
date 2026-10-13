@@ -124,6 +124,48 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(watch.laterTasks.first?.projectID, project.id)
     }
 
+    func testQueuedCompletionAfterReturnStillAppearsTodayAndRetainsHistory() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let transport = ControllableTaskTransport()
+        let suite = "ProjectsQueuedCompletion.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+                                  now: { now }, calendar: calendar, sync: .publish(to: transport))
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: phone)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(projects.addTaskForToday(text: "Widgets", to: project.id))
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+                                  sync: .mirror(from: transport))
+        transport.disconnect()
+        _ = watch.toggleTask(id: task.id)
+        _ = projects.returnToProject(taskID: task.id)
+        transport.reconnect()
+        XCTAssertEqual(projects.todayProjects, [project])
+        XCTAssertEqual(projects.todayTasks(in: project.id).map(\.id), [task.id])
+        XCTAssertEqual(phone.taskCount, 1)
+        XCTAssertEqual(phone.completedCount, 1)
+        XCTAssertTrue(phone.everydayTasks.isEmpty)
+        XCTAssertEqual(watch.tasks, phone.tasks)
+        XCTAssertEqual(phone.tasksCompleted(on: now).map(\.id), [task.id])
+        XCTAssertEqual(projects.completedTasks(in: project.id).map(\.id), [task.id])
+        let completed = try XCTUnwrap(phone.tasks.first)
+        XCTAssertTrue(completed.isUnscheduled)
+        XCTAssertTrue(completed.isComplete)
+        now = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        phone.refreshForCurrentDay()
+        watch.refreshForCurrentDay()
+        XCTAssertTrue(projects.todayProjects.isEmpty)
+        XCTAssertTrue(watch.tasks.isEmpty)
+        XCTAssertEqual(projects.completedTasks(in: project.id), [completed])
+        _ = phone.toggleTask(id: task.id)
+        XCTAssertEqual(projects.todayTasks(in: project.id).map(\.id), [task.id])
+        XCTAssertFalse(try XCTUnwrap(phone.tasks.first).isUnscheduled)
+        XCTAssertEqual(watch.tasks, phone.tasks)
+    }
+
     func testCreationAndRenameKeepIdentityAndCreationOrderWhenReopened() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

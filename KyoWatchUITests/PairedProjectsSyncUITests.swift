@@ -121,12 +121,22 @@ final class PairedProjectsSyncUITests: XCTestCase {
     }
 
     private func waitForDelivery(_ element: XCUIElement, label: String, in app: XCUIApplication) {
+        let deliveredGroup = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "project-group-collapse-")
+        ).firstMatch
         let deadline = Date.now.addingTimeInterval(90)
         var upward = true
         var steps = 0
-        // Draw lazy rows in both directions while waiting for the exact delivered catalog.
+        // Delivery and the button's accessibility are separate observable requirements.
         while Date.now < deadline {
-            if element.exists && element.isHittable && element.label == label { return }
+            if deliveredGroup.exists && deliveredGroup.label == label {
+                recordProjectControls(in: app)
+                XCTAssertTrue(element.exists, "Delivered project group must expose a button accessibility trait")
+                reveal(element, in: app)
+                XCTAssertTrue(element.isHittable, "Delivered project group button must be tappable")
+                XCTAssertEqual(element.label, label)
+                return
+            }
             scroll(in: app, upward: upward)
             steps += 1
             if steps == 8 {
@@ -134,12 +144,34 @@ final class PairedProjectsSyncUITests: XCTestCase {
                 steps = 0
             }
         }
+        recordProjectControls(in: app)
         XCTFail("Project catalog must arrive through actual WatchConnectivity: \(label)")
     }
 
+    private func recordProjectControls(in app: XCUIApplication) {
+        let controls = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@ OR identifier BEGINSWITH %@ OR identifier == %@",
+            "project-group-collapse-", "task-checkbox-", "plus"
+        ))
+        for control in controls.allElementsBoundByIndex {
+            print("Paired project control: identifier=\(control.identifier), type=\(control.elementType.rawValue), label=\(control.label), value=\(String(describing: control.value)), frame=\(control.frame), hittable=\(control.isHittable)")
+        }
+        print("Paired project accessibility inventory: \(app.debugDescription)")
+        capture("paired-watch-delivered-project-accessibility", in: app)
+    }
+
     private func scroll(in app: XCUIApplication, upward: Bool) {
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.6 : 0.4))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.4 : 0.6))
+        let bounds = app.frame
+        let captureButton = app.buttons["plus"]
+        let bottom = captureButton.exists ? captureButton.frame.minY : bounds.maxY
+        // Begin inside the list, above the fixed capture control observed on Watch.
+        let lowerY = bottom - 20
+        let upperY = max(bounds.minY + 20, lowerY - (bottom - bounds.minY) * 0.3)
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let lower = origin.withOffset(CGVector(dx: bounds.width * 0.5, dy: lowerY - bounds.minY))
+        let upper = origin.withOffset(CGVector(dx: bounds.width * 0.5, dy: upperY - bounds.minY))
+        let start = upward ? lower : upper
+        let end = upward ? upper : lower
         start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.5)
     }
 

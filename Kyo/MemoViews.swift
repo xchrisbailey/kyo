@@ -354,7 +354,7 @@ struct MemoCardSheet: View {
                 if let note = memo.capNote {
                     capNote(note)
                 }
-                if !isReadOnly { actionRow }
+                actionRow
                 if !isReadOnly, let onAssign, projects.contains(where: { !$0.isArchived }) || memo.projectID != nil {
                     Menu {
                         ForEach(projects.filter { !$0.isArchived }) { project in
@@ -513,41 +513,43 @@ struct MemoCardSheet: View {
                 .accessibilityHint("Shares this memo's text and photos")
             }
 
-            Button {
-                taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
-            } label: {
-                Label("Memo → Task", systemImage: "checklist")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(theme.accent)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 44)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("memo-to-task")
-            .accessibilityHint("Turns this memo into tasks on Today")
-
-            Button(role: .destructive) {
-                if memo.kind == .voice {
-                    isConfirmingDelete = true
-                } else {
-                    onDelete()
-                    dismiss()
+            if !isReadOnly {
+                Button {
+                    taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
+                } label: {
+                    Label("Memo → Task", systemImage: "checklist")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.accent)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(theme.accent.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
                 }
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(theme.destructive)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 44)
-                    .background(theme.destructive.opacity(0.12), in: Capsule())
-                    .contentShape(Capsule())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("memo-to-task")
+                .accessibilityHint("Turns this memo into tasks on Today")
+
+                Button(role: .destructive) {
+                    if memo.kind == .voice {
+                        isConfirmingDelete = true
+                    } else {
+                        onDelete()
+                        dismiss()
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.destructive)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(theme.destructive.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("memo-delete")
+                .accessibilityLabel("Delete memo")
+                .accessibilityHint("Deletes this memo permanently")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("memo-delete")
-            .accessibilityLabel("Delete memo")
-            .accessibilityHint("Deletes this memo permanently")
         }
     }
 

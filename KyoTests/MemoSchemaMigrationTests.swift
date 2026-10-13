@@ -124,6 +124,7 @@ final class MemoSchemaMigrationTests: XCTestCase {
                 ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none))
             installed.mainContext.insert(PreArchiveProjectSchema.ProjectRecord(project: project))
             installed.mainContext.insert(TaskRecord(task: task))
+            SwiftDataHabitContent(modelContainer: installed).save([Habit(name: "Stretch", order: 0)])
             let memo = MemoRecord(id: memoID, kind: .voice, createdAt: .distantPast,
                 day: day, text: "Installed transcript", durationSeconds: 4, transcriptState: .transcribed)
             memo.projectID = project.id
@@ -139,6 +140,7 @@ final class MemoSchemaMigrationTests: XCTestCase {
             let projects = ProjectListStore(modelContainer: container, taskList: tasks, memoStore: memos)
             XCTAssertEqual(projects.projects.first?.isArchived, opening > 0)
             XCTAssertEqual(tasks.tasks(in: project.id), [task])
+            XCTAssertEqual(SwiftDataHabitContent(modelContainer: container).load().map(\.name), ["Stretch"])
             XCTAssertEqual(memos.memo(id: memoID)?.projectID, project.id)
             XCTAssertEqual(memos.memo(id: memoID)?.day, day)
             XCTAssertEqual(memos.audioData(forMemoID: memoID), bytes)

@@ -28,6 +28,7 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(projects.laterTasks(in: project.id).map(\.id), [arriving.id, later.id])
         XCTAssertEqual(tasks.tasks(in: project.id), [chosen, arriving, later, unscheduled, done])
         XCTAssertEqual(tasks.tasksCompleted(on: now), [done])
+        XCTAssertEqual(tasks.tasksPlanned(on: future, calendar: calendar), [later])
         now = tomorrow
         tasks.refreshForCurrentDay()
         XCTAssertTrue(tasks.tasks.isEmpty)

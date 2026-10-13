@@ -1,10 +1,14 @@
 # Projects
 
-Status: Design interview in progress. Only the decisions below are confirmed; implementation requires a separate user request.
+Status: All interview recommendations accepted; awaiting confirmation of the complete design. Implementation requires a separate user request.
 
 ## Problem Statement
 
 Tasks for a body of work such as building Kyo are mixed with everyday tasks on Today. The user wants related project work kept together and separated from everyday tasks.
+
+## Solution
+
+Add one Projects section to Today, with a collapsible group per project showing only tasks chosen for today. Project details hold the full task list and linked memos. A project task is still a Task, with the existing editing, completion, deletion, and sharing behavior; its project association and availability determine where it appears.
 
 ## Confirmed Decisions
 
@@ -25,10 +29,17 @@ Tasks for a body of work such as building Kyo are mixed with everyday tasks on T
 - Add task and Add memo inside a project automatically assign that project. The bottom Add menu keeps everyday capture and gains an optional project picker for tasks and memos. New project is available in All projects. Choosing a task for Today does not expand a collapsed project group.
 - Later remains one list of scheduled tasks and shows project names on project tasks. Month includes project tasks under existing planned-day and completion-day rules, showing project names. Unscheduled project tasks appear in neither view.
 - Priorities, subtasks, deadlines, and manual ordering are outside the first version.
+- Archiving preserves task availability choices and planned days. On restore, previously available unfinished tasks return to Today; scheduled unfinished tasks whose planned day has arrived become available on Today; future tasks return to Later; unscheduled tasks stay inside the project. Past completions and memos remain visible in Month and Memo history while archived. Archived project details are read-only until restored.
+- Keep the Projects header and All projects link visible when no project tasks are on Today. The expanded section says No project tasks for today and offers New project if no projects exist. Show a project group only when it has unfinished available tasks or tasks completed today. Projects use creation order; new projects start expanded. All projects separates active and archived projects. Active projects can be renamed.
+- Inside a project, new tasks start Unscheduled. From Today's bottom Add menu, tasks start on Today even when a project is selected; choosing a future day sends them to Later. Moving existing tasks between projects preserves their timing.
+- Return to project can also remove a task from Later: it clears the planned day and holds the task unscheduled in its project. Reopening a completed task makes it available on Today. Project memos support existing written and voice memo features. Assignment pickers list only active projects.
 
-## Open Decisions
+## Scope and Constraints
 
-- Restoration of previously chosen or scheduled tasks and editing archived content.
-- Empty sections, project ordering, capture defaults, and task actions at the edges of the lists.
+- No permanent project deletion, priorities, subtasks, deadlines, or manual ordering in the first version.
+- No full project management, project assignment, or project memo browsing on Watch in the first version.
+- Project association does not copy a task or memo. Counts and completion records must not count the same content twice.
+- Planned days remain calendar days of availability, not deadlines, as in ADR 0008.
+- Implementation must respect the phone-authoritative synchronization in ADRs 0001 and 0002 and the persistence constraints in ADR 0004. Storage representation, synchronization changes, migrations, and implementation tickets remain to be designed after final product confirmation.
 
-Terms follow root GLOSSARY.md. No implementation or architecture decision has been made.
+Terms follow root GLOSSARY.md. No implementation has been authorized. The interview captured product behavior; no new architecture ADR was needed for the layout choices.

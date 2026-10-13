@@ -25,8 +25,12 @@ What the Month shows for the day the user selects: its events, tasks planned for
 _Avoid_: Day view, day detail, agenda
 
 **Task**:
-A one-off text entry that the user checks off, available on Today or deferred to a later day; once available, unfinished tasks carry forward to the next day.
+A one-off text entry that the user checks off, available on Today, deferred to a later day, or held unscheduled in a project; once available, unfinished tasks carry forward to the next day unless returned to their project or the project is archived.
 _Avoid_: Todo, item
+
+**Unscheduled project task**:
+An unfinished task held in its project until the user chooses Do today or a planned day. It has no planned day and is absent from Today, Later, and Month.
+_Avoid_: Backlog task, deferred task
 
 **Project**:
 A named body of work, such as building Kyo, that groups related tasks and optional memos separately from everyday tasks. A task or memo belongs to at most one project.
@@ -45,7 +49,7 @@ The calendar day on which a deferred task becomes available on Today.
 _Avoid_: Due date, deadline
 
 **Later**:
-The list of deferred tasks ordered by planned day, where the user can change them or bring them back to Today.
+The list of deferred tasks ordered by planned day, where the user can change them or bring them back to Today; tasks in archived projects are held out of this list.
 _Avoid_: Backlog, future day view
 
 **Habit**:

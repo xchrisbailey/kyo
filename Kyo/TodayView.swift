@@ -5,6 +5,7 @@ import UIKit
 struct TodayView: View {
     @Environment(\.theme) private var theme
     @StateObject private var taskList: TaskListStore
+    @StateObject private var projects: ProjectListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
     @StateObject private var schedule: ScheduleStore
@@ -23,11 +24,13 @@ struct TodayView: View {
     @State private var isShowingRecorder = false
     /// Whether the compose sheet holds text or a photo, which quick capture mustn't throw away.
     @State private var composeHasDraft = false
+    @State private var projectCaptureSurface: QuickCaptureRouter.Surface?
     /// The capture quick capture opens once the sheet it closed has finished dismissing.
     @State private var captureAfterSheetDismissal: QuickCaptureRouter.Target?
     @State private var voiceMemoPendingDelete: UUID?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
+    @State private var taskDraftProjectID: UUID?
     /// Set when + → Task brings back a draft that was hidden by collapsing Tasks, so the row scrolls
     /// into view and takes focus once it's on screen again.
     @State private var revealTaskDraftWhenShown = false
@@ -59,6 +62,7 @@ struct TodayView: View {
             watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
         )
         _memoStore = StateObject(wrappedValue: memoStore)
+        _projects = StateObject(wrappedValue: ProjectListStore(modelContainer: modelContainer, taskList: taskList, memoStore: memoStore))
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         // Built on first use, once, because Month reads events through it as well.
         lazy var schedule = CalendarServiceSelection.makeScheduleStore()
@@ -127,27 +131,46 @@ struct TodayView: View {
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
                         WrittenMemoComposeSheet(
-                            onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) },
+                            projects: projects.projects,
+                            onSave: { text, photos, projectID in memoStore.addWrittenMemo(text: text, photos: photos, projectID: projectID) },
                             onDraftChange: { composeHasDraft = $0 }
                         )
                     case .memo(let id):
                         if let memo = memoStore.memo(id: id) {
-                            MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
+                            MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList, projects: projects.projects)
                         }
                     case .later:
                         LaterSheet(taskList: taskList, languageModel: languageModel)
                     case .scheduleTaskDraft:
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { date in
-                            guard taskList.addTask(text: taskDraft, plannedFor: date) != nil else { return false }
+                            guard createTaskDraft(plannedFor: date) else { return false }
                             abandonTaskDraft()
                             return true
                         })
                     case .scheduleTask(let id):
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
+                    case .allProjects:
+                        ProjectsSheet(projects: projects, sections: sections, languageModel: languageModel,
+                            voiceRecording: voiceRecording, onCaptureSurfaceChange: { projectCaptureSurface = $0 })
+                    case .project(let id):
+                        NavigationStack {
+                            ProjectDetailView(projectID: id, projects: projects, taskList: taskList,
+                                languageModel: languageModel, voiceRecording: voiceRecording,
+                                onCaptureSurfaceChange: { projectCaptureSurface = $0 }, sections: sections,
+                                onDone: { activeSheet = nil })
+                        }
+                    case .addProjectTask(let id):
+                        ProjectTextForm(title: "Add task", field: "Task", identifier: "project-task") {
+                            projects.addTaskForToday(text: $0, to: id) != nil
+                        }
+                    case .newProject:
+                        ProjectsSheet(projects: projects, sections: sections, startCreating: true,
+                            languageModel: languageModel, voiceRecording: voiceRecording,
+                            onCaptureSurfaceChange: { projectCaptureSurface = $0 })
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:
-                        MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList)
+                        MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList, projects: projects.projects)
                     case .editHabit(let id):
                         if let habit = habitList.habits.first(where: { $0.id == id }) {
                             HabitFormSheet(
@@ -160,7 +183,7 @@ struct TodayView: View {
                 }
                 .fullScreenCover(isPresented: $isShowingRecorder) {
                     if let voiceRecording {
-                        VoiceRecorderView(session: voiceRecording, onFinish: { isShowingRecorder = false })
+                        VoiceRecorderView(session: voiceRecording, projects: projects.projects, onFinish: { isShowingRecorder = false })
                     }
                 }
                 .confirmationDialog(
@@ -202,7 +225,8 @@ struct TodayView: View {
             let live: any LiveTranscribing = KyoModelContainer.isInMemoryRequested ? NoLiveTranscriber() : LiveSpeechTranscriber(support: .shared)
             let recorder = DeviceAudioRecorder()
             recorder.beforeDeactivation = { await live.waitUntilStopped() }
-            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live)
+            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live,
+                userDefaults: RecordingMemoContextSelection.defaults())
             session.recoverInterruptedRecordings()
             voiceRecording = session
         }
@@ -280,7 +304,7 @@ struct TodayView: View {
         TodaySection(
             title: "Tasks",
             note: "For today",
-            collapsedSummary: taskList.collapsedSummary,
+            collapsedSummary: taskList.everydayTasks.isEmpty ? "No tasks" : "\(taskList.everydayTasks.filter(\.isComplete).count) of \(taskList.everydayTasks.count) done",
             section: .tasks,
             sections: sections,
             linkTitle: "Later",
@@ -288,27 +312,29 @@ struct TodayView: View {
             linkAction: { activeSheet = .later }
         ) {
             VStack(spacing: 0) {
-                if taskList.tasks.isEmpty && !isShowingTaskDraft {
+                if taskList.everydayTasks.isEmpty && !isShowingTaskDraft {
                     Text("No tasks yet")
                         .font(.body)
                         .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                 }
-                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
+                ForEach(Array(taskList.everydayTasks.enumerated()), id: \.element.id) { index, task in
                     if index > 0 { rowDivider }
                     TaskRow(
                         task: task,
                         onToggle: { taskList.toggleTask(id: task.id) },
                         onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
                         onDelete: { _ = taskList.deleteTask(id: task.id) },
-                        onDoLater: { activeSheet = .scheduleTask(task.id) }
+                        onDoLater: { activeSheet = .scheduleTask(task.id) },
+                        projects: projects.projects,
+                        onAssignProject: { taskList.assignTask(id: task.id, to: $0) }
                     )
                 }
                 if isShowingTaskDraft {
-                    if !taskList.tasks.isEmpty { rowDivider }
+                    if !taskList.everydayTasks.isEmpty { rowDivider }
                     TaskDraftRow(
-                        text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
+                        text: $taskDraft, projectID: $taskDraftProjectID, projects: projects.projects, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
                         schedule: {
                             isTaskDraftFocused = false
                             activeSheet = .scheduleTaskDraft
@@ -322,6 +348,36 @@ struct TodayView: View {
                             isTaskDraftFocused = true
                             withAnimation { scrollProxy.scrollTo("task-draft", anchor: .center) }
                         }
+                }
+            }
+        }
+        TodaySection(
+            title: "Projects",
+            note: "For today",
+            collapsedSummary: projects.todayProjects.isEmpty ? "No project tasks for today" : "\(projects.todayProjects.count) projects",
+            section: .projects,
+            sections: sections,
+            linkTitle: "All projects",
+            linkHint: "Opens all projects",
+            linkAction: { activeSheet = .allProjects }
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
+                if projects.todayProjects.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No project tasks for today")
+                            .foregroundStyle(theme.secondaryText)
+                            .accessibilityIdentifier("projects-empty")
+                        if projects.projects.isEmpty {
+                            Button("New project") { activeSheet = .newProject }
+                                .foregroundStyle(theme.accent)
+                                .accessibilityIdentifier("projects-new")
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+                    .padding(14)
+                }
+                ForEach(projects.todayProjects) { project in
+                    projectGroup(project)
                 }
             }
         }
@@ -480,6 +536,7 @@ struct TodayView: View {
 
     /// What quick capture needs to know is showing over Today.
     private var captureSurface: QuickCaptureRouter.Surface {
+        if let projectCaptureSurface { return projectCaptureSurface }
         if isShowingRecorder { return .recorder }
         switch activeSheet {
         case nil: return .none
@@ -495,6 +552,7 @@ struct TodayView: View {
         guard let request = quickCapture.pending, voiceRecording != nil else { return }
         quickCapture.markApplied(request)
         let command = request.command
+        guard command.startsNew else { return }
         if command.closesOpenSheets, activeSheet != nil {
             captureAfterSheetDismissal = command.target
             activeSheet = nil
@@ -511,6 +569,7 @@ struct TodayView: View {
     }
 
     private func openCaptureAfterSheetDismissal() {
+        projectCaptureSurface = nil
         composeHasDraft = false
         guard let target = captureAfterSheetDismissal else { return }
         captureAfterSheetDismissal = nil
@@ -524,6 +583,58 @@ struct TodayView: View {
         mainView = view
     }
 
+    private func projectGroup(_ project: Project) -> some View {
+        let tasks = projects.todayTasks(in: project.id)
+        let collapsed = sections.isProjectCollapsed(project.id)
+        return VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 8) {
+                Button { sections.toggleProject(project.id) } label: {
+                    Image(systemName: collapsed ? "chevron.right" : "chevron.down")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(project.name) tasks")
+                .accessibilityValue(collapsed ? "collapsed" : "expanded")
+                .accessibilityIdentifier("project-group-collapse-\(project.id.uuidString)")
+                VStack(alignment: .leading, spacing: 4) {
+                    Button { activeSheet = .project(project.id) } label: {
+                        Text(project.name)
+                            .font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("project-group-open-\(project.id.uuidString)")
+                    Text("\(tasks.filter(\.isComplete).count) of \(tasks.count) done")
+                        .font(.caption)
+                        .foregroundStyle(theme.secondaryText)
+                        .accessibilityIdentifier("project-group-summary-\(project.id.uuidString)")
+                }
+                .padding(.vertical, 10)
+            }
+            .padding(.horizontal, 8)
+            if !collapsed {
+                ForEach(tasks) { task in
+                    rowDivider
+                    TaskRow(task: task,
+                            onToggle: { taskList.toggleTask(id: task.id) },
+                            onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
+                            onDelete: { taskList.deleteTask(id: task.id) },
+                            onDoLater: { activeSheet = .scheduleTask(task.id) },
+                            onReturnToProject: { projects.returnToProject(taskID: task.id) },
+                            projects: projects.projects,
+                            onAssignProject: { taskList.assignTask(id: task.id, to: $0) })
+                }
+                Button("Add task") { activeSheet = .addProjectTask(project.id) }
+                    .foregroundStyle(theme.accent)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .accessibilityIdentifier("project-group-add-\(project.id.uuidString)")
+            }
+            rowDivider
+        }
+    }
+
     private func beginTaskDraft() {
         let draftWasHidden = isShowingTaskDraft && sections.isCollapsed(.tasks)
         // Today's field is built again as it comes back from Month, so it takes focus once it's on screen.
@@ -532,6 +643,7 @@ struct TodayView: View {
         sections.startTaskDraft()
         if !isShowingTaskDraft {
             taskDraft = ""
+            taskDraftProjectID = nil
             isShowingTaskDraft = true
         } else if draftWasHidden {
             revealTaskDraftWhenShown = true
@@ -550,8 +662,16 @@ struct TodayView: View {
     }
 
     private func saveTaskDraft() {
-        taskList.addTask(text: taskDraft)
+        guard createTaskDraft() else { return }
         abandonTaskDraft()
+    }
+
+    private func createTaskDraft(plannedFor date: Date? = nil) -> Bool {
+        if let taskDraftProjectID {
+            return taskList.addTask(text: taskDraft, projectID: taskDraftProjectID, plannedFor: date ?? .now) != nil
+        }
+        if let date { return taskList.addTask(text: taskDraft, plannedFor: date) != nil }
+        return taskList.addTask(text: taskDraft) != nil
     }
 
     private func abandonTaskDraft() {
@@ -559,6 +679,7 @@ struct TodayView: View {
         isShowingTaskDraft = false
         revealTaskDraftWhenShown = false
         taskDraft = ""
+        taskDraftProjectID = nil
     }
 }
 
@@ -570,6 +691,10 @@ private enum TodayPreviewSheet: Identifiable {
     case memo(UUID)
     case allMemos
     case allHabits
+    case allProjects
+    case newProject
+    case project(UUID)
+    case addProjectTask(UUID)
     case later
     case scheduleTask(UUID)
     case scheduleTaskDraft
@@ -583,6 +708,10 @@ private enum TodayPreviewSheet: Identifiable {
         case .memo(let id): "memo:\(id.uuidString)"
         case .allMemos: "allMemos"
         case .allHabits: "allHabits"
+        case .allProjects: "allProjects"
+        case .newProject: "newProject"
+        case .project(let id): "project:\(id.uuidString)"
+        case .addProjectTask(let id): "addProjectTask:\(id.uuidString)"
         case .later: "later"
         case .scheduleTaskDraft: "scheduleTaskDraft"
         case .scheduleTask(let id): "scheduleTask:\(id.uuidString)"
@@ -593,41 +722,49 @@ private enum TodayPreviewSheet: Identifiable {
 private struct TaskDraftRow: View {
     @Environment(\.theme) private var theme
     @Binding var text: String
+    @Binding var projectID: UUID?
+    let projects: [Project]
     var isFocused: FocusState<Bool>.Binding
     let submit: () -> Void
     let schedule: () -> Void
     let cancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .strokeBorder(theme.tertiaryText, lineWidth: 1.5)
-                .frame(width: 23, height: 23)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 0) {
+            if !projects.isEmpty {
+                TaskCaptureProjectPicker(projects: projects, projectID: $projectID)
+                    .foregroundStyle(theme.accent)
+            }
+            HStack(spacing: 10) {
+                Circle()
+                    .strokeBorder(theme.tertiaryText, lineWidth: 1.5)
+                    .frame(width: 23, height: 23)
+                    .accessibilityHidden(true)
 
-            TextField("New task", text: $text)
-                .font(.body)
-                .textFieldStyle(.plain)
-                .focused(isFocused)
-                .submitLabel(.done)
-                .onSubmit(submit)
-                .accessibilityLabel("New task")
-                .accessibilityIdentifier("new-task")
+                TextField("New task", text: $text)
+                    .font(.body)
+                    .textFieldStyle(.plain)
+                    .focused(isFocused)
+                    .submitLabel(.done)
+                    .onSubmit(submit)
+                    .accessibilityLabel("New task")
+                    .accessibilityIdentifier("new-task")
 
-            Button("Planned day", systemImage: "calendar", action: schedule)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.accent)
-                .frame(width: 44, height: 44)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("new-task-schedule")
+                Button("Planned day", systemImage: "calendar", action: schedule)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(theme.accent)
+                    .frame(width: 44, height: 44)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("new-task-schedule")
 
-            Button("Cancel task", systemImage: "xmark", action: cancel)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.secondaryText)
-                .frame(width: 44, height: 44)
-                .accessibilityIdentifier("new-task-cancel")
+                Button("Cancel task", systemImage: "xmark", action: cancel)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(theme.secondaryText)
+                    .frame(width: 44, height: 44)
+                    .accessibilityIdentifier("new-task-cancel")
+            }
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
@@ -739,6 +876,7 @@ private struct SummaryStat: View {
 
 struct TodaySection<Content: View>: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let note: String
     /// Shown in place of `note` while the section is collapsed, such as "2 of 5 done".
@@ -757,50 +895,19 @@ struct TodaySection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Button {
-                    withAnimation { sections.toggle(section) }
-                } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        HStack(spacing: 7) {
-                            Text(title)
-                                .headerStyle(.section)
-                                .foregroundStyle(theme.primaryText)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(theme.secondaryText)
-                                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
-                        }
-                        Spacer(minLength: 8)
-                        Text(shownNote)
-                            .font(.caption)
-                            .foregroundStyle(theme.secondaryText)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 51)
-                    .contentShape(Rectangle())
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    collapseButton
+                    headerLink
                 }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(title), \(shownNote)")
-                .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
-                .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("section-header-\(section.rawValue)")
-                if let linkTitle {
-                    Button(action: linkAction) {
-                        Text(linkTitle)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(theme.accent)
-                            .padding(.leading, 6)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(linkHint ?? "")
-                    .accessibilityIdentifier("section-link-\(section.rawValue)")
+                .padding(.vertical, 8)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    collapseButton
+                    headerLink
                 }
+                .frame(minHeight: 51)
             }
-            .frame(minHeight: 51)
 
             if !isCollapsed {
                 content
@@ -810,6 +917,71 @@ struct TodaySection<Content: View>: View {
             }
         }
     }
+
+    private var sectionTitle: some View {
+        HStack(spacing: 7) {
+            Text(title)
+                .headerStyle(.section)
+                .foregroundStyle(theme.primaryText)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.secondaryText)
+                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+        }
+    }
+
+    private var collapseButton: some View {
+        Button {
+            withAnimation { sections.toggle(section) }
+        } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionTitle
+                        Text(shownNote)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 51, alignment: .leading)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        sectionTitle
+                        Spacer(minLength: 8)
+                        Text(shownNote)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 51)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(shownNote)")
+        .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("section-header-\(section.rawValue)")
+    }
+
+    @ViewBuilder
+    private var headerLink: some View {
+        if let linkTitle {
+            Button(action: linkAction) {
+                Text(linkTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.accent)
+                    .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 6)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(linkHint ?? "")
+            .accessibilityIdentifier("section-link-\(section.rawValue)")
+        }
+    }
+
 }
 
 private struct CheckRow: View {
@@ -962,13 +1134,16 @@ private struct HabitRow: View {
     }
 }
 
-private struct TaskRow: View {
+struct TaskRow: View {
     @Environment(\.theme) private var theme
     let task: DailyTask
     let onToggle: () -> Void
     let onEdit: (String) -> Bool
     let onDelete: () -> Void
-    let onDoLater: () -> Void
+    var onDoLater: (() -> Void)? = nil
+    var onReturnToProject: (() -> Void)? = nil
+    var projects: [Project] = []
+    var onAssignProject: ((UUID?) -> Void)? = nil
 
     @State private var isEditing = false
     @State private var draft = ""
@@ -1006,6 +1181,7 @@ private struct TaskRow: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("task-delete-\(task.id.uuidString)")
                 .accessibilityLabel("Delete task: \(task.text)")
                 .accessibilityHint("Deletes this task")
                 .transition(.identity)
@@ -1013,9 +1189,16 @@ private struct TaskRow: View {
         }
         .clipped()
         .contextMenu {
-            if !task.isComplete {
+            if let onAssignProject {
+                TaskProjectAssignmentMenu(task: task, projects: projects, assign: onAssignProject)
+            }
+            if !task.isComplete, let onDoLater {
                 Button("Do later", systemImage: "calendar", action: onDoLater)
                     .accessibilityIdentifier("task-do-later-\(task.id.uuidString)")
+            }
+            if !task.isComplete, let onReturnToProject {
+                Button("Return to project", systemImage: "arrow.uturn.backward", action: onReturnToProject)
+                    .accessibilityIdentifier("task-return-to-project-\(task.id.uuidString)")
             }
             Button("Share", systemImage: "square.and.arrow.up", action: share)
             Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
@@ -1043,15 +1226,23 @@ private struct TaskRow: View {
         HStack(spacing: 10) {
             // Tap gestures rather than `Button`s on this row: the swipe is a simultaneous gesture, which
             // doesn't cancel a button, so a `Button` would also fire when a swipe ends on it.
-            checkboxGlyph
+            Group {
+                if task.isUnscheduled && !task.isComplete {
+                    Image(systemName: "sun.max")
+                        .foregroundStyle(theme.accent)
+                } else {
+                    checkboxGlyph
+                }
+            }
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onToggle)
                 .accessibilityElement(children: .ignore)
                 .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(task.text)
-                .accessibilityValue(task.isComplete ? "Completed" : "Not completed")
-                .accessibilityHint(task.isComplete ? "Reopens this task" : "Marks this task complete")
+                .accessibilityLabel(task.isUnscheduled && !task.isComplete ? "Do today: \(task.text)" : task.text)
+                .accessibilityValue(task.isUnscheduled && !task.isComplete ? "Unscheduled" : task.isComplete ? "Completed" : "Not completed")
+                .accessibilityHint(task.isUnscheduled && !task.isComplete ? "Chooses this project task for Today" : task.isComplete ? "Reopens this task" : "Marks this task complete")
+                .accessibilityIdentifier("\(task.isUnscheduled && !task.isComplete ? "task-do-today" : "task-checkbox")-\(task.id.uuidString)")
                 .accessibilityAction { onToggle() }
                 .accessibilityAction(named: "Share", share)
 
@@ -1063,7 +1254,7 @@ private struct TaskRow: View {
                     .submitLabel(.done)
                     .onSubmit(saveEdit)
                     .accessibilityLabel("Edit task")
-                    .accessibilityIdentifier("task-editor:\(task.text)")
+                    .accessibilityIdentifier("task-editor-\(task.id.uuidString)")
                     .accessibilityAction(named: "Share", share)
             } else {
                 Text(task.text)
@@ -1076,6 +1267,7 @@ private struct TaskRow: View {
                     .onTapGesture { isEditing = true }
                     .accessibilityElement(children: .ignore)
                     .accessibilityAddTraits(.isButton)
+                    .accessibilityIdentifier("task-edit-\(task.id.uuidString)")
                     .accessibilityLabel("Edit task: \(task.text)")
                     .accessibilityHint("Edits this task")
                     .accessibilityAction { isEditing = true }

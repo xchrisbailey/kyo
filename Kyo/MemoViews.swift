@@ -140,6 +140,7 @@ struct MemoRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("memo-open-\(memo.id.uuidString)")
         .accessibilityHint("Opens this memo")
         .accessibilityAction { onOpen() }
         .accessibilityActions {
@@ -170,14 +171,28 @@ struct MemoRow: View {
 /// the text and photos as a memo; a memo with neither is discarded. Cancel keeps nothing.
 struct WrittenMemoComposeSheet: View {
     @Environment(\.theme) private var theme
-    let onSave: (String, [StoredPhoto]) -> Void
+    var projects: [Project] = []
+    let onSave: (String, [StoredPhoto], UUID?) -> Void
     /// Reports whether the sheet holds unsaved text or photos, so quick capture leaves it alone.
     var onDraftChange: (Bool) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
     @State private var photos: [StoredPhoto] = []
+    @State private var projectID: UUID?
     @FocusState private var isFocused: Bool
+
+    init(
+        projects: [Project] = [],
+        initialProjectID: UUID? = nil,
+        onSave: @escaping (String, [StoredPhoto], UUID?) -> Void,
+        onDraftChange: @escaping (Bool) -> Void = { _ in }
+    ) {
+        self.projects = projects
+        self.onSave = onSave
+        self.onDraftChange = onDraftChange
+        _projectID = State(initialValue: initialProjectID)
+    }
 
     private var hasDraft: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photos.isEmpty
@@ -196,6 +211,7 @@ struct WrittenMemoComposeSheet: View {
                         .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityLabel("Memo text")
                         .accessibilityIdentifier("memo-compose-text")
+                    MemoProjectPicker(projects: projects, projectID: $projectID)
                     MemoPendingPhotos(
                         photos: photos,
                         onAdd: { photo in
@@ -219,7 +235,7 @@ struct WrittenMemoComposeSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(text, photos)
+                        onSave(text, photos, projectID)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -243,6 +259,9 @@ struct WrittenMemoComposeSheet: View {
 struct MemoCardSheet: View {
     @Environment(\.theme) private var theme
     let memo: Memo
+    var projects: [Project] = []
+    var onAssign: ((UUID?) -> Void)?
+    var isReadOnly: Bool = false
     let onEdit: (String) -> Void
     /// Names a Voice memo. The user's title replaces a generated one for good.
     let onRename: (String) -> Void
@@ -279,9 +298,15 @@ struct MemoCardSheet: View {
         onAddPhoto: @escaping (StoredPhoto) -> Void,
         onRemovePhoto: @escaping (UUID) -> Void,
         onRetryTranscription: @escaping () -> Void,
-        makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions
+        makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions,
+        projects: [Project] = [],
+        onAssign: ((UUID?) -> Void)? = nil,
+        isReadOnly: Bool = false
     ) {
         self.memo = memo
+        self.projects = projects
+        self.onAssign = onAssign
+        self.isReadOnly = isReadOnly
         self.onEdit = onEdit
         self.onRename = onRename
         self.onDelete = onDelete
@@ -299,7 +324,7 @@ struct MemoCardSheet: View {
 
     /// The card for any memo, from Today or memo history, wired to the store. **Memo → Task**
     /// adds to **Today**, whatever the memo's day.
-    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore) {
+    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore, projects: [Project] = [], isReadOnly: Bool = false) {
         let id = memo.id
         self.init(
             memo: memo,
@@ -315,7 +340,10 @@ struct MemoCardSheet: View {
             onRetryTranscription: { store.retryTranscription(id: id) },
             makeTaskSuggestions: { text in
                 MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
-            }
+            },
+            projects: projects,
+            onAssign: { store.assignMemo(id: id, to: $0) },
+            isReadOnly: isReadOnly
         )
     }
 
@@ -327,14 +355,36 @@ struct MemoCardSheet: View {
                     capNote(note)
                 }
                 actionRow
+                if !isReadOnly, let onAssign, projects.contains(where: { !$0.isArchived }) || memo.projectID != nil {
+                    Menu {
+                        ForEach(projects.filter { !$0.isArchived }) { project in
+                            Button(project.name) { onAssign(project.id) }
+                                .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
+                        }
+                        if memo.projectID != nil {
+                            Button("Remove from project") { onAssign(nil) }
+                                .accessibilityIdentifier("memo-project-remove")
+                        }
+                    } label: {
+                        Label(memo.projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "Move to project", systemImage: "folder")
+                    }
+                    .accessibilityLabel("Move to project")
+                    .accessibilityValue(memo.projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project")
+                    .accessibilityIdentifier("memo-project-move")
+                }
                 MemoPhotoCarousel(
                     photoIDs: memo.photoIDs,
                     loadThumbnail: loadThumbnail,
                     loadPhoto: loadPhoto,
                     onAdd: onAddPhoto,
-                    onRemove: onRemovePhoto
+                    onRemove: onRemovePhoto,
+                    isReadOnly: isReadOnly
                 )
-                if memo.kind == .voice {
+                if isReadOnly {
+                    Text(memo.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("memo-reference-text")
+                } else if memo.kind == .voice {
                     transcriptArea
                 } else {
                     editor
@@ -352,10 +402,10 @@ struct MemoCardSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .onChange(of: text) { _, newText in onEdit(newText) }
+        .onChange(of: text) { _, newText in if !isReadOnly { onEdit(newText) } }
         // Typing a title is renaming; a generated title arriving in the field is not.
         .onChange(of: title) { _, newTitle in
-            if isTitleFocused { onRename(newTitle) }
+            if isTitleFocused && !isReadOnly { onRename(newTitle) }
         }
         // A generated title that arrives while the card is open shows, unless the user is typing.
         .onChange(of: memo.title) { _, newTitle in
@@ -414,7 +464,7 @@ struct MemoCardSheet: View {
             .foregroundStyle(theme.accent)
             .padding(.top, 14)
 
-            if memo.kind == .voice {
+            if memo.kind == .voice && !isReadOnly {
                 TextField(Memo.voiceFallbackTitle, text: $title)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
@@ -423,7 +473,7 @@ struct MemoCardSheet: View {
                     .accessibilityLabel("Title")
                     .accessibilityAddTraits(.isHeader)
             } else {
-                let writtenTitle = Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
+                let writtenTitle = isReadOnly || memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
                 Text(writtenTitle.isEmpty ? "Untitled" : writtenTitle)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
@@ -449,7 +499,7 @@ struct MemoCardSheet: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            if MemoSharePayload.canShare(memo, currentText: text) {
+            if MemoSharePayload.canShare(memo, currentText: isReadOnly ? memo.text : text) {
                 Button(action: share) {
                     Label("Share", systemImage: "square.and.arrow.up")
                         .font(.subheadline.weight(.semibold))
@@ -463,45 +513,49 @@ struct MemoCardSheet: View {
                 .accessibilityHint("Shares this memo's text and photos")
             }
 
-            Button {
-                taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
-            } label: {
-                Label("Memo → Task", systemImage: "checklist")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(theme.accent)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 44)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Turns this memo into tasks on Today")
-
-            Button(role: .destructive) {
-                if memo.kind == .voice {
-                    isConfirmingDelete = true
-                } else {
-                    onDelete()
-                    dismiss()
+            if !isReadOnly {
+                Button {
+                    taskSuggestions = makeTaskSuggestions(memo.taskSourceText(currentText: text))
+                } label: {
+                    Label("Memo → Task", systemImage: "checklist")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.accent)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(theme.accent.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
                 }
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(theme.destructive)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 44)
-                    .background(theme.destructive.opacity(0.12), in: Capsule())
-                    .contentShape(Capsule())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("memo-to-task")
+                .accessibilityHint("Turns this memo into tasks on Today")
+
+                Button(role: .destructive) {
+                    if memo.kind == .voice {
+                        isConfirmingDelete = true
+                    } else {
+                        onDelete()
+                        dismiss()
+                    }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.destructive)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(theme.destructive.opacity(0.12), in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("memo-delete")
+                .accessibilityLabel("Delete memo")
+                .accessibilityHint("Deletes this memo permanently")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete memo")
-            .accessibilityHint("Deletes this memo permanently")
         }
     }
 
     /// Reads the photo bytes only now, when the user shares, and opens the share sheet.
     private func share() {
-        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: text, loadPhoto: loadPhoto))
+        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: isReadOnly ? memo.text : text, loadPhoto: loadPhoto))
     }
 
     private var editor: some View {
@@ -600,5 +654,29 @@ enum MemoPresentation {
 
     static func time(_ date: Date) -> String {
         date.formatted(date: .omitted, time: .shortened)
+    }
+}
+
+/// Optional assignment shared by written and voice capture.
+struct MemoProjectPicker: View {
+    let projects: [Project]
+    @Binding var projectID: UUID?
+
+    var body: some View {
+        if !projects.isEmpty {
+            Menu {
+                Button("No project") { projectID = nil }
+                    .accessibilityIdentifier("memo-project-none")
+                ForEach(projects.filter { !$0.isArchived }) { project in
+                    Button(project.name) { projectID = project.id }
+                        .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
+                }
+            } label: {
+                Label(projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project", systemImage: "folder")
+            }
+            .accessibilityLabel("Project")
+            .accessibilityValue(projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project")
+            .accessibilityIdentifier("memo-project-picker")
+        }
     }
 }

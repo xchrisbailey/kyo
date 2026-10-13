@@ -16,6 +16,9 @@ protocol MemoStoreBehavior: AnyObject, VoiceMemoSaving {
 
     /// Any memo, from any day, by id.
     func memo(id: UUID) -> Memo?
+    func memos(in projectID: UUID) -> [Memo]
+    @discardableResult func assignMemo(id: UUID, to projectID: UUID?) -> Memo?
+    @discardableResult func addWrittenMemo(text: String, photos: [StoredPhoto], projectID: UUID?) -> Memo?
     /// The memos whose local day is the one holding `date`, newest first. Reads text only, never
     /// photo or audio bytes.
     func memos(on date: Date) -> [Memo]
@@ -292,8 +295,33 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         return MemoGroupsPage(query: term, groups: groups, hasMore: hasMore)
     }
 
+    func memos(in projectID: UUID) -> [Memo] {
+        let descriptor = FetchDescriptor<MemoRecord>(predicate: #Predicate { $0.projectID == projectID })
+        return uniqueByID((try? context.fetch(descriptor)) ?? []).map(\.memo).sorted(by: Self.isNewer)
+    }
+
+    @discardableResult
+    func assignMemo(id: UUID, to projectID: UUID?) -> Memo? {
+        guard validProject(projectID), let record = records(withID: id).first else { return nil }
+        record.projectID = projectID
+        save()
+        refreshForCurrentDay()
+        return record.memo
+    }
+
+    private func validProject(_ id: UUID?) -> Bool {
+        guard let id else { return true }
+        return ((try? context.fetch(FetchDescriptor<ProjectRecord>())) ?? []).contains { $0.id == id }
+    }
+
     @discardableResult
     func addWrittenMemo(text: String, photos: [StoredPhoto]) -> Memo? {
+        addWrittenMemo(text: text, photos: photos, projectID: nil)
+    }
+
+    @discardableResult
+    func addWrittenMemo(text: String, photos: [StoredPhoto], projectID: UUID?) -> Memo? {
+        guard validProject(projectID) else { return nil }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !photos.isEmpty else { return nil }
         let createdAt = now()
@@ -303,6 +331,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             day: TaskCompletionDay(date: createdAt, calendar: calendar),
             text: trimmed
         )
+        record.projectID = projectID
         context.insert(record)
         attach(photos, to: record)
         save()
@@ -318,13 +347,24 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
         )
     }
 
+    func acceptsProject(_ id: UUID?) -> Bool { validProject(id) }
+
+    func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto], context capture: RecordingMemoContext?) throws -> Memo {
+        // Duplicate delivery returns the current association rather than stale capture context.
+        if let existing = memo(id: audio.id) { return existing }
+        guard validProject(capture?.projectID) else { throw RecordingMemoError.unknownProject }
+        return insertVoiceMemo(audio,
+            day: capture?.day ?? TaskCompletionDay(date: audio.startedAt, calendar: calendar),
+            stoppedAtCap: stoppedAtCap, photos: photos, fromWatch: false, projectID: capture?.projectID)
+    }
+
     /// Saves a Voice memo as soon as it's recorded, in Transcribing, and starts transcribing it.
     /// The recording's id is the memo's id, so saving a recording twice keeps one memo. A Watch
     /// recording is also recorded as received, before the snapshot that acknowledges it is
     /// published.
     @discardableResult
     private func insertVoiceMemo(
-        _ audio: RecordedAudio, day: TaskCompletionDay, stoppedAtCap: Bool, photos: [StoredPhoto], fromWatch: Bool
+        _ audio: RecordedAudio, day: TaskCompletionDay, stoppedAtCap: Bool, photos: [StoredPhoto], fromWatch: Bool, projectID: UUID? = nil
     ) -> Memo {
         if let existing = records(withID: audio.id).first {
             if fromWatch {
@@ -343,6 +383,7 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
             transcriptState: .transcribing,
             stoppedAtCap: stoppedAtCap
         )
+        record.projectID = projectID
         record.audio = MemoAudioRecord(data: audio.data)
         context.insert(record)
         attach(photos, to: record)

@@ -74,6 +74,9 @@ final class DeferredTaskUITests: XCTestCase {
         let entry = app.textFields["new-task"]
         XCTAssertTrue(entry.waitForExistence(timeout: 10))
         entry.typeText(" \n")
+        XCTAssertTrue(entry.exists)
+        XCTAssertEqual(entry.value as? String, " ")
+        app.buttons["new-task-cancel"].tap()
         XCTAssertTrue(entry.waitForNonExistence(timeout: 5))
         let summary = app.descendants(matching: .any)["task-count-summary"]
         XCTAssertEqual(summary.value as? String, "0 / 0 tasks done")

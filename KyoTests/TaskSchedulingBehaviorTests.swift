@@ -3,6 +3,34 @@ import XCTest
 
 @MainActor
 final class TaskSchedulingBehaviorTests: XCTestCase {
+    func testProjectSchedulingPreviewAndCancellationKeepUnscheduledWorkUntilConfirmation() async throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let container = try KyoModelContainer.make(inMemory: true)
+        let list = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: list)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(projects.addTask(text: "Build widgets next month", to: project.id))
+        let model = FakeOnDeviceLanguageModel()
+        model.schedulingAnswer = .interpretation(.intent(.weekday(6)))
+        let cancelled = TaskSchedulingWorkflow(now: { today }, calendar: calendar, languageModel: model)
+        cancelled.choose(.weeks(1))
+        cancelled.cancel()
+        XCTAssertFalse(cancelled.confirm { list.deferTask(id: task.id, to: $0) != nil })
+        XCTAssertEqual(projects.unscheduledTasks(in: project.id), [task])
+        let workflow = TaskSchedulingWorkflow(now: { today }, calendar: calendar, languageModel: model)
+        workflow.schedulingDescription = "Friday"
+        await workflow.interpretDescription()
+        XCTAssertEqual(projects.unscheduledTasks(in: project.id), [task])
+        XCTAssertTrue(projects.laterTasks(in: project.id).isEmpty)
+        XCTAssertTrue(workflow.confirm { list.deferTask(id: task.id, to: $0) != nil })
+        let deferred = try XCTUnwrap(projects.laterTasks(in: project.id).first)
+        XCTAssertEqual(deferred.id, task.id)
+        XCTAssertEqual(deferred.text, "Build widgets next month")
+        XCTAssertEqual(deferred.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 16))
+        XCTAssertFalse(deferred.isUnscheduled)
+    }
+
     func testDescriptionPreviewsCalendarIntentAndKeepsTaskTextUntilExplicitConfirmation() async throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

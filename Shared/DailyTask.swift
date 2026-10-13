@@ -39,6 +39,8 @@ struct DailyTask: Identifiable, Codable, Equatable, Sendable {
     let isComplete: Bool
     let completedOn: TaskCompletionDay?
     let plannedOn: TaskPlannedDay?
+    let projectID: UUID?
+    let isUnscheduled: Bool
 
     init(
         id: UUID = UUID(),
@@ -46,7 +48,9 @@ struct DailyTask: Identifiable, Codable, Equatable, Sendable {
         creationOrder: Int64,
         isComplete: Bool = false,
         completedOn: TaskCompletionDay? = nil,
-        plannedOn: TaskPlannedDay? = nil
+        plannedOn: TaskPlannedDay? = nil,
+        projectID: UUID? = nil,
+        isUnscheduled: Bool = false
     ) {
         self.id = id
         self.text = text
@@ -54,13 +58,55 @@ struct DailyTask: Identifiable, Codable, Equatable, Sendable {
         self.isComplete = isComplete
         self.completedOn = completedOn
         self.plannedOn = plannedOn
+        self.projectID = projectID
+        self.isUnscheduled = isUnscheduled
     }
+
+    func settingCompletion(_ isComplete: Bool, completedOn: TaskCompletionDay?) -> DailyTask {
+        let reopensProjectTask = self.isComplete && !isComplete && projectID != nil
+        return DailyTask(
+            id: id,
+            text: text,
+            creationOrder: creationOrder,
+            isComplete: isComplete,
+            completedOn: completedOn,
+            plannedOn: reopensProjectTask ? nil : plannedOn,
+            projectID: projectID,
+            isUnscheduled: reopensProjectTask ? false : isUnscheduled
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, text, creationOrder, isComplete, completedOn, plannedOn, projectID, isUnscheduled
+    }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        text = try values.decode(String.self, forKey: .text)
+        creationOrder = try values.decode(Int64.self, forKey: .creationOrder)
+        isComplete = try values.decode(Bool.self, forKey: .isComplete)
+        completedOn = try values.decodeIfPresent(TaskCompletionDay.self, forKey: .completedOn)
+        plannedOn = try values.decodeIfPresent(TaskPlannedDay.self, forKey: .plannedOn)
+        projectID = try values.decodeIfPresent(UUID.self, forKey: .projectID)
+        isUnscheduled = try values.decodeIfPresent(Bool.self, forKey: .isUnscheduled) ?? false
+    }
+
 }
 
 @MainActor
 protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
     var laterTasks: [DailyTask] { get }
+    var everydayTasks: [DailyTask] { get }
+    var projectCatalog: [Project] { get }
+    @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
+    func tasks(in projectID: UUID) -> [DailyTask]
+    func referenceTodayTasks(in projectID: UUID) -> [DailyTask]
+    func referenceLaterTasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func assignTask(id: UUID, to projectID: UUID?) -> DailyTask?
+    @discardableResult func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask?
+    @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
     @discardableResult func deferTask(id: UUID, to date: Date) -> DailyTask?
     @discardableResult func bringTaskToToday(id: UUID) -> DailyTask?
     var taskCount: Int { get }
@@ -79,8 +125,11 @@ protocol TaskListBehavior: AnyObject {
 @MainActor
 final class TaskListStore: ObservableObject, TaskListBehavior {
     static let storageKey = "kyo.dailyTasks.v1"
+    static let projectStorageKey = "kyo.taskProjectCatalog.v1"
 
     @Published private(set) var tasks: [DailyTask] = []
+    @Published private(set) var projectCatalog: [Project] = []
+    private let projectCatalogKey: String
     @Published private(set) var laterTasks: [DailyTask] = []
     @Published private(set) var currentDate: Date
 
@@ -105,6 +154,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     /// Where task content lives: SwiftData for a `.publish` or standalone store, the
     /// `storageKey` UserDefaults entry for a `.mirror` (Watch) store.
     private let content: any TaskContentPersistence
+    private let modelContainer: ModelContainer?
     private let now: () -> Date
     private let calendarProvider: () -> Calendar
     private var calendar: Calendar { calendarProvider() }
@@ -118,6 +168,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     /// Persisted sets are bounded to this many most-recent entries (insertion order) so they
     /// cannot grow without bound over the life of an install.
     private static let maxBoundedSetSize = 500
+
+    var everydayTasks: [DailyTask] { tasks.filter { $0.projectID == nil } }
 
     var taskCount: Int { tasks.count }
     var completedCount: Int { tasks.filter(\.isComplete).count }
@@ -141,6 +193,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         calendarProvider: (() -> Calendar)? = nil,
         sync: TaskListSync? = nil
     ) {
+        self.modelContainer = modelContainer
         self.userDefaults = userDefaults
         self.now = now
         self.calendarProvider = calendarProvider ?? { calendar }
@@ -149,6 +202,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         self.outboxKey = storageKey + ".outbox"
         self.tombstonesKey = storageKey + ".tombstones"
         self.processedCommandIDsKey = storageKey + ".processedCommands"
+        self.projectCatalogKey = storageKey + "." + Self.projectStorageKey
         self.currentDate = (calendarProvider?() ?? calendar).startOfDay(for: now())
 
         if case .mirror = sync {
@@ -197,6 +251,13 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         } else {
             self.revision = nil
         }
+        if case .mirror = sync,
+           let data = userDefaults.data(forKey: projectCatalogKey),
+           let decoded = try? JSONDecoder().decode([Project].self, from: data) {
+            projectCatalog = Project.orderedUnique(decoded)
+        } else {
+            loadProjectCatalog()
+        }
         refreshForCurrentDay()
 
         switch sync {
@@ -217,7 +278,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                 revision = seeded
                 userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
             }
-            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
+            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: synchronizedTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
         case .mirror(let transport):
             // Registered last: the transport may call the handler synchronously,
             // and everything it touches (baseTasks, outbox, revision, tasks) must already exist.
@@ -246,7 +307,55 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar))
     }
 
-    private func createTask(text: String, plannedOn: TaskPlannedDay?) -> DailyTask? {
+    func tasks(in projectID: UUID) -> [DailyTask] {
+        currentFullTaskList.filter { $0.projectID == projectID }.sorted {
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
+    @discardableResult
+    func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        guard canAssign(to: projectID) else { return nil }
+        return createTask(text: text, plannedOn: nil, projectID: projectID, isUnscheduled: true)
+    }
+
+    @discardableResult
+    func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()),
+              canAssign(to: projectID) else { return nil }
+        return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar), projectID: projectID)
+    }
+
+    @discardableResult
+    func assignTask(id: UUID, to projectID: UUID?) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        if let projectID {
+            guard canAssign(to: projectID) else { return nil }
+        }
+        guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
+        let task = savedTasks[index]
+        guard task.projectID != projectID else { return task }
+        let updated = DailyTask(id: task.id, text: task.text, creationOrder: task.creationOrder,
+                                isComplete: task.isComplete, completedOn: task.completedOn,
+                                plannedOn: task.plannedOn, projectID: projectID,
+                                isUnscheduled: projectID == nil ? false : task.isUnscheduled)
+        savedTasks[index] = updated
+        refreshForCurrentDay()
+        persist()
+        publishChange()
+        return updated
+    }
+
+    private func canAssign(to projectID: UUID) -> Bool {
+        guard let modelContainer,
+              let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()) else { return false }
+        return projects.contains { $0.id == projectID && !$0.isArchived }
+    }
+
+    private func createTask(text: String, plannedOn: TaskPlannedDay?, projectID: UUID? = nil, isUnscheduled: Bool = false) -> DailyTask? {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return nil }
 
@@ -261,7 +370,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         }
 
         let creationOrder = (savedTasks.map(\.creationOrder).max() ?? -1) + 1
-        let task = DailyTask(text: trimmedText, creationOrder: creationOrder, plannedOn: plannedOn)
+        let task = DailyTask(text: trimmedText, creationOrder: creationOrder, plannedOn: plannedOn, projectID: projectID, isUnscheduled: isUnscheduled)
         savedTasks.append(task)
         refreshForCurrentDay()
         persist()
@@ -294,7 +403,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             creationOrder: task.creationOrder,
             isComplete: task.isComplete,
             completedOn: task.completedOn,
-            plannedOn: task.plannedOn
+            plannedOn: task.plannedOn,
+            projectID: task.projectID,
+            isUnscheduled: task.isUnscheduled
         )
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
@@ -343,13 +454,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
 
         let task = savedTasks[index]
-        let updatedTask = DailyTask(
-            id: task.id,
-            text: task.text,
-            creationOrder: task.creationOrder,
-            isComplete: !task.isComplete,
-            completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar),
-            plannedOn: task.plannedOn
+        let updatedTask = task.settingCompletion(
+            !task.isComplete,
+            completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar)
         )
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
@@ -366,12 +473,40 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         currentDate = calendar.startOfDay(for: now)
         let day = TaskCompletionDay(date: now, calendar: calendar)
         tasks = Self.ordered(currentFullTaskList.filter { task in
-            task.isComplete ? task.completedOn == day : !isDeferred(task)
+            !isArchived(task) && (task.isComplete ? task.completedOn == day : !task.isUnscheduled && !isDeferred(task))
         })
-        laterTasks = currentFullTaskList.filter { !$0.isComplete && isDeferred($0) }.sorted {
+        laterTasks = currentFullTaskList.filter { !isArchived($0) && !$0.isUnscheduled && !$0.isComplete && isDeferred($0) }.sorted {
             let lhs = $0.plannedOn?.date(in: calendar) ?? currentDate
             let rhs = $1.plannedOn?.date(in: calendar) ?? currentDate
             if lhs != rhs { return lhs < rhs }
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
+    private func isArchived(_ task: DailyTask) -> Bool {
+        projectCatalog.contains { $0.id == task.projectID && $0.isArchived }
+    }
+
+    private var synchronizedTasks: [DailyTask] {
+        let day = TaskCompletionDay(date: now(), calendar: calendar)
+        return Self.ordered(currentFullTaskList.filter {
+            $0.isComplete ? $0.completedOn == day : !$0.isUnscheduled
+        })
+    }
+
+    func referenceTodayTasks(in projectID: UUID) -> [DailyTask] {
+        let day = TaskCompletionDay(date: now(), calendar: calendar)
+        return Self.ordered(tasks(in: projectID).filter {
+            $0.isComplete ? $0.completedOn == day : !$0.isUnscheduled && !isDeferred($0)
+        })
+    }
+
+    func referenceLaterTasks(in projectID: UUID) -> [DailyTask] {
+        tasks(in: projectID).filter { !$0.isComplete && !$0.isUnscheduled && isDeferred($0) }.sorted {
+            if $0.plannedOn != $1.plannedOn {
+                return ($0.plannedOn?.date(in: calendar) ?? currentDate) < ($1.plannedOn?.date(in: calendar) ?? currentDate)
+            }
             if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
             return $0.id.uuidString < $1.id.uuidString
         }
@@ -385,21 +520,28 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     @discardableResult
     func deferTask(id: UUID, to date: Date) -> DailyTask? {
         guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()) else { return nil }
-        return setPlannedDay(id: id, day: TaskPlannedDay(date: date, calendar: calendar))
+        return setPlannedDay(id: id, day: TaskPlannedDay(date: date, calendar: calendar), isUnscheduled: false)
     }
 
     @discardableResult
     func bringTaskToToday(id: UUID) -> DailyTask? {
-        setPlannedDay(id: id, day: nil)
+        setPlannedDay(id: id, day: nil, isUnscheduled: false)
     }
 
-    private func setPlannedDay(id: UUID, day: TaskPlannedDay?) -> DailyTask? {
+    @discardableResult
+    func returnTaskToProject(id: UUID) -> DailyTask? {
+        guard currentFullTaskList.contains(where: { $0.id == id && $0.projectID != nil }) else { return nil }
+        return setPlannedDay(id: id, day: nil, isUnscheduled: true)
+    }
+
+    private func setPlannedDay(id: UUID, day: TaskPlannedDay?, isUnscheduled: Bool? = nil) -> DailyTask? {
         if case .mirror = sync { return nil }
         guard let index = savedTasks.firstIndex(where: { $0.id == id }),
               !savedTasks[index].isComplete else { return nil }
         let task = savedTasks[index]
         let updated = DailyTask(id: task.id, text: task.text, creationOrder: task.creationOrder,
-                                isComplete: task.isComplete, completedOn: task.completedOn, plannedOn: day)
+                                isComplete: task.isComplete, completedOn: task.completedOn, plannedOn: day,
+                                projectID: task.projectID, isUnscheduled: isUnscheduled ?? task.isUnscheduled)
         savedTasks[index] = updated
         refreshForCurrentDay()
         persist()
@@ -419,7 +561,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     func tasksPlanned(on day: Date, calendar: Calendar? = nil) -> [DailyTask] {
         let calendar = calendar ?? self.calendar
         let plannedDay = TaskPlannedDay(date: day, calendar: calendar)
-        return Self.ordered(currentFullTaskList.filter { !$0.isComplete && $0.plannedOn == plannedDay })
+        return Self.ordered(currentFullTaskList.filter { !$0.isUnscheduled && !$0.isComplete && $0.plannedOn == plannedDay })
     }
 
     /// The start of each day in `days` on which at least one task was completed.
@@ -479,14 +621,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             case .setCompletion(let taskID, let isComplete, let completedOn):
                 guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
                 let task = result[index]
-                result[index] = DailyTask(
-                    id: task.id,
-                    text: task.text,
-                    creationOrder: task.creationOrder,
-                    isComplete: isComplete,
-                    completedOn: completedOn,
-                            plannedOn: task.plannedOn
-                )
+                result[index] = task.settingCompletion(isComplete, completedOn: completedOn)
             case .rename(let taskID, let text):
                 guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
                 let task = result[index]
@@ -496,7 +631,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: task.isComplete,
                     completedOn: task.completedOn,
-                    plannedOn: task.plannedOn
+                    plannedOn: task.plannedOn,
+                    projectID: task.projectID,
+                    isUnscheduled: task.isUnscheduled
                 )
             case .delete(let taskID):
                 deletedTaskIDs.insert(taskID)
@@ -504,6 +641,18 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             }
         }
         return result
+    }
+
+    func refreshProjectCatalog() {
+        loadProjectCatalog()
+        refreshForCurrentDay()
+        publishChange()
+    }
+
+    private func loadProjectCatalog() {
+        guard let modelContainer else { return }
+        let records = (try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>())) ?? []
+        projectCatalog = Project.orderedUnique(records.map(\.project))
     }
 
     /// Publishes the current task list to the counterpart device if this store is the
@@ -515,7 +664,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
         revision = candidate
         userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
-        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
+        transport.publish(TaskListSnapshot(revision: candidate, tasks: synchronizedTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
     }
 
     /// Applies a Watch-originated command on the phone (`.publish` side), per
@@ -538,14 +687,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         case .setCompletion(let taskID, let isComplete, let completedOn):
             if let index = savedTasks.firstIndex(where: { $0.id == taskID }) {
                 let task = savedTasks[index]
-                savedTasks[index] = DailyTask(
-                    id: task.id,
-                    text: task.text,
-                    creationOrder: task.creationOrder,
-                    isComplete: isComplete,
-                    completedOn: completedOn,
-                            plannedOn: task.plannedOn
-                )
+                savedTasks[index] = task.settingCompletion(isComplete, completedOn: completedOn)
             }
         case .rename(let taskID, let text):
             let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -557,7 +699,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: task.isComplete,
                     completedOn: task.completedOn,
-                    plannedOn: task.plannedOn
+                    plannedOn: task.plannedOn,
+                    projectID: task.projectID,
+                    isUnscheduled: task.isUnscheduled
                 )
             }
         case .delete(let taskID):
@@ -590,6 +734,10 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
         let isNewer = revision.map { snapshot.revision > $0 } ?? true
         if isNewer {
+            projectCatalog = Project.orderedUnique(snapshot.projects)
+            if let data = try? JSONEncoder().encode(projectCatalog) {
+                userDefaults.set(data, forKey: projectCatalogKey)
+            }
             baseTasks = Self.ordered(snapshot.tasks)
             persistBaseTasks()
             revision = snapshot.revision

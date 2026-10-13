@@ -53,8 +53,10 @@ final class TaskCheckboxUITests: XCTestCase {
 
         // Editing opens the inline editor; the checkbox is a separate target, and the other task is untouched.
         let renamed = "\(first) renamed"
+        let taskID = String(app.buttons[first].identifier.dropFirst("task-checkbox-".count))
+        XCTAssertNotNil(UUID(uuidString: taskID))
         app.buttons["Edit task: \(first)"].tap()
-        let editor = app.textFields["task-editor:\(first)"]
+        let editor = app.textFields["task-editor-\(taskID)"]
         XCTAssertTrue(editor.waitForExistence(timeout: 10))
         editor.tap()
         editor.typeText(" renamed\n")
@@ -81,7 +83,7 @@ final class TaskCheckboxUITests: XCTestCase {
         editButton.swipeLeft()
         XCTAssertTrue(deleteButton.waitForExistence(timeout: 10))
         // The swipe that revealed Delete neither opened the inline editor nor toggled the task (#202).
-        XCTAssertFalse(app.textFields["task-editor:\(renamed)"].waitForExistence(timeout: 2)) // label-query: the editor's identifier embeds the task text
+        XCTAssertFalse(app.textFields["task-editor-\(taskID)"].waitForExistence(timeout: 2))
         assertValue(checkbox, equals: "Completed")
         deleteButton.tap()
         let deletedTaskControls = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", first))

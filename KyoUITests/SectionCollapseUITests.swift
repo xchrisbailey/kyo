@@ -24,9 +24,9 @@ final class SectionCollapseUITests: XCTestCase {
         // Empty sections: collapsing hides their empty-state rows, and the header says what's missing.
         XCTAssertTrue(app.staticTexts["No tasks yet"].exists)
         XCTAssertTrue(app.staticTexts["No habits yet"].exists)
-        tasks.tap()
-        habits.tap()
-        memos.tap()
+        tapSection(tasks, in: app)
+        tapSection(habits, in: app)
+        tapSection(memos, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
         XCTAssertTrue(waitForValue("collapsed", of: habits))
         XCTAssertTrue(waitForValue("collapsed", of: memos))
@@ -36,9 +36,9 @@ final class SectionCollapseUITests: XCTestCase {
         XCTAssertEqual(tasks.label, "Tasks, No tasks")
         XCTAssertEqual(habits.label, "Habits, No habits")
 
-        tasks.tap()
-        habits.tap()
-        memos.tap()
+        tapSection(tasks, in: app)
+        tapSection(habits, in: app)
+        tapSection(memos, in: app)
         XCTAssertTrue(waitForValue("expanded", of: tasks))
         XCTAssertTrue(waitForValue("expanded", of: habits))
         XCTAssertTrue(waitForValue("expanded", of: memos))
@@ -49,7 +49,7 @@ final class SectionCollapseUITests: XCTestCase {
         // A section with rows: collapsing hides the rows but not its header or the summary stats, and
         // touches no other section. The header's label carries the collapsed summary.
         addTask("Water the plants", to: app)
-        tasks.tap()
+        tapSection(tasks, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
         XCTAssertTrue(app.buttons["Water the plants"].waitForNonExistence(timeout: 10))
         XCTAssertTrue(tasks.exists)
@@ -60,7 +60,7 @@ final class SectionCollapseUITests: XCTestCase {
         XCTAssertEqual(schedule.value as? String, "expanded")
         XCTAssertTrue(app.descendants(matching: .any)["task-count-summary"].exists, "the summary stats don't collapse")
 
-        tasks.tap()
+        tapSection(tasks, in: app)
         XCTAssertTrue(waitForValue("expanded", of: tasks))
         XCTAssertTrue(app.buttons["Water the plants"].waitForExistence(timeout: 10))
         XCTAssertEqual(tasks.label, "Tasks, For today")
@@ -71,12 +71,12 @@ final class SectionCollapseUITests: XCTestCase {
         more.tap()
         XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 10))
 
-        schedule.tap()
+        tapSection(schedule, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: schedule))
         XCTAssertTrue(app.buttons["schedule-show-less"].waitForNonExistence(timeout: 10))
         XCTAssertFalse(app.descendants(matching: .any)["schedule-all-day"].exists)
 
-        schedule.tap()
+        tapSection(schedule, in: app)
         XCTAssertTrue(waitForValue("expanded", of: schedule))
         XCTAssertTrue(app.buttons["schedule-show-less"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["schedule-more"].exists)
@@ -87,7 +87,7 @@ final class SectionCollapseUITests: XCTestCase {
         let app = launchApp()
         addMemo("Weekend idea", to: app)
         let memos = app.buttons["section-header-memos"]
-        memos.tap()
+        tapSection(memos, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: memos))
         XCTAssertEqual(memos.label, "Memos, 1 memo")
 
@@ -126,7 +126,7 @@ final class SectionCollapseUITests: XCTestCase {
         save.tap()
         XCTAssertTrue(app.buttons["Stretch"].waitForExistence(timeout: 10))
 
-        habits.tap()
+        tapSection(habits, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: habits))
         XCTAssertTrue(app.buttons["Stretch"].waitForNonExistence(timeout: 10))
         let seeAll = app.buttons["section-link-habits"]
@@ -144,7 +144,7 @@ final class SectionCollapseUITests: XCTestCase {
     func testTaskDraftExpandsTasksAndSurvivesCollapsingMidDraft() throws {
         let app = launchApp()
         let tasks = app.buttons["section-header-tasks"]
-        tasks.tap()
+        tapSection(tasks, in: app)
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
 
         app.buttons["Add an item"].tap()
@@ -154,7 +154,7 @@ final class SectionCollapseUITests: XCTestCase {
         XCTAssertTrue(waitForValue("expanded", of: tasks))
         field.typeText("Half-written")
 
-        tasks.tap()
+        tapSection(tasks, in: app)
 
         XCTAssertTrue(waitForValue("collapsed", of: tasks))
         XCTAssertTrue(field.waitForNonExistence(timeout: 10))
@@ -196,6 +196,28 @@ final class SectionCollapseUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// A section can be below the fold or behind the bottom bar after another section expands.
+    private func tapSection(_ section: XCUIElement, in app: XCUIApplication) {
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<5 {
+            let frame = section.frame
+            let top = scroll.frame.minY
+            let bottom = app.buttons["add-item"].frame.minY - 12
+            if section.isHittable && frame.minY >= top && frame.maxY < bottom {
+                let wasCollapsed = section.value as? String == "collapsed"
+                section.tap()
+                XCTAssertTrue(waitForValue(wasCollapsed ? "expanded" : "collapsed", of: section))
+                return
+            }
+            if frame.maxY >= bottom {
+                scroll.swipeUp()
+            } else {
+                scroll.swipeDown()
+            }
+        }
+        XCTFail("Could not reveal section \(section.identifier) above the bottom bar")
+    }
 
     private func launchApp(calendar: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()

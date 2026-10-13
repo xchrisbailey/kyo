@@ -36,6 +36,48 @@ final class MonthTasksBehaviorTests: MonthTestCase {
         model.selectedSummary.sections.first { $0.kind == .tasks }?.rows.map(\.text) ?? []
     }
 
+    func testUnscheduledProjectTasksDoNotMarkMonthOrAppearInDaySummary() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let list = TaskListStore(modelContainer: container, now: { self.harness.now }, calendar: harness.calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: list)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        _ = projects.addTask(text: "Eventual work", to: project.id)
+        let model = makeModel(list)
+        XCTAssertEqual(try taskMark(6, in: model), .empty)
+        XCTAssertTrue(taskRows(in: model).isEmpty)
+        harness.setNow(harness.date(2026, 10, 7))
+        list.refreshForCurrentDay()
+        model.refresh()
+        XCTAssertTrue(taskRows(in: model).isEmpty)
+    }
+
+    func testProjectPlannedAndCompletedRowsNameTheirProjectAndRemainReadOnly() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let list = TaskListStore(modelContainer: container, now: { self.harness.now }, calendar: harness.calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: list)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(projects.addTask(text: "Widgets", to: project.id, plannedFor: harness.date(2026, 10, 9)))
+        let model = makeModel(list)
+        model.select(harness.date(2026, 10, 9, hour: 0))
+        var rows = model.selectedSummary.sections.first { $0.kind == .tasks }?.rows ?? []
+        XCTAssertEqual(rows.map(\.accessibilityLabel), ["Widgets, Kyo"])
+        XCTAssertEqual(rows.map(\.accessibilityValue), ["Planned"])
+        XCTAssertEqual(rows.map(\.text), ["Widgets"])
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertNil(rows.first?.target)
+        harness.setNow(harness.date(2026, 10, 9))
+        list.refreshForCurrentDay()
+        _ = list.toggleTask(id: task.id)
+        model.refresh()
+        rows = model.selectedSummary.sections.first { $0.kind == .tasks }?.rows ?? []
+        XCTAssertEqual(rows.map(\.accessibilityLabel), ["Widgets, Kyo"])
+        XCTAssertEqual(rows.map(\.accessibilityValue), ["Completed"])
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(try taskMark(9, in: model), .filled)
+        _ = projects.renameProject(id: project.id, name: "Build Kyo")
+        XCTAssertEqual(model.selectedSummary.sections.first?.rows.first?.accessibilityLabel, "Widgets, Build Kyo")
+    }
+
     func testFuturePlannedTasksHaveHollowMarksPlannedCountsAndReadOnlyRows() throws {
         let list = try makeTaskList()
         let task = try XCTUnwrap(list.addTask(text: "Call Friday"))

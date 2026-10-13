@@ -23,9 +23,16 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: scripts/test [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]" >&2
+  echo "usage: scripts/test --paired-projects | [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]" >&2
   exit 2
 }
+
+paired_projects=0
+if [[ "${1:-}" == "--paired-projects" ]]; then
+  [[ $# -eq 1 ]] || usage
+  paired_projects=1
+  set -- KyoUITests
+fi
 
 platform=""
 if [[ "${1:-}" == "--platform" ]]; then
@@ -96,6 +103,8 @@ mkdir -p "$log_dir"
 log="$log_dir/$run_id-$scheme.log"
 
 udid=""
+watch_udid=""
+pair_id=""
 xcodebuild_pid=""
 
 # The UI-suite lock is a symlink whose target describes the holder: pid, process start time,
@@ -163,6 +172,13 @@ cleanup() {
     stop_xcodebuild
     wait "$xcodebuild_pid" 2>/dev/null || true
   fi
+  if [[ -n "$pair_id" ]]; then
+    xcrun simctl unpair "$pair_id" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$watch_udid" ]]; then
+    xcrun simctl shutdown "$watch_udid" >/dev/null 2>&1 || true
+    xcrun simctl delete "$watch_udid" >/dev/null 2>&1 || true
+  fi
   if [[ -n "$udid" ]]; then
     xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
     xcrun simctl delete "$udid" >/dev/null 2>&1 || true
@@ -182,6 +198,12 @@ trap 'exit 143' TERM
 
 if [[ "$scheme" == "KyoUITests" || "$scheme" == "KyoWatchUITests" ]]; then
   acquire_ui_lock
+fi
+
+if [[ $paired_projects -eq 1 ]]; then
+  # This helper runs under this controller's lock and cleanup trap.
+  source "$root/scripts/test-paired-projects"
+  exit 0
 fi
 
 udid="$(xcrun simctl create "$run_id" "$device_type" "$runtime")"

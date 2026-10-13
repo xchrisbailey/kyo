@@ -21,7 +21,12 @@ final class TaskRecord {
     var plannedMonth: Int?
     var plannedDay: Int?
 
+    var projectID: UUID?
+    var isUnscheduled: Bool?
+
     init(task: DailyTask) {
+        projectID = task.projectID
+        isUnscheduled = task.isUnscheduled
         id = task.id
         text = task.text
         creationOrder = task.creationOrder
@@ -53,13 +58,17 @@ final class TaskRecord {
             creationOrder: creationOrder,
             isComplete: isComplete,
             completedOn: completedOn,
-            plannedOn: plannedOn
+            plannedOn: plannedOn,
+            projectID: projectID,
+            isUnscheduled: isUnscheduled ?? false
         )
     }
 
     /// Copies `task`'s fields onto this record, touching a property only when it differs so an
     /// unchanged record stays clean.
     func update(from task: DailyTask) {
+        if projectID != task.projectID { projectID = task.projectID }
+        if isUnscheduled != task.isUnscheduled { isUnscheduled = task.isUnscheduled }
         if text != task.text { text = task.text }
         if creationOrder != task.creationOrder { creationOrder = task.creationOrder }
         if isComplete != task.isComplete { isComplete = task.isComplete }

@@ -27,6 +27,12 @@ final class PairedProjectsSyncUITests: XCTestCase {
         task.typeText("Task \(token)")
         app.buttons["project-task-today"].tap()
         app.buttons["project-task-save"].tap()
+        app.buttons["project-add-task"].tap()
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        task.tap()
+        task.typeText("Delete \(token)")
+        app.buttons["project-task-today"].tap()
+        app.buttons["project-task-save"].tap()
         app.buttons["projects-done"].tap()
         let checkbox = taskButton(in: app)
         XCTAssertTrue(checkbox.waitForExistence(timeout: 10))
@@ -64,7 +70,8 @@ final class PairedProjectsSyncUITests: XCTestCase {
         let completion = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Completed"), object: checkbox)
         XCTAssertEqual(XCTWaiter.wait(for: [completion], timeout: 90), .completed,
                        "Watch command must reach the authoritative phone store")
-        XCTAssertEqual(checkbox.label, "Task \(token)")
+        XCTAssertEqual(checkbox.label, "Edited \(token)")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).count, 1)
         let group = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-group-open-")).firstMatch
         XCTAssertEqual(group.label, "Renamed \(token)")
         let id = String(group.identifier.dropFirst("project-group-open-".count))

@@ -12,7 +12,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
         reveal(everyday, in: app)
         XCTAssertEqual(everyday.label, "No tasks yet")
         let group = projectGroup(in: app)
-        waitForDelivery(group, label: "Original \(token), 0 of 1 done", in: app)
+        waitForDelivery(group, label: "Original \(token), 0 of 2 done", in: app)
         XCTAssertEqual(group.value as? String, "expanded")
         let task = taskButton(in: app)
         reveal(task, in: app)
@@ -25,7 +25,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
         app.launch()
         reveal(group, in: app)
         XCTAssertEqual(group.value as? String, "collapsed")
-        XCTAssertEqual(group.label, "Original \(token), 0 of 1 done")
+        XCTAssertEqual(group.label, "Original \(token), 0 of 2 done")
         group.tap()
         reveal(task, in: app)
         XCTAssertEqual(task.label, "Task \(token)")
@@ -36,14 +36,54 @@ final class PairedProjectsSyncUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         let group = projectGroup(in: app)
-        waitForDelivery(group, label: "Renamed \(token), 0 of 1 done", in: app)
+        waitForDelivery(group, label: "Renamed \(token), 0 of 2 done", in: app)
         XCTAssertEqual(group.value as? String, "expanded")
         let task = taskButton(in: app)
         reveal(task, in: app)
         XCTAssertEqual(task.label, "Task \(token)")
         XCTAssertEqual(task.value as? String, "Not completed")
-        task.tap()
-        XCTAssertEqual(task.value as? String, "Completed")
+        let firstID = task.identifier
+        let second = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).element(boundBy: 1)
+        reveal(second, in: app)
+        XCTAssertEqual(second.label, "Delete \(token)")
+        let secondID = second.identifier
+        let first = app.buttons[firstID]
+        reveal(first, in: app, upward: false)
+        first.tap()
+        XCTAssertEqual(first.value as? String, "Completed")
+        reveal(group, in: app, upward: false)
+        XCTAssertEqual(group.label, "Renamed \(token), 1 of 2 done")
+        reveal(first, in: app)
+        first.tap()
+        XCTAssertEqual(first.value as? String, "Not completed")
+        reveal(group, in: app, upward: false)
+        XCTAssertEqual(group.label, "Renamed \(token), 0 of 2 done")
+        reveal(first, in: app)
+        first.swipeLeft()
+        let edit = app.buttons["task-edit-\(String(firstID.dropFirst("task-checkbox-".count)))"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 5))
+        edit.tap()
+        let editor = app.textFields["task-text-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Task \(token)".count) + "Edited \(token)")
+        app.buttons["task-text-save"].tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        XCTAssertEqual(first.identifier, firstID)
+        XCTAssertEqual(first.label, "Edited \(token)")
+        XCTAssertEqual(first.value as? String, "Not completed")
+        let removed = app.buttons[secondID]
+        reveal(removed, in: app)
+        removed.swipeLeft()
+        let delete = app.buttons["task-delete-\(String(secondID.dropFirst("task-checkbox-".count)))"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        delete.tap()
+        XCTAssertTrue(removed.waitForNonExistence(timeout: 5))
+        reveal(group, in: app, upward: false)
+        XCTAssertEqual(group.label, "Renamed \(token), 0 of 1 done")
+        reveal(first, in: app)
+        first.tap()
+        XCTAssertEqual(first.value as? String, "Completed")
         reveal(group, in: app, upward: false)
         XCTAssertEqual(group.label, "Renamed \(token), 1 of 1 done")
         let attachment = XCTAttachment(screenshot: app.screenshot())
@@ -73,14 +113,20 @@ final class PairedProjectsSyncUITests: XCTestCase {
             reveal(element, in: app)
             let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
             if XCTWaiter.wait(for: [expectation], timeout: 5) == .completed { return }
-            app.swipeDown()
+            scroll(in: app, upward: false)
         }
         XCTFail("Project catalog must arrive through actual WatchConnectivity: \(label)")
     }
 
+    private func scroll(in app: XCUIApplication, upward: Bool) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.6 : 0.4))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: upward ? 0.4 : 0.6))
+        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.5)
+    }
+
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, upward: Bool = true) {
         for _ in 0..<8 where !element.isHittable {
-            if upward { app.swipeUp() } else { app.swipeDown() }
+            scroll(in: app, upward: upward)
         }
     }
 }

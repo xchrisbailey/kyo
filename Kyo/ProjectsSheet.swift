@@ -99,6 +99,7 @@ struct ProjectDetailView: View {
                                 .accessibilityIdentifier("project-task-planned-day-\(task.id.uuidString)")
                         }
                     }
+                    .padding(.bottom, 12)
                     .listRowInsets(EdgeInsets())
                 }
             }

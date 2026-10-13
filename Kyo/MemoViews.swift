@@ -171,7 +171,6 @@ struct MemoRow: View {
 struct WrittenMemoComposeSheet: View {
     @Environment(\.theme) private var theme
     var projects: [Project] = []
-    var initialProjectID: UUID? = nil
     let onSave: (String, [StoredPhoto], UUID?) -> Void
     /// Reports whether the sheet holds unsaved text or photos, so quick capture leaves it alone.
     var onDraftChange: (Bool) -> Void = { _ in }
@@ -181,6 +180,18 @@ struct WrittenMemoComposeSheet: View {
     @State private var photos: [StoredPhoto] = []
     @State private var projectID: UUID?
     @FocusState private var isFocused: Bool
+
+    init(
+        projects: [Project] = [],
+        initialProjectID: UUID? = nil,
+        onSave: @escaping (String, [StoredPhoto], UUID?) -> Void,
+        onDraftChange: @escaping (Bool) -> Void = { _ in }
+    ) {
+        self.projects = projects
+        self.onSave = onSave
+        self.onDraftChange = onDraftChange
+        _projectID = State(initialValue: initialProjectID)
+    }
 
     private var hasDraft: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photos.isEmpty
@@ -232,7 +243,7 @@ struct WrittenMemoComposeSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .onAppear { projectID = initialProjectID; isFocused = true }
+        .onAppear { isFocused = true }
         .onChange(of: hasDraft) { _, hasDraft in onDraftChange(hasDraft) }
     }
 }

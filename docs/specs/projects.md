@@ -1,6 +1,6 @@
 # Projects
 
-Status: All interview recommendations accepted; awaiting confirmation of the complete design. Implementation requires a separate user request.
+Status: Product behavior confirmed. Specification only; implementation requires a separate user request.
 
 ## Problem Statement
 
@@ -40,6 +40,18 @@ Add one Projects section to Today, with a collapsible group per project showing 
 - No full project management, project assignment, or project memo browsing on Watch in the first version.
 - Project association does not copy a task or memo. Counts and completion records must not count the same content twice.
 - Planned days remain calendar days of availability, not deadlines, as in ADR 0008.
-- Implementation must respect the phone-authoritative synchronization in ADRs 0001 and 0002 and the persistence constraints in ADR 0004. Storage representation, synchronization changes, migrations, and implementation tickets remain to be designed after final product confirmation.
+- Implementation must respect the phone-authoritative synchronization in ADRs 0001 and 0002 and the persistence constraints in ADR 0004. Storage representation, synchronization changes, migrations, and implementation ticket breakdown must be designed before coding.
+
+## Acceptance and Validation
+
+- A user can create and rename a project, open it from All projects or Today, and capture tasks and written or voice memos inside it.
+- Unscheduled project tasks remain outside Today, Later, Month, and their counts. Do today, Do later, and Return to project move the same task between availability states without duplicating it or changing its project.
+- Everyday tasks and available project tasks appear in their respective Today sections. Overall counts include both exactly once. Completion, reopening, and day rollover retain the existing task behavior.
+- Moving tasks or memos between projects preserves their content and day associations. Removing an unscheduled task from its project makes it available as an everyday task.
+- Archiving hides project tasks from Today and Later and makes project details read-only. Restoration respects preserved availability and planned days, including dates that passed while archived. Historical completions and memos remain accessible.
+- Later and Month identify project tasks; project memos retain day-based access and appear in their project without duplication.
+- Project and section collapse choices survive relaunch independently on each device. All projects stays reachable when Today has no project tasks.
+- Phone and Watch converge for supported task changes, including archive and restore updates from the phone. Existing tasks and memos survive any storage or synchronization migration without acquiring an unintended project or losing their existing availability.
+- Verify behavior through the model interfaces consumed by the views, with controlled days, persistence, and synchronization. Use focused UI checks for capture, navigation, project assignment, collapse behavior, and accessibility. Build both app schemes and run the required local checks against the final implementation commit.
 
 Terms follow root GLOSSARY.md. No implementation has been authorized. The interview captured product behavior; no new architecture ADR was needed for the layout choices.

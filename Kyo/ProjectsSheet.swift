@@ -5,10 +5,23 @@ struct ProjectsSheet: View {
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var sections: CollapsedSections
     @State private var isCreating = false
+    let languageModel: any OnDeviceLanguageModel
+    let voiceRecording: VoiceRecordingSession?
+    let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
 
-    init(projects: ProjectListStore, sections: CollapsedSections, startCreating: Bool = false) {
+    init(
+        projects: ProjectListStore,
+        sections: CollapsedSections,
+        startCreating: Bool = false,
+        languageModel: any OnDeviceLanguageModel = NoLanguageModel(),
+        voiceRecording: VoiceRecordingSession? = nil,
+        onCaptureSurfaceChange: @escaping (QuickCaptureRouter.Surface?) -> Void = { _ in }
+    ) {
         self.projects = projects
         self.sections = sections
+        self.languageModel = languageModel
+        self.voiceRecording = voiceRecording
+        self.onCaptureSurfaceChange = onCaptureSurfaceChange
         _isCreating = State(initialValue: startCreating)
     }
 
@@ -18,7 +31,9 @@ struct ProjectsSheet: View {
                 ThemedListGroup {
                     ForEach(projects.projects) { project in
                         NavigationLink {
-                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, sections: sections, onDone: { dismiss() })
+                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList,
+                                languageModel: languageModel, voiceRecording: voiceRecording,
+                                onCaptureSurfaceChange: onCaptureSurfaceChange, sections: sections, onDone: { dismiss() })
                         } label: {
                             Text(project.name)
                         }
@@ -51,8 +66,14 @@ struct ProjectDetailView: View {
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var taskList: TaskListStore
+    let languageModel: any OnDeviceLanguageModel
+    let voiceRecording: VoiceRecordingSession?
+    let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
     @ObservedObject var sections: CollapsedSections
     let onDone: () -> Void
+    @State private var isWritingMemo = false
+    @State private var isRecordingMemo = false
+    @State private var openMemoID: UUID?
     @State private var isRenaming = false
     @State private var isAddingTask = false
     @State private var schedulingTask: DailyTask?
@@ -103,6 +124,11 @@ struct ProjectDetailView: View {
                     }
                 }
             }
+            if let memoStore = projects.memoStore {
+                ProjectMemosSection(projectID: projectID, projects: projects, store: memoStore,
+                    onOpen: { openMemoID = $0 }, onWrite: { isWritingMemo = true },
+                    onRecord: { isRecordingMemo = true })
+            }
         }
         .themedListBackground()
         .themedNavigationTitle(LocalizedStringKey(name))
@@ -115,6 +141,35 @@ struct ProjectDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Rename") { isRenaming = true }
                     .accessibilityIdentifier("project-rename")
+            }
+        }
+        .onChange(of: isWritingMemo) { _, showing in
+            onCaptureSurfaceChange(showing ? .compose(hasUnsavedDraft: false) : nil)
+        }
+        .onChange(of: isRecordingMemo) { _, showing in
+            onCaptureSurfaceChange(showing ? .recorder : nil)
+        }
+        .onDisappear {
+            if !isWritingMemo && !isRecordingMemo { onCaptureSurfaceChange(nil) }
+        }
+        .sheet(isPresented: $isWritingMemo) {
+            if let memoStore = projects.memoStore {
+                WrittenMemoComposeSheet(projects: projects.projects, initialProjectID: projectID,
+                    onSave: { text, photos, selected in
+                        memoStore.addWrittenMemo(text: text, photos: photos, projectID: selected)
+                    },
+                    onDraftChange: { onCaptureSurfaceChange(.compose(hasUnsavedDraft: $0)) })
+            }
+        }
+        .fullScreenCover(isPresented: $isRecordingMemo) {
+            if let voiceRecording {
+                VoiceRecorderView(session: voiceRecording, projects: projects.projects, initialProjectID: projectID,
+                    onFinish: { isRecordingMemo = false })
+            }
+        }
+        .sheet(isPresented: Binding(get: { openMemoID != nil }, set: { if !$0 { openMemoID = nil } })) {
+            if let id = openMemoID, let memoStore = projects.memoStore {
+                ProjectMemoDetail(id: id, store: memoStore, projects: projects, languageModel: languageModel)
             }
         }
         .sheet(isPresented: $isRenaming) {
@@ -178,6 +233,55 @@ struct ProjectTextForm: View {
                         .accessibilityIdentifier("\(identifier)-save")
                 }
             }
+        }
+    }
+}
+
+private struct ProjectMemosSection: View {
+    let projectID: UUID
+    @ObservedObject var projects: ProjectListStore
+    @ObservedObject var store: MemoStore
+    let onOpen: (UUID) -> Void
+    let onWrite: () -> Void
+    let onRecord: () -> Void
+
+    var body: some View {
+        ThemedListGroup("Memos") {
+            ForEach(projects.memos(in: projectID)) { memo in
+                Button { onOpen(memo.id) } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(memo.title)
+                        if let detail = memo.detail { Text(detail).font(.caption).lineLimit(2) }
+                    }
+                }
+                .accessibilityIdentifier("project-memo-open-\(memo.id.uuidString)")
+            }
+            Menu {
+                Button("Written memo", action: onWrite)
+                    .accessibilityIdentifier("project-add-written-memo")
+                Button("Voice memo", action: onRecord)
+                    .accessibilityIdentifier("project-add-voice-memo")
+            } label: {
+                Text("Add memo")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("project-add-memo")
+        }
+    }
+}
+
+private struct ProjectMemoDetail: View {
+    let id: UUID
+    @ObservedObject var store: MemoStore
+    @ObservedObject var projects: ProjectListStore
+    let languageModel: any OnDeviceLanguageModel
+
+    var body: some View {
+        if let memo = store.memo(id: id) {
+            MemoCardSheet(memo: memo, store: store, languageModel: languageModel,
+                taskList: projects.taskList, projects: projects.projects)
         }
     }
 }

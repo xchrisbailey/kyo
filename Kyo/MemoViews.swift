@@ -170,14 +170,28 @@ struct MemoRow: View {
 /// the text and photos as a memo; a memo with neither is discarded. Cancel keeps nothing.
 struct WrittenMemoComposeSheet: View {
     @Environment(\.theme) private var theme
-    let onSave: (String, [StoredPhoto]) -> Void
+    var projects: [Project] = []
+    let onSave: (String, [StoredPhoto], UUID?) -> Void
     /// Reports whether the sheet holds unsaved text or photos, so quick capture leaves it alone.
     var onDraftChange: (Bool) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
     @State private var photos: [StoredPhoto] = []
+    @State private var projectID: UUID?
     @FocusState private var isFocused: Bool
+
+    init(
+        projects: [Project] = [],
+        initialProjectID: UUID? = nil,
+        onSave: @escaping (String, [StoredPhoto], UUID?) -> Void,
+        onDraftChange: @escaping (Bool) -> Void = { _ in }
+    ) {
+        self.projects = projects
+        self.onSave = onSave
+        self.onDraftChange = onDraftChange
+        _projectID = State(initialValue: initialProjectID)
+    }
 
     private var hasDraft: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !photos.isEmpty
@@ -196,6 +210,7 @@ struct WrittenMemoComposeSheet: View {
                         .background(theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .accessibilityLabel("Memo text")
                         .accessibilityIdentifier("memo-compose-text")
+                    MemoProjectPicker(projects: projects, projectID: $projectID)
                     MemoPendingPhotos(
                         photos: photos,
                         onAdd: { photo in
@@ -219,7 +234,7 @@ struct WrittenMemoComposeSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(text, photos)
+                        onSave(text, photos, projectID)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -243,6 +258,8 @@ struct WrittenMemoComposeSheet: View {
 struct MemoCardSheet: View {
     @Environment(\.theme) private var theme
     let memo: Memo
+    var projects: [Project] = []
+    var onAssign: ((UUID?) -> Void)?
     let onEdit: (String) -> Void
     /// Names a Voice memo. The user's title replaces a generated one for good.
     let onRename: (String) -> Void
@@ -279,9 +296,13 @@ struct MemoCardSheet: View {
         onAddPhoto: @escaping (StoredPhoto) -> Void,
         onRemovePhoto: @escaping (UUID) -> Void,
         onRetryTranscription: @escaping () -> Void,
-        makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions
+        makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions,
+        projects: [Project] = [],
+        onAssign: ((UUID?) -> Void)? = nil
     ) {
         self.memo = memo
+        self.projects = projects
+        self.onAssign = onAssign
         self.onEdit = onEdit
         self.onRename = onRename
         self.onDelete = onDelete
@@ -299,7 +320,7 @@ struct MemoCardSheet: View {
 
     /// The card for any memo, from Today or memo history, wired to the store. **Memo → Task**
     /// adds to **Today**, whatever the memo's day.
-    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore) {
+    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore, projects: [Project] = []) {
         let id = memo.id
         self.init(
             memo: memo,
@@ -315,7 +336,9 @@ struct MemoCardSheet: View {
             onRetryTranscription: { store.retryTranscription(id: id) },
             makeTaskSuggestions: { text in
                 MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
-            }
+            },
+            projects: projects,
+            onAssign: { store.assignMemo(id: id, to: $0) }
         )
     }
 
@@ -327,6 +350,23 @@ struct MemoCardSheet: View {
                     capNote(note)
                 }
                 actionRow
+                if let onAssign, !projects.isEmpty || memo.projectID != nil {
+                    Menu {
+                        ForEach(projects) { project in
+                            Button(project.name) { onAssign(project.id) }
+                                .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
+                        }
+                        if memo.projectID != nil {
+                            Button("Remove from project") { onAssign(nil) }
+                                .accessibilityIdentifier("memo-project-remove")
+                        }
+                    } label: {
+                        Label(memo.projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "Move to project", systemImage: "folder")
+                    }
+                    .accessibilityLabel("Move to project")
+                    .accessibilityValue(memo.projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project")
+                    .accessibilityIdentifier("memo-project-move")
+                }
                 MemoPhotoCarousel(
                     photoIDs: memo.photoIDs,
                     loadThumbnail: loadThumbnail,
@@ -600,5 +640,29 @@ enum MemoPresentation {
 
     static func time(_ date: Date) -> String {
         date.formatted(date: .omitted, time: .shortened)
+    }
+}
+
+/// Optional assignment shared by written and voice capture.
+struct MemoProjectPicker: View {
+    let projects: [Project]
+    @Binding var projectID: UUID?
+
+    var body: some View {
+        if !projects.isEmpty {
+            Menu {
+                Button("No project") { projectID = nil }
+                    .accessibilityIdentifier("memo-project-none")
+                ForEach(projects) { project in
+                    Button(project.name) { projectID = project.id }
+                        .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
+                }
+            } label: {
+                Label(projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project", systemImage: "folder")
+            }
+            .accessibilityLabel("Project")
+            .accessibilityValue(projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project")
+            .accessibilityIdentifier("memo-project-picker")
+        }
     }
 }

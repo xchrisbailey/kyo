@@ -35,6 +35,7 @@ final class ProjectRecord {
 @MainActor
 protocol ProjectListBehavior: AnyObject {
     var projects: [Project] { get }
+    func memos(in projectID: UUID) -> [Memo]
     var todayProjects: [Project] { get }
     func todayTasks(in projectID: UUID) -> [DailyTask]
     func completedTasks(in projectID: UUID) -> [DailyTask]
@@ -53,12 +54,18 @@ protocol ProjectListBehavior: AnyObject {
 final class ProjectListStore: ObservableObject, ProjectListBehavior {
     @Published private(set) var projects: [Project] = []
     let taskList: TaskListStore
+    let memoStore: MemoStore?
     private let context: ModelContext
 
-    init(modelContainer: ModelContainer, taskList: TaskListStore) {
+    init(modelContainer: ModelContainer, taskList: TaskListStore, memoStore: MemoStore? = nil) {
         context = modelContainer.mainContext
         self.taskList = taskList
+        self.memoStore = memoStore
         reload()
+    }
+
+    func memos(in projectID: UUID) -> [Memo] {
+        memoStore?.memos(in: projectID) ?? []
     }
 
     var todayProjects: [Project] {

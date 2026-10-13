@@ -8,6 +8,8 @@ import UIKit
 struct VoiceRecorderView: View {
     @Environment(\.theme) private var theme
     @ObservedObject var session: VoiceRecordingSession
+    var projects: [Project] = []
+    var initialProjectID: UUID? = nil
     let onFinish: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
@@ -22,6 +24,10 @@ struct VoiceRecorderView: View {
             }
             .accessibilityAddTraits(.isHeader)
 
+            MemoProjectPicker(projects: projects, projectID: Binding(
+                get: { session.projectID },
+                set: { session.selectProject($0) }
+            ))
             switch session.phase {
             case .microphoneDenied:
                 unavailable(
@@ -41,6 +47,7 @@ struct VoiceRecorderView: View {
         .background(theme.screenBackground.ignoresSafeArea())
         .interactiveDismissDisabled()
         .task {
+            session.selectProject(initialProjectID)
             await session.begin()
             while !Task.isCancelled {
                 session.tick()

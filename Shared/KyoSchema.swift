@@ -11,14 +11,12 @@ enum KyoSchemaV1: VersionedSchema {
     }
 }
 
-/// Version 2 adds memos, their voice audio and their photos, and nothing else changes. It hasn't
-/// shipped, so memo models that arrive before it does join it; after it ships, they need a
-/// further additive version.
+/// Version 2 adds the installed memo and media graph; its shape stays frozen.
 enum KyoSchemaV2: VersionedSchema {
     static let versionIdentifier = Schema.Version(2, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        KyoSchemaV1.models + [MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self]
+        KyoSchemaV1.models + [PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self]
     }
 }
 
@@ -27,7 +25,7 @@ enum KyoSchemaV3: VersionedSchema {
     static let versionIdentifier = Schema.Version(3, 0, 0)
     static var models: [any PersistentModel.Type] {
         [PreProjectTaskSchema.TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
-         MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self]
+         PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self]
     }
 }
 
@@ -36,20 +34,30 @@ enum KyoSchemaV4: VersionedSchema {
     static let versionIdentifier = Schema.Version(4, 0, 0)
     static var models: [any PersistentModel.Type] {
         [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
+         PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self, ProjectRecord.self]
+    }
+}
+
+/// Version 5 adds optional project identity to memos while retaining their day and media.
+enum KyoSchemaV5: VersionedSchema {
+    static let versionIdentifier = Schema.Version(5, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
          MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self, ProjectRecord.self]
     }
 }
 
 enum KyoMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [KyoSchemaV1.self, KyoSchemaV2.self, KyoSchemaV3.self, KyoSchemaV4.self]
+        [KyoSchemaV1.self, KyoSchemaV2.self, KyoSchemaV3.self, KyoSchemaV4.self, KyoSchemaV5.self]
     }
 
     /// New models and optional task attributes migrate without replacing existing content.
     static var stages: [MigrationStage] {
         [.lightweight(fromVersion: KyoSchemaV1.self, toVersion: KyoSchemaV2.self),
          .lightweight(fromVersion: KyoSchemaV2.self, toVersion: KyoSchemaV3.self),
-         .lightweight(fromVersion: KyoSchemaV3.self, toVersion: KyoSchemaV4.self)]
+         .lightweight(fromVersion: KyoSchemaV3.self, toVersion: KyoSchemaV4.self),
+         .lightweight(fromVersion: KyoSchemaV4.self, toVersion: KyoSchemaV5.self)]
     }
 }
 
@@ -84,7 +92,7 @@ enum KyoModelContainer {
     }
 
     private static func make(configuration: (Schema) -> ModelConfiguration) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: KyoSchemaV4.self)
+        let schema = Schema(versionedSchema: KyoSchemaV5.self)
         let configuration = configuration(schema)
         return try ModelContainer(
             for: schema,
@@ -218,6 +226,135 @@ enum PreProjectTaskSchema {
             if completedYear != day?.year { completedYear = day?.year }
             if completedMonth != day?.month { completedMonth = day?.month }
             if completedDay != day?.day { completedDay = day?.day }
+        }
+    }
+}
+
+/// Frozen memo and media graph installed before memo project assignment.
+enum PreProjectMemoSchema {
+    @Model
+    final class MemoRecord {
+        var id: UUID = UUID()
+        /// `Memo.Kind.rawValue`, stored as a string so a later kind needs no migration.
+        var kindRaw: String = Memo.Kind.written.rawValue
+        var createdAt: Date = Date(timeIntervalSince1970: 0)
+        var dayEra: Int?
+        var dayYear: Int = 0
+        var dayMonth: Int = 0
+        var dayDay: Int = 0
+        /// A written memo's text, or a voice memo's transcript.
+        var text: String = ""
+        var durationSeconds: Double = 0
+        /// `Memo.TranscriptState.rawValue` for a voice memo; empty for a written memo.
+        var transcriptStateRaw: String = ""
+        var stoppedAtCap: Bool = false
+        /// `TranscriptRetry.rawValue`: whether and when a No transcript voice memo retries by itself.
+        var transcriptRetryRaw: String = ""
+        /// The device language (`Locale.identifier`) when transcription found it unsupported, so a
+        /// later change of language retries.
+        var transcriptLocaleIdentifier: String = ""
+        /// A voice memo's generated or user title; empty means the "Voice memo" fallback.
+        var title: String = ""
+        /// Whether the user named the voice memo, so a generated title never replaces it.
+        var titleIsUserSet: Bool = false
+        @Relationship(deleteRule: .cascade, inverse: \MemoAudioRecord.memo) var audio: MemoAudioRecord?
+        @Relationship(deleteRule: .cascade, inverse: \MemoPhotoRecord.memo) var photos: [MemoPhotoRecord]?
+
+        init(
+            id: UUID = UUID(),
+            kind: Memo.Kind,
+            createdAt: Date,
+            day: TaskCompletionDay,
+            text: String,
+            durationSeconds: Double = 0,
+            transcriptState: Memo.TranscriptState? = nil,
+            stoppedAtCap: Bool = false
+        ) {
+            self.id = id
+            self.kindRaw = kind.rawValue
+            self.createdAt = createdAt
+            self.dayEra = day.era
+            self.dayYear = day.year
+            self.dayMonth = day.month
+            self.dayDay = day.day
+            self.text = text
+            self.durationSeconds = durationSeconds
+            self.transcriptStateRaw = transcriptState?.rawValue ?? ""
+            self.stoppedAtCap = stoppedAtCap
+        }
+
+        var kind: Memo.Kind {
+            Memo.Kind(rawValue: kindRaw) ?? .written
+        }
+
+        var day: TaskCompletionDay {
+            TaskCompletionDay(era: dayEra, year: dayYear, month: dayMonth, day: dayDay)
+        }
+
+        var transcriptRetry: TranscriptRetry {
+            get { TranscriptRetry(rawValue: transcriptRetryRaw) ?? .never }
+            set { transcriptRetryRaw = newValue.rawValue }
+        }
+
+        var transcriptState: Memo.TranscriptState? {
+            get { Memo.TranscriptState(rawValue: transcriptStateRaw) }
+            set { transcriptStateRaw = newValue?.rawValue ?? "" }
+        }
+
+        /// The photos in the order they were added.
+        var orderedPhotos: [MemoPhotoRecord] {
+            (photos ?? []).sorted { lhs, rhs in
+                lhs.order != rhs.order ? lhs.order < rhs.order : lhs.id.uuidString < rhs.id.uuidString
+            }
+        }
+
+        var memo: Memo {
+            Memo(
+                id: id,
+                kind: kind,
+                createdAt: createdAt,
+                day: day,
+                text: text,
+                duration: durationSeconds,
+                transcriptState: kind == .voice ? (transcriptState ?? .noTranscript) : nil,
+                stoppedAtCap: stoppedAtCap,
+                voiceTitle: kind == .voice ? title : "",
+                isTitleUserSet: kind == .voice && titleIsUserSet,
+                photoIDs: orderedPhotos.map(\.id)
+            )
+        }
+    }
+
+    @Model
+    final class MemoAudioRecord {
+        var id: UUID = UUID()
+        /// AAC, mono, 48 kbps.
+        @Attribute(.externalStorage) var data: Data?
+        var memo: MemoRecord?
+
+        init(id: UUID = UUID(), data: Data) {
+            self.id = id
+            self.data = data
+        }
+    }
+
+    @Model
+    final class MemoPhotoRecord {
+        var id: UUID = UUID()
+        /// Where the photo sits among its memo's photos: ascending, in the order they were added. A
+        /// removed photo leaves a gap, which is harmless.
+        var order: Int = 0
+        /// HEIC, longest edge at most 2048 px. The original isn't kept.
+        @Attribute(.externalStorage) var data: Data?
+        /// A small JPEG kept inline, so rows can show the photo without reading `data`.
+        var thumbnail: Data?
+        var memo: MemoRecord?
+
+        init(id: UUID = UUID(), order: Int, data: Data, thumbnail: Data) {
+            self.id = id
+            self.order = order
+            self.data = data
+            self.thumbnail = thumbnail
         }
     }
 }

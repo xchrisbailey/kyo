@@ -25,14 +25,16 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
         isArchived = try values.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 
+    static func precedes(_ lhs: Project, _ rhs: Project) -> Bool {
+        if lhs.creationOrder != rhs.creationOrder { return lhs.creationOrder < rhs.creationOrder }
+        if lhs.id != rhs.id { return lhs.id.uuidString < rhs.id.uuidString }
+        if lhs.name != rhs.name { return lhs.name < rhs.name }
+        return lhs.isArchived && !rhs.isArchived
+    }
+
     static func orderedUnique(_ projects: [Project]) -> [Project] {
         var seen: Set<UUID> = []
-        return projects.sorted {
-            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
-            if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
-            if $0.name != $1.name { return $0.name < $1.name }
-            return $0.isArchived && !$1.isArchived
-        }.filter { seen.insert($0.id).inserted }
+        return projects.sorted(by: precedes).filter { seen.insert($0.id).inserted }
     }
 }
 
@@ -186,10 +188,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
 
     private func records() -> [ProjectRecord] {
         ((try? context.fetch(FetchDescriptor<ProjectRecord>())) ?? []).sorted {
-            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
-            if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
-            if $0.name != $1.name { return $0.name < $1.name }
-            return $0.isArchived && !$1.isArchived
+            Project.precedes($0.project, $1.project)
         }
     }
 

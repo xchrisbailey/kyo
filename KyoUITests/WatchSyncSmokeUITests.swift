@@ -24,8 +24,10 @@ final class WatchSyncSmokeUITests: XCTestCase {
         app.buttons[titleB].tap()
         assertCheckboxValue(app.buttons[titleB], equals: "Completed")
 
+        let taskID = String(app.buttons[titleC].identifier.dropFirst("task-checkbox-".count))
+        XCTAssertNotNil(UUID(uuidString: taskID))
         app.buttons["Edit task: \(titleC)"].tap()
-        let editor = app.textFields["task-editor:\(titleC)"]
+        let editor = app.textFields["task-editor-\(taskID)"]
         XCTAssertTrue(editor.waitForExistence(timeout: 3))
         editor.tap()
         editor.typeText(" edited\n")

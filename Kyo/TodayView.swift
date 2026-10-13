@@ -1254,7 +1254,7 @@ struct TaskRow: View {
                     .submitLabel(.done)
                     .onSubmit(saveEdit)
                     .accessibilityLabel("Edit task")
-                    .accessibilityIdentifier(task.projectID == nil ? "task-editor:\(task.text)" : "task-editor-\(task.id.uuidString)")
+                    .accessibilityIdentifier("task-editor-\(task.id.uuidString)")
                     .accessibilityAction(named: "Share", share)
             } else {
                 Text(task.text)

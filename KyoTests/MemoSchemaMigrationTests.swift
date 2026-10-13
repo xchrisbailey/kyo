@@ -41,8 +41,8 @@ final class MemoSchemaMigrationTests: XCTestCase {
     }
 
     func testTheMigrationPlanOnlyAddsModels() {
-        XCTAssertEqual(KyoMigrationPlan.schemas.count, 3)
-        XCTAssertEqual(KyoMigrationPlan.stages.count, 2)
+        XCTAssertEqual(KyoMigrationPlan.schemas.count, 4)
+        XCTAssertEqual(KyoMigrationPlan.stages.count, 3)
         let v1 = Set(KyoSchemaV1.models.map { String(describing: $0) })
         let v2 = Set(KyoSchemaV2.models.map { String(describing: $0) })
         XCTAssertTrue(v1.isSubset(of: v2))

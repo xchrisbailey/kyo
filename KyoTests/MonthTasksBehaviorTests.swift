@@ -36,6 +36,21 @@ final class MonthTasksBehaviorTests: MonthTestCase {
         model.selectedSummary.sections.first { $0.kind == .tasks }?.rows.map(\.text) ?? []
     }
 
+    func testUnscheduledProjectTasksDoNotMarkMonthOrAppearInDaySummary() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let list = TaskListStore(modelContainer: container, now: { self.harness.now }, calendar: harness.calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: list)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        _ = projects.addTask(text: "Eventual work", to: project.id)
+        let model = makeModel(list)
+        XCTAssertEqual(try taskMark(6, in: model), .empty)
+        XCTAssertTrue(taskRows(in: model).isEmpty)
+        harness.setNow(harness.date(2026, 10, 7))
+        list.refreshForCurrentDay()
+        model.refresh()
+        XCTAssertTrue(taskRows(in: model).isEmpty)
+    }
+
     func testFuturePlannedTasksHaveHollowMarksPlannedCountsAndReadOnlyRows() throws {
         let list = try makeTaskList()
         let task = try XCTUnwrap(list.addTask(text: "Call Friday"))

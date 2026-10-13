@@ -130,6 +130,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     /// Where task content lives: SwiftData for a `.publish` or standalone store, the
     /// `storageKey` UserDefaults entry for a `.mirror` (Watch) store.
     private let content: any TaskContentPersistence
+    private let modelContainer: ModelContainer?
     private let now: () -> Date
     private let calendarProvider: () -> Calendar
     private var calendar: Calendar { calendarProvider() }
@@ -166,6 +167,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         calendarProvider: (() -> Calendar)? = nil,
         sync: TaskListSync? = nil
     ) {
+        self.modelContainer = modelContainer
         self.userDefaults = userDefaults
         self.now = now
         self.calendarProvider = calendarProvider ?? { calendar }
@@ -281,6 +283,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     @discardableResult
     func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask? {
         if case .mirror = sync { return nil }
+        guard let modelContainer,
+              let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
+              projects.contains(where: { $0.id == projectID }) else { return nil }
         return createTask(text: text, plannedOn: nil, projectID: projectID, isUnscheduled: true)
     }
 

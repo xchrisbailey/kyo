@@ -4,6 +4,7 @@ import Foundation
 enum TodaySectionID: String, CaseIterable, Sendable {
     case schedule
     case tasks
+    case projects
     case habits
     case memos
 }

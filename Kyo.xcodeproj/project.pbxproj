@@ -89,6 +89,7 @@
 		3DB33E50554A527BF10AC14C /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11B539EA593339A160053B1E /* CalendarService.swift */; };
 		3FEC1AEDF83B303AEBB944EE /* CollapsedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9A83FB927DFD8F729E2CAF /* CollapsedSections.swift */; };
 		3FFF0BA93A6DAD85547FDB64 /* ScheduleCalendarsBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A0A39A8A72D94FF3F53A2 /* ScheduleCalendarsBehaviorTests.swift */; };
+		40AD475910F2445861FF9049 /* ProjectsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C206801843CC25753039F5A /* ProjectsSheet.swift */; };
 		41699B4BC4DC7681679EBE82 /* WindowPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5217D76D8626E7B4422AD0EC /* WindowPalette.swift */; };
 		419193232AED3C66EEEB379E /* FakeOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBF78EA45D5D2F56269A70B /* FakeOnDeviceLanguageModel.swift */; };
 		419418CCFBB8C82FEBC86A10 /* TaskScheduling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266600354E5CCFBCBEAF3620 /* TaskScheduling.swift */; };
@@ -412,6 +413,7 @@
 		27ACD9FD78414F80B3680FAD /* ScheduleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleUITests.swift; sourceTree = "<group>"; };
 		28131AAE7488A3FA49004B8D /* MonthModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthModel.swift; sourceTree = "<group>"; };
 		29ED805313CFC2CAB23D3359 /* DeviceAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioRecorder.swift; sourceTree = "<group>"; };
+		2C206801843CC25753039F5A /* ProjectsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsSheet.swift; sourceTree = "<group>"; };
 		2D76C8BC5318D09A34468BA0 /* HabitContentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitContentPersistence.swift; sourceTree = "<group>"; };
 		2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecordingSession.swift; sourceTree = "<group>"; };
 		320C3D9EDB92F79142AA98BA /* TaskShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskShare.swift; sourceTree = "<group>"; };
@@ -625,6 +627,7 @@
 				9306E716C155B8E896399CF2 /* MonthView.swift */,
 				201F6E650E2AB408DB3016DC /* PalettePicker.swift */,
 				330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */,
+				2C206801843CC25753039F5A /* ProjectsSheet.swift */,
 				CA2EE40D25C62334FDE67E3C /* QuickCaptureIntents.swift */,
 				A3D6FE8B1D280DEBF5D66B68 /* ScheduleCalendarsView.swift */,
 				6C2F379BCB2D2C17CB252E8D /* ScheduleStore.swift */,
@@ -1177,6 +1180,7 @@
 				960694ABBC31F462C600D795 /* PalettePicker.swift in Sources */,
 				66724E086AE43019A86FDF8A /* PalettePreferenceStore.swift in Sources */,
 				0E223BB3931F971499DBD064 /* Project.swift in Sources */,
+				40AD475910F2445861FF9049 /* ProjectsSheet.swift in Sources */,
 				A4A5FEF9DEB85F7ED996A84F /* QuickCaptureIntents.swift in Sources */,
 				9BAB4E174F4C1993018DA509 /* QuickCaptureRouter.swift in Sources */,
 				EE30E4E345938AC113A5B502 /* ScheduleCalendarsView.swift in Sources */,

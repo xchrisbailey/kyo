@@ -39,6 +39,43 @@ final class TaskStoragePersistenceTests: XCTestCase {
         XCTAssertEqual(MemoStore(modelContainer: container).memos.map(\.title), ["Remember before upgrade"])
     }
 
+    func testInstalledPreProjectStorePreservesPlannedDaysCompletionMemosAndMedia() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 5, to: today))
+        let ordinary = DailyTask(text: "Groceries", creationOrder: 0)
+        let deferred = DailyTask(text: "Call Friday", creationOrder: 1, plannedOn: TaskPlannedDay(date: future, calendar: calendar))
+        let completed = DailyTask(text: "Done", creationOrder: 2, isComplete: true,
+                                  completedOn: TaskCompletionDay(date: today, calendar: calendar))
+        let audio = RecordedAudio(id: UUID(), startedAt: today, duration: 3, data: Data(repeating: 7, count: 150_000))
+        let photo = StoredPhoto(id: UUID(), data: Data(repeating: 9, count: 150_000), thumbnail: Data([1, 2]))
+        var writtenID: UUID?
+        do {
+            let schema = Schema(versionedSchema: KyoSchemaV3.self)
+            let old = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none))
+            for task in [ordinary, deferred, completed] { old.mainContext.insert(PreProjectTaskSchema.TaskRecord(task: task)) }
+            try old.mainContext.save()
+            SwiftDataHabitContent(modelContainer: old).save([Habit(name: "Stretch", order: 0)])
+            let memos: any MemoStoreBehavior = MemoStore(modelContainer: old, now: { today }, calendar: calendar)
+            writtenID = try XCTUnwrap(memos.addWrittenMemo(text: "Remember this", photos: [photo])).id
+            _ = memos.addVoiceMemo(audio, stoppedAtCap: false, photos: [])
+        }
+        let container = try KyoModelContainer.make(storeURL: url)
+        let tasks: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(tasks.tasks, [ordinary, completed])
+        XCTAssertEqual(tasks.laterTasks, [deferred])
+        XCTAssertTrue(tasks.tasks.allSatisfy { $0.projectID == nil && !$0.isUnscheduled })
+        XCTAssertEqual(SwiftDataHabitContent(modelContainer: container).load().map(\.name), ["Stretch"])
+        let memos: any MemoStoreBehavior = MemoStore(modelContainer: container, now: { today }, calendar: calendar)
+        XCTAssertEqual(memos.memo(id: try XCTUnwrap(writtenID))?.text, "Remember this")
+        XCTAssertEqual(memos.photoData(forPhotoID: photo.id), photo.data)
+        XCTAssertEqual(memos.audioData(forMemoID: audio.id), audio.data)
+    }
+
     func testScheduledCreationSurvivesDiskReopeningWithIdentityTextAndOrder() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

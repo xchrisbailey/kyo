@@ -5,6 +5,7 @@ import UIKit
 struct TodayView: View {
     @Environment(\.theme) private var theme
     @StateObject private var taskList: TaskListStore
+    @StateObject private var projects: ProjectListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
     @StateObject private var schedule: ScheduleStore
@@ -43,6 +44,7 @@ struct TodayView: View {
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
         _taskList = StateObject(wrappedValue: taskList)
+        _projects = StateObject(wrappedValue: ProjectListStore(modelContainer: modelContainer, taskList: taskList))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
@@ -144,6 +146,10 @@ struct TodayView: View {
                         })
                     case .scheduleTask(let id):
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
+                    case .allProjects:
+                        ProjectsSheet(projects: projects)
+                    case .newProject:
+                        ProjectsSheet(projects: projects, startCreating: true)
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:
@@ -324,6 +330,29 @@ struct TodayView: View {
                         }
                 }
             }
+        }
+        TodaySection(
+            title: "Projects",
+            note: "For today",
+            collapsedSummary: "No project tasks for today",
+            section: .projects,
+            sections: sections,
+            linkTitle: "All projects",
+            linkHint: "Opens all projects",
+            linkAction: { activeSheet = .allProjects }
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("No project tasks for today")
+                    .foregroundStyle(theme.secondaryText)
+                    .accessibilityIdentifier("projects-empty")
+                if projects.projects.isEmpty {
+                    Button("New project") { activeSheet = .newProject }
+                        .foregroundStyle(theme.accent)
+                        .accessibilityIdentifier("projects-new")
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
+            .padding(14)
         }
         TodaySection(
             title: "Habits",
@@ -570,6 +599,8 @@ private enum TodayPreviewSheet: Identifiable {
     case memo(UUID)
     case allMemos
     case allHabits
+    case allProjects
+    case newProject
     case later
     case scheduleTask(UUID)
     case scheduleTaskDraft
@@ -583,6 +614,8 @@ private enum TodayPreviewSheet: Identifiable {
         case .memo(let id): "memo:\(id.uuidString)"
         case .allMemos: "allMemos"
         case .allHabits: "allHabits"
+        case .allProjects: "allProjects"
+        case .newProject: "newProject"
         case .later: "later"
         case .scheduleTaskDraft: "scheduleTaskDraft"
         case .scheduleTask(let id): "scheduleTask:\(id.uuidString)"

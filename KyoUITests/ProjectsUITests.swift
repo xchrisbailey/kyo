@@ -31,6 +31,7 @@ final class ProjectsUITests: XCTestCase {
         XCTAssertTrue(choose.waitForExistence(timeout: 5))
         choose.tap()
         app.buttons["projects-done"].tap()
+        capture("project-section-long-name", in: app)
         let group = app.buttons["project-group-collapse-\(projectID)"]
         XCTAssertTrue(group.waitForExistence(timeout: 5))
         XCTAssertEqual(group.value as? String, "expanded")

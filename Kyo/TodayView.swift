@@ -841,6 +841,7 @@ private struct SummaryStat: View {
 
 struct TodaySection<Content: View>: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let note: String
     /// Shown in place of `note` while the section is collapsed, such as "2 of 5 done".
@@ -859,50 +860,19 @@ struct TodaySection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Button {
-                    withAnimation { sections.toggle(section) }
-                } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        HStack(spacing: 7) {
-                            Text(title)
-                                .headerStyle(.section)
-                                .foregroundStyle(theme.primaryText)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(theme.secondaryText)
-                                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
-                        }
-                        Spacer(minLength: 8)
-                        Text(shownNote)
-                            .font(.caption)
-                            .foregroundStyle(theme.secondaryText)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 51)
-                    .contentShape(Rectangle())
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    collapseButton
+                    headerLink
                 }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(title), \(shownNote)")
-                .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
-                .accessibilityAddTraits(.isButton)
-                .accessibilityIdentifier("section-header-\(section.rawValue)")
-                if let linkTitle {
-                    Button(action: linkAction) {
-                        Text(linkTitle)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(theme.accent)
-                            .padding(.leading, 6)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(linkHint ?? "")
-                    .accessibilityIdentifier("section-link-\(section.rawValue)")
+                .padding(.vertical, 8)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    collapseButton
+                    headerLink
                 }
+                .frame(minHeight: 51)
             }
-            .frame(minHeight: 51)
 
             if !isCollapsed {
                 content
@@ -912,6 +882,71 @@ struct TodaySection<Content: View>: View {
             }
         }
     }
+
+    private var sectionTitle: some View {
+        HStack(spacing: 7) {
+            Text(title)
+                .headerStyle(.section)
+                .foregroundStyle(theme.primaryText)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.secondaryText)
+                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+        }
+    }
+
+    private var collapseButton: some View {
+        Button {
+            withAnimation { sections.toggle(section) }
+        } label: {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        sectionTitle
+                        Text(shownNote)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 51, alignment: .leading)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        sectionTitle
+                        Spacer(minLength: 8)
+                        Text(shownNote)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 51)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(shownNote)")
+        .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("section-header-\(section.rawValue)")
+    }
+
+    @ViewBuilder
+    private var headerLink: some View {
+        if let linkTitle {
+            Button(action: linkAction) {
+                Text(linkTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.accent)
+                    .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 6)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(linkHint ?? "")
+            .accessibilityIdentifier("section-link-\(section.rawValue)")
+        }
+    }
+
 }
 
 private struct CheckRow: View {

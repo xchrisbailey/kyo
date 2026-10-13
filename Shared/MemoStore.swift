@@ -296,8 +296,8 @@ final class MemoStore: ObservableObject, MemoStoreBehavior {
     }
 
     func memos(in projectID: UUID) -> [Memo] {
-        uniqueByID((try? context.fetch(FetchDescriptor<MemoRecord>())) ?? [])
-            .filter { $0.projectID == projectID }.map(\.memo).sorted(by: Self.isNewer)
+        let descriptor = FetchDescriptor<MemoRecord>(predicate: #Predicate { $0.projectID == projectID })
+        return uniqueByID((try? context.fetch(descriptor)) ?? []).map(\.memo).sorted(by: Self.isNewer)
     }
 
     @discardableResult

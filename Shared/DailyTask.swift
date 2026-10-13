@@ -448,7 +448,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     @discardableResult
     func deferTask(id: UUID, to date: Date) -> DailyTask? {
         guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()) else { return nil }
-        return setPlannedDay(id: id, day: TaskPlannedDay(date: date, calendar: calendar))
+        return setPlannedDay(id: id, day: TaskPlannedDay(date: date, calendar: calendar), isUnscheduled: false)
     }
 
     @discardableResult

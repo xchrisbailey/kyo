@@ -3,6 +3,30 @@ import XCTest
 
 @MainActor
 final class ProjectListBehaviorTests: XCTestCase {
+    func testSchedulingUnscheduledProjectTaskSelectsLaterAndReturnClearsItsProjection() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let tasks = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: tasks)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(projects.addTask(text: "Build widgets", to: project.id))
+        let deferred = try XCTUnwrap(tasks.deferTask(id: task.id, to: friday))
+        XCTAssertFalse(deferred.isUnscheduled)
+        XCTAssertEqual(deferred.text, "Build widgets")
+        XCTAssertEqual(tasks.laterTasks, [deferred])
+        XCTAssertEqual(tasks.tasksPlanned(on: friday, calendar: calendar), [deferred])
+        XCTAssertTrue(projects.unscheduledTasks(in: project.id).isEmpty)
+        let returned = try XCTUnwrap(projects.returnToProject(taskID: task.id))
+        XCTAssertEqual(returned.id, task.id)
+        XCTAssertNil(returned.plannedOn)
+        XCTAssertTrue(returned.isUnscheduled)
+        XCTAssertTrue(tasks.laterTasks.isEmpty)
+        XCTAssertTrue(tasks.tasksPlanned(on: friday, calendar: calendar).isEmpty)
+        XCTAssertEqual(tasks.taskCount, 0)
+    }
+
     func testChoosingAndReturningProjectWorkKeepsIdentityAndEverydayCountsDisjoint() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

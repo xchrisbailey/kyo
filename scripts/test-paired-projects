@@ -8,11 +8,19 @@ paired_run() {
   echo "scripts/test: paired $phase; full log: $log"
   "$@" >"$log" 2>&1 &
   xcodebuild_pid=$!
-  local status=0 failed_seconds=0 passed_seconds=0
+  local status=0 failed_seconds=0 passed_seconds=0 stopped_failure_helper=0
   while kill -0 "$xcodebuild_pid" 2>/dev/null; do
     if grep -qE "^Test Suite '(All tests|Selected tests)' failed" "$log"; then
       failed_seconds=$((failed_seconds + 1))
-      if [[ $failed_seconds -ge 60 ]]; then
+      if [[ $failed_seconds -ge 20 ]] \
+        && pkill -TERM -P "$xcodebuild_pid" -f 'simctl diagnose' 2>/dev/null; then
+        if [[ $stopped_failure_helper -eq 0 ]]; then
+          echo "scripts/test: stopped owned simulator diagnostics helper after failed suite; allowing result finalization" >&2
+          stopped_failure_helper=1
+        fi
+      fi
+      if [[ $failed_seconds -ge 120 ]]; then
+        echo "scripts/test: owned xcodebuild did not finalize within 120s after failure; stopping it, result bundle may be incomplete" >&2
         stop_xcodebuild
         status=65
         break
@@ -46,7 +54,7 @@ paired_phase() {
   if [[ -d "$result" ]]; then
     xcrun xcresulttool export attachments --path "$result" \
       --output-path "$log_dir/$run_id-paired-$phase-attachments" \
-      || echo "scripts/test: attachment export unavailable; originals retained in $result" >&2
+      || echo "scripts/test: attachment export unavailable; retained result directory may be incomplete: $result" >&2
   fi
   [[ $phase_status -eq 0 ]] || return "$phase_status"
   # Successful xcodebuild with a skipped or missing test is not paired evidence.
@@ -102,8 +110,14 @@ xcrun simctl install "$watch_udid" "$watch_app"
 xcrun simctl launch "$udid" "$phone_bundle"
 xcrun simctl launch "$watch_udid" "$watch_bundle"
 paired_phase phone-seed KyoUITests "$udid" testPhoneSeed "$phone_data"
+# The phone XCTest ends its app. Reopen the real app after installation recognition
+# settles, so activation republishes the saved catalog and it stays alive for Watch.
+xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
+  | tee "$log_dir/$run_id-paired-handoff-original.log"
 paired_phase watch-original KyoWatchUITests "$watch_udid" testWatchObserveOriginal "$watch_data"
 paired_phase phone-rename KyoUITests "$udid" testPhoneRename "$phone_data"
+xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
+  | tee "$log_dir/$run_id-paired-handoff-renamed.log"
 paired_phase watch-command KyoWatchUITests "$watch_udid" testWatchObserveRenameAndComplete "$watch_data"
 paired_phase phone-verify KyoUITests "$udid" testPhoneVerifyWatchCompletion "$phone_data"
 echo "scripts/test: paired Projects delivery verified; 5 executed phases, no skips; token=$paired_token"

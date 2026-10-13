@@ -121,13 +121,18 @@ final class PairedProjectsSyncUITests: XCTestCase {
     }
 
     private func waitForDelivery(_ element: XCUIElement, label: String, in app: XCUIApplication) {
-        reveal(app.buttons["section-header-projects"], in: app)
-        // List rows are lazy. Keep drawing the group as new catalog content arrives.
-        for _ in 0..<18 {
-            reveal(element, in: app)
-            let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
-            if XCTWaiter.wait(for: [expectation], timeout: 5) == .completed { return }
-            scroll(in: app, upward: false)
+        let deadline = Date.now.addingTimeInterval(90)
+        var upward = true
+        var steps = 0
+        // Draw lazy rows in both directions while waiting for the exact delivered catalog.
+        while Date.now < deadline {
+            if element.exists && element.isHittable && element.label == label { return }
+            scroll(in: app, upward: upward)
+            steps += 1
+            if steps == 8 {
+                upward.toggle()
+                steps = 0
+            }
         }
         XCTFail("Project catalog must arrive through actual WatchConnectivity: \(label)")
     }
@@ -139,7 +144,8 @@ final class PairedProjectsSyncUITests: XCTestCase {
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, upward: Bool = true) {
-        for _ in 0..<8 where !element.isHittable {
+        for _ in 0..<8 {
+            if element.exists && element.isHittable { return }
             scroll(in: app, upward: upward)
         }
     }

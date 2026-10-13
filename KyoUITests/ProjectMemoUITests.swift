@@ -46,7 +46,7 @@ final class ProjectMemoUITests: XCTestCase {
         app.buttons["memo-close"].tap()
         XCTAssertTrue(memo.waitForNonExistence(timeout: 5))
         app.buttons["projects-done"].tap()
-        app.buttons["Add an item"].tap() // label-query: existing bottom Add control
+        app.buttons["add-item"].tap()
         app.buttons["Written memo"].tap() // label-query: existing memo capture route
         XCTAssertTrue(compose.waitForExistence(timeout: 5))
         let picker = app.buttons["memo-project-picker"]

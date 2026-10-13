@@ -35,7 +35,11 @@ final class ProjectListBehaviorTests: XCTestCase {
         let monday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19)))
         let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
         let transport = ControllableTaskTransport()
-        let tasks = TaskListStore(modelContainer: container, now: { today }, calendar: calendar, sync: .publish(to: transport))
+        let suite = "ProjectPlannedCapture.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let tasks = TaskListStore(userDefaults: defaults, modelContainer: container, now: { today }, calendar: calendar,
+                                  sync: .publish(to: transport))
         let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: tasks)
         let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
         let unscheduled = try XCTUnwrap(projects.addTask(text: "Eventual", to: project.id))

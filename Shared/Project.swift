@@ -41,6 +41,8 @@ protocol ProjectListBehavior: AnyObject {
     @discardableResult func addTaskForToday(text: String, to projectID: UUID) -> DailyTask?
     @discardableResult func doToday(taskID: UUID) -> DailyTask?
     @discardableResult func returnToProject(taskID: UUID) -> DailyTask?
+    func laterTasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func addTask(text: String, to projectID: UUID, plannedFor date: Date) -> DailyTask?
     func unscheduledTasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func addTask(text: String, to projectID: UUID) -> DailyTask?
     @discardableResult func createProject(name: String) -> Project?
@@ -86,6 +88,16 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
     @discardableResult
     func returnToProject(taskID: UUID) -> DailyTask? {
         taskList.returnTaskToProject(id: taskID)
+    }
+
+    func laterTasks(in projectID: UUID) -> [DailyTask] {
+        taskList.laterTasks.filter { $0.projectID == projectID }
+    }
+
+    @discardableResult
+    func addTask(text: String, to projectID: UUID, plannedFor date: Date) -> DailyTask? {
+        guard projects.contains(where: { $0.id == projectID }) else { return nil }
+        return taskList.addTask(text: text, projectID: projectID, plannedFor: date)
     }
 
     func unscheduledTasks(in projectID: UUID) -> [DailyTask] {

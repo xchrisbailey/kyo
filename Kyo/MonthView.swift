@@ -299,6 +299,11 @@ private struct MonthSummaryRowView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     title
+                    if let projectName = row.projectName {
+                        Text(projectName)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
+                    }
                     Text(isComplete ? "Completed" : "Planned")
                         .font(.caption)
                         .foregroundStyle(theme.secondaryText)

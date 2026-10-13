@@ -27,6 +27,86 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(tasks.taskCount, 0)
     }
 
+    func testExplicitProjectCaptureUsesTodayOrOrderedLaterWithoutCreatingInvalidWork() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let friday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 16)))
+        let monday = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 19)))
+        let yesterday = try XCTUnwrap(calendar.date(byAdding: .day, value: -1, to: today))
+        let transport = ControllableTaskTransport()
+        let tasks = TaskListStore(modelContainer: container, now: { today }, calendar: calendar, sync: .publish(to: transport))
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: tasks)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let unscheduled = try XCTUnwrap(projects.addTask(text: "Eventual", to: project.id))
+        let last = try XCTUnwrap(projects.addTask(text: "Monday", to: project.id, plannedFor: monday))
+        let first = try XCTUnwrap(projects.addTask(text: "Friday first", to: project.id, plannedFor: friday))
+        let second = try XCTUnwrap(projects.addTask(text: "Friday second", to: project.id, plannedFor: friday))
+        let chosen = try XCTUnwrap(projects.addTask(text: "Today", to: project.id, plannedFor: today))
+        XCTAssertEqual(projects.laterTasks(in: project.id), [first, second, last])
+        XCTAssertEqual(projects.todayTasks(in: project.id), [chosen])
+        XCTAssertEqual(projects.unscheduledTasks(in: project.id), [unscheduled])
+        let snapshot = try XCTUnwrap(transport.published.last)
+        XCTAssertNil(projects.addTask(text: "Past", to: project.id, plannedFor: yesterday))
+        XCTAssertNil(tasks.addTask(text: "Unknown", projectID: UUID(), plannedFor: friday))
+        XCTAssertEqual(transport.published.last, snapshot)
+        XCTAssertEqual(tasks.tasks(in: project.id).count, 5)
+    }
+
+    func testFutureProjectWorkSurvivesDiskAndOfflineWatchCacheRolloverAcrossZoneChange() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let suite = "ProjectPlanningCache.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/Detroit"))
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 12)))
+        let planned = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 1)))
+        let plannedDay = TaskPlannedDay(era: 1, year: 2026, month: 11, day: 1)
+        let transport = ControllableTaskTransport()
+        var captured: DailyTask?
+        var project: Project?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+                                      now: { now }, calendarProvider: { calendar }, sync: .publish(to: transport))
+            let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: phone)
+            project = try XCTUnwrap(projects.createProject(name: "Build Kyo"))
+            captured = try XCTUnwrap(projects.addTask(text: "DST project work", to: try XCTUnwrap(project).id, plannedFor: planned))
+            _ = projects.addTask(text: "Unchosen", to: try XCTUnwrap(project).id)
+            let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now },
+                                                           calendarProvider: { calendar }, sync: .mirror(from: transport))
+            XCTAssertTrue(watch.tasks.isEmpty)
+            XCTAssertEqual(watch.laterTasks, [try XCTUnwrap(captured)])
+            XCTAssertEqual(watch.projectCatalog, [try XCTUnwrap(project)])
+        }
+        let container = try KyoModelContainer.make(storeURL: url)
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+                                  now: { now }, calendarProvider: { calendar }, sync: .publish(to: transport))
+        XCTAssertEqual(phone.laterTasks, [try XCTUnwrap(captured)])
+        XCTAssertEqual(transport.published.last?.tasks, [try XCTUnwrap(captured)])
+        let offline = ControllableTaskTransport()
+        offline.disconnect()
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now },
+                                                       calendarProvider: { calendar }, sync: .mirror(from: offline))
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 1, hour: 12)))
+        phone.refreshForCurrentDay()
+        watch.refreshForCurrentDay()
+        XCTAssertEqual(watch.tasks, [try XCTUnwrap(captured)])
+        XCTAssertEqual(watch.tasks, phone.tasks)
+        XCTAssertEqual(watch.tasks.first?.plannedOn, plannedDay)
+        XCTAssertEqual(watch.projectCatalog, [try XCTUnwrap(project)])
+        now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 2, hour: 12)))
+        watch.refreshForCurrentDay()
+        XCTAssertEqual(watch.taskCount, 1)
+        XCTAssertTrue(watch.laterTasks.isEmpty)
+        XCTAssertEqual(watch.tasks.first?.plannedOn, plannedDay)
+    }
+
     func testChoosingAndReturningProjectWorkKeepsIdentityAndEverydayCountsDisjoint() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

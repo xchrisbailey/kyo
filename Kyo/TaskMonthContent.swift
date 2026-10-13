@@ -4,17 +4,28 @@ import Foundation
 /// Incomplete planned tasks and completion-day history for Month. A task has only its current
 /// state here: completing it removes its planned row and adds the actual completion-day row.
 @MainActor
-struct TaskMonthContent: MonthContentSource {
+final class TaskMonthContent: MonthContentSource {
     let kind = MonthKind.tasks
     private let taskList: TaskListStore
+    private var projects: [Project]
+    private var subscriptions = Set<AnyCancellable>()
+    let changes: AnyPublisher<Void, Never>
 
     init(taskList: TaskListStore) {
         self.taskList = taskList
-    }
-
-    /// Fires after every change to the list, whether or not Today's own tasks changed.
-    var changes: AnyPublisher<Void, Never> {
-        taskList.$tasks.map { _ in }.eraseToAnyPublisher()
+        projects = taskList.projectCatalog
+        let subject = PassthroughSubject<Void, Never>()
+        changes = subject.eraseToAnyPublisher()
+        taskList.$tasks.dropFirst()
+            .sink { _ in subject.send() }
+            .store(in: &subscriptions)
+        // Published values arrive before the store updates, so retain the received catalog.
+        taskList.$projectCatalog.dropFirst()
+            .sink { [weak self] projects in
+                self?.projects = projects
+                subject.send()
+            }
+            .store(in: &subscriptions)
     }
 
     func content(on days: [Date]) -> [Date: MonthKindDay] {
@@ -44,8 +55,10 @@ struct TaskMonthContent: MonthContentSource {
         return content
     }
     private func row(_ task: DailyTask, isComplete: Bool) -> MonthSummaryRow {
-        MonthSummaryRow(id: "task-\(task.id.uuidString)", text: task.text,
-                        kind: .task(isComplete: isComplete), accessibilityValue: isComplete ? "Completed" : "Planned")
+        let project = projects.first { $0.id == task.projectID }
+        return MonthSummaryRow(id: "task-\(task.id.uuidString)", text: task.text,
+                        kind: .task(isComplete: isComplete), projectName: project?.name,
+                        accessibilityLabel: project.map { "\(task.text), \($0.name)" }, accessibilityValue: isComplete ? "Completed" : "Planned")
     }
 
 }

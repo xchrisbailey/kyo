@@ -88,6 +88,7 @@ protocol TaskListBehavior: AnyObject {
     var projectCatalog: [Project] { get }
     @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask?
     @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
     @discardableResult func deferTask(id: UUID, to date: Date) -> DailyTask?
     @discardableResult func bringTaskToToday(id: UUID) -> DailyTask?
@@ -303,6 +304,16 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
               let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
               projects.contains(where: { $0.id == projectID }) else { return nil }
         return createTask(text: text, plannedOn: nil, projectID: projectID, isUnscheduled: true)
+    }
+
+    @discardableResult
+    func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()),
+              let modelContainer,
+              let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
+              projects.contains(where: { $0.id == projectID }) else { return nil }
+        return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar), projectID: projectID)
     }
 
     private func createTask(text: String, plannedOn: TaskPlannedDay?, projectID: UUID? = nil, isUnscheduled: Bool = false) -> DailyTask? {

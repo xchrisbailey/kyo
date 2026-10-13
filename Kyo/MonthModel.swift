@@ -41,6 +41,7 @@ struct MonthSummaryRow: Identifiable, Equatable, Sendable {
     let id: String
     let text: String
     var kind: Kind = .plain
+    var projectName: String? = nil
     /// What VoiceOver reads instead of `text`, when the row reads as more than it shows.
     var accessibilityLabel: String? = nil
     /// What VoiceOver reads after the label, such as whether a task or a habit is done.

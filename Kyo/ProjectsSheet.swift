@@ -3,13 +3,22 @@ import SwiftUI
 struct ProjectsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var projects: ProjectListStore
+    @ObservedObject var sections: CollapsedSections
     @State private var isCreating = false
     let languageModel: any OnDeviceLanguageModel
     let voiceRecording: VoiceRecordingSession?
     let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
 
-    init(projects: ProjectListStore, startCreating: Bool = false, languageModel: any OnDeviceLanguageModel = NoLanguageModel(), voiceRecording: VoiceRecordingSession? = nil, onCaptureSurfaceChange: @escaping (QuickCaptureRouter.Surface?) -> Void = { _ in }) {
+    init(
+        projects: ProjectListStore,
+        sections: CollapsedSections,
+        startCreating: Bool = false,
+        languageModel: any OnDeviceLanguageModel = NoLanguageModel(),
+        voiceRecording: VoiceRecordingSession? = nil,
+        onCaptureSurfaceChange: @escaping (QuickCaptureRouter.Surface?) -> Void = { _ in }
+    ) {
         self.projects = projects
+        self.sections = sections
         self.languageModel = languageModel
         self.voiceRecording = voiceRecording
         self.onCaptureSurfaceChange = onCaptureSurfaceChange
@@ -22,7 +31,9 @@ struct ProjectsSheet: View {
                 ThemedListGroup {
                     ForEach(projects.projects) { project in
                         NavigationLink {
-                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, languageModel: languageModel, voiceRecording: voiceRecording, onCaptureSurfaceChange: onCaptureSurfaceChange, onDone: { dismiss() })
+                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList,
+                                languageModel: languageModel, voiceRecording: voiceRecording,
+                                onCaptureSurfaceChange: onCaptureSurfaceChange, sections: sections, onDone: { dismiss() })
                         } label: {
                             Text(project.name)
                         }
@@ -50,46 +61,52 @@ struct ProjectsSheet: View {
     }
 }
 
-private struct ProjectDetailView: View {
-    @Environment(\.theme) private var theme
+struct ProjectDetailView: View {
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var taskList: TaskListStore
     let languageModel: any OnDeviceLanguageModel
     let voiceRecording: VoiceRecordingSession?
     let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
+    @ObservedObject var sections: CollapsedSections
     let onDone: () -> Void
     @State private var isWritingMemo = false
     @State private var isRecordingMemo = false
     @State private var openMemoID: UUID?
     @State private var isRenaming = false
     @State private var isAddingTask = false
-    @State private var editingTask: DailyTask?
-    @State private var shareItems: ShareItems?
 
     private var name: String { projects.projects.first { $0.id == projectID }?.name ?? "Project" }
 
     var body: some View {
         List {
+            ThemedListGroup("Today") {
+                ForEach(projects.todayTasks(in: projectID).filter { !$0.isComplete }) { task in
+                    taskRow(task)
+                }
+            }
             ThemedListGroup("Unscheduled") {
                 ForEach(projects.unscheduledTasks(in: projectID)) { task in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(task.text)
-                            .accessibilityIdentifier("project-task-text-\(task.id.uuidString)")
-                        HStack {
-                            Button("Edit") { editingTask = task }
-                                .accessibilityIdentifier("project-task-edit-\(task.id.uuidString)")
-                            Button("Share") { shareItems = ShareItems(.make(for: task)) }
-                                .accessibilityIdentifier("project-task-share-\(task.id.uuidString)")
-                            Button("Delete", role: .destructive) { taskList.deleteTask(id: task.id) }
-                                .foregroundStyle(theme.destructive)
-                                .accessibilityIdentifier("project-task-delete-\(task.id.uuidString)")
-                        }
-                        .buttonStyle(.borderless)
-                    }
+                    taskRow(task)
                 }
                 Button("Add task") { isAddingTask = true }
                     .accessibilityIdentifier("project-add-task")
+            }
+            ThemedListGroup {
+                Button {
+                    sections.toggleCompleted(projectID)
+                } label: {
+                    Label("Completed", systemImage: sections.isCompletedCollapsed(projectID) ? "chevron.right" : "chevron.down")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(sections.isCompletedCollapsed(projectID) ? "collapsed" : "expanded")
+                .accessibilityIdentifier("project-completed-collapse-\(projectID.uuidString)")
+                if !sections.isCompletedCollapsed(projectID) {
+                    ForEach(projects.completedTasks(in: projectID)) { task in
+                        taskRow(task)
+                    }
+                }
             }
             if let memoStore = projects.memoStore {
                 ProjectMemosSection(projectID: projectID, projects: projects, store: memoStore,
@@ -149,20 +166,22 @@ private struct ProjectDetailView: View {
                 projects.addTask(text: $0, to: projectID) != nil
             }
         }
-        .sheet(item: $editingTask) { task in
-            ProjectTextForm(title: "Edit task", field: "Task", identifier: "project-task", text: task.text) {
-                taskList.editTask(id: task.id, text: $0) != nil
-            }
-        }
-        .popover(item: $shareItems) { items in
-            ShareSheet(items: items) { shareItems = nil }
-                .presentationDetents([.medium, .large])
-                .presentationCompactAdaptation(.sheet)
-        }
+    }
+
+    private func taskRow(_ task: DailyTask) -> some View {
+        TaskRow(task: task,
+                onToggle: {
+                    if task.isUnscheduled && !task.isComplete { projects.doToday(taskID: task.id) }
+                    else { taskList.toggleTask(id: task.id) }
+                },
+                onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
+                onDelete: { taskList.deleteTask(id: task.id) },
+                onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) })
+            .listRowInsets(EdgeInsets())
     }
 }
 
-private struct ProjectTextForm: View {
+struct ProjectTextForm: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
     let field: String

@@ -2,10 +2,19 @@ import Combine
 import Foundation
 import SwiftData
 
-struct Project: Identifiable, Equatable, Sendable {
+struct Project: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     let creationOrder: Int64
+
+    static func orderedUnique(_ projects: [Project]) -> [Project] {
+        var seen: Set<UUID> = []
+        return projects.sorted {
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
+            return $0.name < $1.name
+        }.filter { seen.insert($0.id).inserted }
+    }
 }
 
 @Model
@@ -27,6 +36,12 @@ final class ProjectRecord {
 protocol ProjectListBehavior: AnyObject {
     var projects: [Project] { get }
     func memos(in projectID: UUID) -> [Memo]
+    var todayProjects: [Project] { get }
+    func todayTasks(in projectID: UUID) -> [DailyTask]
+    func completedTasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func addTaskForToday(text: String, to projectID: UUID) -> DailyTask?
+    @discardableResult func doToday(taskID: UUID) -> DailyTask?
+    @discardableResult func returnToProject(taskID: UUID) -> DailyTask?
     func unscheduledTasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func addTask(text: String, to projectID: UUID) -> DailyTask?
     @discardableResult func createProject(name: String) -> Project?
@@ -51,6 +66,35 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         memoStore?.memos(in: projectID) ?? []
     }
 
+    var todayProjects: [Project] {
+        projects.filter { !todayTasks(in: $0.id).isEmpty }
+    }
+
+    func todayTasks(in projectID: UUID) -> [DailyTask] {
+        taskList.tasks.filter { $0.projectID == projectID }
+    }
+
+    func completedTasks(in projectID: UUID) -> [DailyTask] {
+        taskList.tasks(in: projectID).filter(\.isComplete)
+    }
+
+    @discardableResult
+    func addTaskForToday(text: String, to projectID: UUID) -> DailyTask? {
+        guard let task = addTask(text: text, to: projectID) else { return nil }
+        return doToday(taskID: task.id)
+    }
+
+    @discardableResult
+    func doToday(taskID: UUID) -> DailyTask? {
+        guard projects.contains(where: { project in taskList.tasks(in: project.id).contains { $0.id == taskID } }) else { return nil }
+        return taskList.bringTaskToToday(id: taskID)
+    }
+
+    @discardableResult
+    func returnToProject(taskID: UUID) -> DailyTask? {
+        taskList.returnTaskToProject(id: taskID)
+    }
+
     func unscheduledTasks(in projectID: UUID) -> [DailyTask] {
         taskList.tasks(in: projectID).filter { $0.isUnscheduled && !$0.isComplete }
     }
@@ -69,6 +113,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         context.insert(ProjectRecord(project: project))
         try? context.save()
         reload()
+        taskList.refreshProjectCatalog()
         return project
     }
 
@@ -79,6 +124,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         record.name = name
         try? context.save()
         reload()
+        taskList.refreshProjectCatalog()
         return projects.first { $0.id == id }
     }
 

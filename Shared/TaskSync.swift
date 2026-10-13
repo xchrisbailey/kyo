@@ -9,22 +9,25 @@ import Foundation
 struct TaskListSnapshot: Codable, Equatable, Sendable {
     let revision: Int64
     let tasks: [DailyTask]
+    let projects: [Project]
     let acknowledgedCommandIDs: [UUID]
 
-    init(revision: Int64, tasks: [DailyTask], acknowledgedCommandIDs: [UUID] = []) {
+    init(revision: Int64, tasks: [DailyTask], acknowledgedCommandIDs: [UUID] = [], projects: [Project] = []) {
         self.revision = revision
         self.tasks = tasks
+        self.projects = projects
         self.acknowledgedCommandIDs = acknowledgedCommandIDs
     }
 
     private enum CodingKeys: String, CodingKey {
-        case revision, tasks, acknowledgedCommandIDs
+        case revision, tasks, acknowledgedCommandIDs, projects
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         revision = try container.decode(Int64.self, forKey: .revision)
         tasks = try container.decode([DailyTask].self, forKey: .tasks)
+        projects = try container.decodeIfPresent([Project].self, forKey: .projects) ?? []
         // Old payloads (before #14) never carried this field; treat it as an empty ack set
         // rather than failing to decode.
         acknowledgedCommandIDs = try container.decodeIfPresent([UUID].self, forKey: .acknowledgedCommandIDs) ?? []

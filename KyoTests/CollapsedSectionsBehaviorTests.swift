@@ -18,6 +18,28 @@ final class CollapsedSectionsBehaviorTests: XCTestCase {
         return UserDefaults(suiteName: name)!
     }
 
+    func testProjectAndCompletedChoicesPersistByIdentityAndStayDeviceLocal() {
+        let defaults = makeDefaults()
+        let projectID = UUID()
+        let otherID = UUID()
+        let sections = CollapsedSections(defaults: defaults)
+        XCTAssertFalse(sections.isProjectCollapsed(projectID))
+        XCTAssertFalse(sections.isCompletedCollapsed(projectID))
+        sections.toggleProject(projectID)
+        sections.toggleCompleted(projectID)
+        sections.toggle(.projects)
+        let reopened = CollapsedSections(defaults: defaults)
+        XCTAssertTrue(reopened.isProjectCollapsed(projectID))
+        XCTAssertTrue(reopened.isCompletedCollapsed(projectID))
+        XCTAssertTrue(reopened.isCollapsed(.projects))
+        XCTAssertFalse(reopened.isProjectCollapsed(otherID))
+        XCTAssertFalse(reopened.isCompletedCollapsed(otherID))
+        XCTAssertFalse(CollapsedSections(defaults: makeDefaults()).isProjectCollapsed(projectID))
+        reopened.toggleProject(projectID)
+        XCTAssertFalse(CollapsedSections(defaults: defaults).isProjectCollapsed(projectID))
+        XCTAssertTrue(CollapsedSections(defaults: defaults).isCompletedCollapsed(projectID))
+    }
+
     func testEverySectionStartsExpandedWhenNothingIsStored() {
         let sections = CollapsedSections(defaults: makeDefaults())
 

@@ -6,6 +6,60 @@ final class ProjectsUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testChoosingProjectWorkShowsGroupNavigationCaptureCompletionAndCollapse() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        app.buttons["project-new"].tap()
+        let name = app.textFields["project-name-editor"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Build Kyo and a daily planner for every device")
+        app.buttons["project-name-save"].tap()
+        let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        let projectID = String(project.identifier.dropFirst("project-open-".count))
+        project.tap()
+        app.buttons["project-add-task"].tap()
+        let task = app.textFields["project-task-editor"]
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        task.tap()
+        task.typeText("Widgets")
+        app.buttons["project-task-save"].tap()
+        let choose = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-do-today-")).firstMatch
+        XCTAssertTrue(choose.waitForExistence(timeout: 5))
+        choose.tap()
+        app.buttons["projects-done"].tap()
+        capture("project-section-long-name", in: app)
+        let group = app.buttons["project-group-collapse-\(projectID)"]
+        XCTAssertTrue(group.waitForExistence(timeout: 5))
+        XCTAssertEqual(group.value as? String, "expanded")
+        XCTAssertEqual(app.staticTexts["project-group-summary-\(projectID)"].label, "0 of 1 done")
+        tapRevealed(group, in: app)
+        XCTAssertEqual(group.value as? String, "collapsed")
+        tapRevealed(app.buttons["project-group-open-\(projectID)"], in: app)
+        let completed = app.buttons["project-completed-collapse-\(projectID)"]
+        XCTAssertTrue(completed.waitForExistence(timeout: 5))
+        XCTAssertEqual(completed.value as? String, "expanded")
+        completed.tap()
+        app.buttons["projects-done"].tap()
+        XCTAssertEqual(group.value as? String, "collapsed")
+        tapRevealed(group, in: app)
+        tapRevealed(app.buttons["project-group-add-\(projectID)"], in: app)
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        task.tap()
+        task.typeText("Sync")
+        app.buttons["project-task-save"].tap()
+        XCTAssertEqual(app.staticTexts["project-group-summary-\(projectID)"].label, "0 of 2 done")
+        let checkbox = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).firstMatch
+        XCTAssertTrue(checkbox.waitForExistence(timeout: 5))
+        tapRevealed(checkbox, in: app)
+        XCTAssertEqual(app.staticTexts["project-group-summary-\(projectID)"].label, "1 of 2 done")
+        XCTAssertEqual(app.descendants(matching: .any)["task-count-summary"].value as? String, "1 / 2 tasks done")
+        capture("project-today-group-long-name", in: app)
+    }
+
     func testProjectNavigationCaptureRenameAndIndependentCollapsedHeaderLink() throws {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
@@ -37,19 +91,20 @@ final class ProjectsUITests: XCTestCase {
         task.tap()
         task.typeText("Explore widgets")
         app.buttons["project-task-save"].tap()
-        let row = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-task-text-")).firstMatch
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-edit-")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
-        XCTAssertEqual(row.label, "Explore widgets")
+        XCTAssertEqual(row.label, "Edit task: Explore widgets")
         capture("project-detail-neko-light", in: app)
-        let id = String(row.identifier.dropFirst("project-task-text-".count))
-        app.buttons["project-task-edit-\(id)"].tap()
-        XCTAssertTrue(task.waitForExistence(timeout: 5))
-        task.tap()
-        task.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 15) + "Build widgets")
-        app.buttons["project-task-save"].tap()
+        let id = String(row.identifier.dropFirst("task-edit-".count))
+        row.tap()
+        let editor = app.textFields["task-editor-\(id)"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 15) + "Build widgets\n")
         XCTAssertTrue(row.waitForExistence(timeout: 5))
-        XCTAssertEqual(row.label, "Build widgets")
-        app.buttons["project-task-delete-\(id)"].tap()
+        XCTAssertEqual(row.label, "Edit task: Build widgets")
+        row.swipeLeft()
+        app.buttons["task-delete-\(id)"].tap()
         XCTAssertTrue(row.waitForNonExistence(timeout: 5))
         app.buttons["project-rename"].tap()
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -84,6 +139,21 @@ final class ProjectsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["project-add-task"].waitForExistence(timeout: 5))
         capture("project-detail-techo-dark", in: app)
     }
+    private func tapRevealed(_ control: XCUIElement, in app: XCUIApplication) {
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<16 {
+            let bottom = app.buttons["add-item"].frame.minY - 12
+            if control.isHittable && control.frame.maxY < bottom && control.frame.minY >= scroll.frame.minY {
+                control.tap()
+                return
+            }
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: control.frame.maxY >= bottom ? 0.4 : 0.8))
+            start.press(forDuration: 0.05, thenDragTo: end)
+        }
+        XCTFail("Control remained outside the visible Today scroll area: \(control.identifier), frame \(control.frame), scroll \(scroll.frame)")
+    }
+
     private func selectTheme(_ id: String, palette: String, in app: XCUIApplication) {
         app.buttons["settings-button"].tap()
         let theme = app.buttons["theme-card-\(id)"]

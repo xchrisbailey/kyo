@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+"""Check syntactic identifier rules; dynamic expressions require source review."""
+import argparse
+from collections import Counter
+import json
+from pathlib import Path
+import re
+import sys
+
+PRODUCTION = ("Kyo", "KyoWatch", "KyoWidgets", "KyoWatchWidgets", "Shared")
+
+
+def string_end(source, start):
+    # Standard Swift strings, including balanced interpolation and nested strings.
+    pos = start + 1
+    fixed = ""
+    expressions = []
+    while pos < len(source):
+        if source.startswith('\\(', pos):
+            end = balanced_end(source, pos + 1)
+            expressions.append(source[pos + 2:end - 1])
+            fixed += "x"
+            pos = end
+        elif source[pos] == '"':
+            return pos + 1, fixed, expressions
+        elif source[pos] == '\\':
+            fixed += source[pos:pos + 2]
+            pos += 2
+        else:
+            fixed += source[pos]
+            pos += 1
+    raise ValueError("unterminated string")
+
+
+def skip_comment(source, pos):
+    if source.startswith('//', pos):
+        end = source.find('\n', pos)
+        return len(source) if end < 0 else end
+    depth = 1
+    pos += 2
+    while pos < len(source) and depth:
+        if source.startswith('/*', pos):
+            depth += 1
+            pos += 2
+        elif source.startswith('*/', pos):
+            depth -= 1
+            pos += 2
+        else:
+            pos += 1
+    return pos
+
+
+def balanced_end(source, start):
+    depth = 1
+    pos = start + 1
+    while pos < len(source):
+        if source[pos] == '"':
+            pos = string_end(source, pos)[0]
+            continue
+        if source.startswith(('//', '/*'), pos):
+            pos = skip_comment(source, pos)
+            continue
+        if source[pos] == '(':
+            depth += 1
+        elif source[pos] == ')':
+            depth -= 1
+            if not depth:
+                return pos + 1
+        pos += 1
+    raise ValueError("unterminated accessibilityIdentifier call")
+
+
+def inspect(argument):
+    if not argument.startswith('"') or argument.startswith('"""'):
+        if re.search(r'\b(?:text|name|label|title|displayName)\b', argument):
+            return "dynamic identifier uses display text; requires review"
+        return "dynamic identifier expression requires review"
+    end, fixed, expressions = string_end(argument, 0)
+    if argument[end:].strip():
+        return "compound identifier expression requires review"
+    # A leading interpolation has no mechanically verified stable prefix.
+    if argument.startswith('"\\(') or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", fixed):
+        return "identifier needs a stable kebab-case literal prefix"
+    for expression in expressions:
+        if re.search(r'\b(?:text|name|label|title|displayName|description|localizedDescription)\b', expression):
+            return "identifier interpolates display text"
+    return None
+
+
+def violations(root):
+    found = []
+    call_pattern = re.compile(r'\.accessibilityIdentifier\s*\(')
+    for folder in PRODUCTION:
+        for path in sorted((root / folder).rglob('*.swift')):
+            source = path.read_text()
+            # Walk Swift tokens so commented-out code and strings are not calls.
+            pos = 0
+            while pos < len(source):
+                if source.startswith(('//', '/*'), pos):
+                    pos = skip_comment(source, pos)
+                    continue
+                if source.startswith('"""', pos):
+                    end = source.find('"""', pos + 3)
+                    pos = len(source) if end < 0 else end + 3
+                    continue
+                if source[pos] == '"':
+                    pos = string_end(source, pos)[0]
+                    continue
+                match = call_pattern.match(source, pos)
+                if not match:
+                    pos += 1
+                    continue
+                line = source.count('\n', 0, pos) + 1
+                call_start = match.end()
+                try:
+                    end = balanced_end(source, call_start - 1)
+                    argument = source[call_start:end - 1].strip()
+                    reason = inspect(argument)
+                except ValueError as error:
+                    end = call_start
+                    argument, reason = source[call_start:].split('\n', 1)[0], str(error)
+                if reason:
+                    found.append((str(path.relative_to(root)), line, argument, reason))
+                pos = end
+    return found
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parent.parent)
+    parser.add_argument('--update-baseline', action='store_true')
+    args = parser.parse_args()
+    baseline = args.root / 'scripts/accessibility-identifiers.baseline.json'
+    found = violations(args.root)
+    counts = Counter((path, argument, reason) for path, _, argument, reason in found)
+    if args.update_baseline:
+        baseline.parent.mkdir(parents=True, exist_ok=True)
+        baseline.write_text(json.dumps([dict(path=path, argument=argument, reason=reason, count=count)
+                                        for (path, argument, reason), count in sorted(counts.items())], indent=2) + '\n')
+        print(f"Reviewed baseline written: {baseline} ({sum(counts.values())} occurrences)")
+        return 0
+    allowed = {(entry['path'], entry['argument'], entry['reason']): entry['count']
+               for entry in json.loads(baseline.read_text())} if baseline.exists() else {}
+    failed = False
+    for path, line, argument, reason in found:
+        if counts[path, argument, reason] > allowed.get((path, argument, reason), 0):
+            print(f"{path}:{line}: {reason}: {argument}", file=sys.stderr)
+            failed = True
+    for key, count in allowed.items():
+        if counts[key] < count:
+            print(f"Baseline can shrink: {key[0]}: {key[1]}")
+    print('** LINT FAILED **' if failed else '** LINT SUCCEEDED **')
+    return int(failed)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

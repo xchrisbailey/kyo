@@ -119,5 +119,5 @@ paired_phase phone-rename KyoUITests "$udid" testPhoneRename "$phone_data"
 xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
   | tee "$log_dir/$run_id-paired-handoff-renamed.log"
 paired_phase watch-command KyoWatchUITests "$watch_udid" testWatchObserveRenameAndComplete "$watch_data"
-paired_phase phone-verify KyoUITests "$udid" testPhoneVerifyWatchCompletion "$phone_data"
-echo "scripts/test: paired Projects delivery verified; 5 executed phases, no skips; token=$paired_token"
+echo "scripts/test: supported Projects Simulator coverage verified; 4 executed phases, no skips; token=$paired_token"
+echo "scripts/test: physical-device round-trip PENDING: queued Watch command receipt and authoritative reconciliation are not covered by Simulator."

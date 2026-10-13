@@ -1,0 +1,56 @@
+[
+  {
+    "path": "Kyo/MonthView.swift",
+    "argument": "identifier",
+    "reason": "dynamic identifier expression requires review",
+    "count": 1
+  },
+  {
+    "path": "Kyo/MonthView.swift",
+    "argument": "row.accessibilityIdentifier",
+    "reason": "dynamic identifier expression requires review",
+    "count": 1
+  },
+  {
+    "path": "Kyo/ProjectsSheet.swift",
+    "argument": "\"\\(identifier)-cancel\"",
+    "reason": "identifier needs a stable kebab-case literal prefix",
+    "count": 1
+  },
+  {
+    "path": "Kyo/ProjectsSheet.swift",
+    "argument": "\"\\(identifier)-editor\"",
+    "reason": "identifier needs a stable kebab-case literal prefix",
+    "count": 1
+  },
+  {
+    "path": "Kyo/ProjectsSheet.swift",
+    "argument": "\"\\(identifier)-save\"",
+    "reason": "identifier needs a stable kebab-case literal prefix",
+    "count": 1
+  },
+  {
+    "path": "Kyo/ScheduleViews.swift",
+    "argument": "buttonID",
+    "reason": "dynamic identifier expression requires review",
+    "count": 1
+  },
+  {
+    "path": "Kyo/ScheduleViews.swift",
+    "argument": "identifier",
+    "reason": "dynamic identifier expression requires review",
+    "count": 1
+  },
+  {
+    "path": "Kyo/TodayView.swift",
+    "argument": "\"\\(task.isUnscheduled && !task.isComplete ? \"task-do-today\" : \"task-checkbox\")-\\(task.id.uuidString)\"",
+    "reason": "identifier needs a stable kebab-case literal prefix",
+    "count": 1
+  },
+  {
+    "path": "Kyo/TodayView.swift",
+    "argument": "label == \"Tasks done\" ? \"task-count-summary\" : \"summary-\\(label)\"",
+    "reason": "dynamic identifier uses display text; requires review",
+    "count": 1
+  }
+]

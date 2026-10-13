@@ -23,7 +23,7 @@
   - the build and test commands;
   - what to report back: the branch, a summary, and anything left open.
 - Coders don't widen scope or make product or architecture decisions. They stop and report any open question to Opus.
-- A coder that goes idle with checks still running may never wake to report. When one says it is waiting on a run, Opus sets a background wait on the check record for the coder's head commit (`scripts/check --show <commit>` exits 2 until one exists) and acts on the record when it lands.
+- For a tracked check still running, use `scripts/check --status <commit>` for a snapshot or `scripts/check --watch <commit>` for up to 60 seconds of meaningful changes. A live status is progress; the final text record is the gate.
 
 **Agent teams.**
 
@@ -31,12 +31,13 @@
 - The roster is up to three coders, one `reviewer`, and one `shepherd`. Spawn each from its agent type, which sets its model, and name each coder `coder-<issue>`.
 - A teammate starts in the main checkout with none of the lead's conversation. The brief still stands alone, and a coder's brief also names its branch, its worktree path `.claude/worktrees/<issue>-<slug>`, and its base.
 - The main checkout stays on `main` and clean. Only the lead works in it.
-- Give each ticket three tasks, each subject starting with `#<issue>`, and each depending on the one before:
+- Give each ticket four tasks, each subject starting with `#<issue>`, and each depending on the one before:
   - `#<issue> code`, for its coder;
-  - `#<issue> review`, for the reviewer;
-  - `#<issue> verify`, for the shepherd.
+  - `#<issue> source review`, for the reviewer;
+  - `#<issue> verify`, for the shepherd;
+  - `#<issue> gate acknowledgement`, for the reviewer and lead.
   A ticket's `code` task also depends on the `code` task of each ticket that blocks it.
-- When the session has no shared task list, keep the same three steps per ticket and drive them by message: spawn `reviewer` and `shepherd` once as named agents, brief each with the ticket and the coder's branch, and have the coder message `reviewer` and the lead message `shepherd` when a branch is ready.
+- When the session has no shared task list, keep the same four steps per ticket and drive them by message: spawn `reviewer` and `shepherd` once as named agents, brief each with the ticket and the coder's branch, and have the coder message `reviewer` and the lead message `shepherd` when a branch reaches the corresponding stage below.
 - The coder and reviewer settle first-pass findings between themselves. A question about the spec, an ADR, or product behaviour comes to the lead from either of them.
 - Teammates don't survive `/resume`, so GitHub holds everything that matters: coders push their branch early, and the reviewer posts findings as a comment on the ticket. Brief a replacement teammate from the branch and the ticket's comments.
 - Shut a teammate down once its tasks are completed.
@@ -49,6 +50,12 @@
 - Give it the tickets or the branch, the spec, and a path outside the repo for its report. Keep your own conclusions and the reviewer's pass out of the brief, so its read isn't anchored on them.
 - A finding counts when it comes with a scenario that reproduces it. Opus decides each one: fix the breakdown, send it to the coder, or set it aside with the reason on the ticket.
 
+**Review stages (authoritative order).**
+
+1. **Source review:** the coder commits implementation and focused test evidence, then hands off the branch and exact head. Reviewer and lead review source, standards, acceptance criteria and shared policies before scheduling the full gate. This stage completes when every finding is resolved; it does not require a check record. A source pass is recorded with its commit and is not final acceptance.
+2. **Verification:** on the source-reviewed, clean committed head, the coder or shepherd runs `scripts/check` through a tracked session. For a stacked branch, the lead supplies the correct base. Any fix returns the changed source to review and requires a gate for the new head.
+3. **Gate acknowledgement:** the reviewer and lead read `scripts/check --show <commit>` for the current branch head and confirm `RESULT: PASS`, with no open source findings. Only this stage permits final acceptance or integration. A missing, FAIL, PARTIAL, interrupted or stale record remains open.
+
 **Review.**
 
 - Opus reviews every ticket's branch before it is merged, checking it against:
@@ -57,6 +64,6 @@
   - the glossary;
   - `CODING_STANDARDS.md` and `AGENTS.md`.
 - Opus also confirms that both app schemes build and the tests pass. The CI test workflows are paused (see the CI section of `docs/development.md`), so the checks are local: `scripts/check` runs the ones a branch's changed paths call for and records the result against the commit. Before merging a branch, Opus reads the record for its current head with `scripts/check --show <commit>`; anything other than `RESULT: PASS` goes to the shepherd to run, or back to the coder. A report with no passing record for the head doesn't count.
-- On a team, the `reviewer` passes a branch before Opus reviews it. Its pass covers the coding standards, the glossary, and the acceptance criteria; the spec, the ADRs, and the verdict stay with Opus.
+- On a team, the `reviewer` reports a source pass before verification and acknowledges the gate afterwards. Its review covers the coding standards, the glossary, and the acceptance criteria; the spec, the ADRs, and the verdict stay with Opus.
 - Review findings go back to the same coder, which keeps its context, until the review passes.
 - Opus reports the result to the user.

@@ -1,6 +1,6 @@
 # Coding standards
 
-Rules a reviewer applies to a diff. Each one is a judgement call that no build step checks. The coder instructions in `.claude/agents/coder.md` cover how to work; this file covers what the result should look like.
+Rules a reviewer applies to a diff. Automated syntax checks are named where available; the remaining decisions require source review. The coder instructions in `.claude/agents/coder.md` cover how to work; this file covers what the result should look like.
 
 ## Domain language
 
@@ -12,6 +12,7 @@ Names, comments, test names, and on-screen text use the terms in `GLOSSARY.md`. 
 - Key a repeated element on a stable value such as an enum's raw value or a model id: `section-header-\(section.rawValue)`, `schedule-calendar-\(calendar.id)`. Display text changes with wording and locale.
 - A UI test finds an element by its identifier, then asserts its label or value. A query on label text is for a test whose subject is that text.
 - `scripts/lint-ui-tests` enforces that rule: it flags a query on a string literal that isn't kebab-case (`app.buttons["Save"]`; `"month-day-\(id)"` passes). Queries that predate it are in `scripts/ui-test-queries.baseline`, so only new ones fail. Mark a deliberate label query with a trailing `// label-query: <reason>`; the reason is required.
+- `scripts/lint-accessibility-identifiers` checks production modifier syntax and known display-text interpolation. See `docs/development.md` for its supported syntax, reviewed legacy baseline and human-review boundary.
 - A control that combines its children into one accessibility element carries the label, value, and identifier itself; tests address the control, never the text inside it.
 
 ## UserDefaults storage keys
@@ -32,3 +33,7 @@ Names, comments, test names, and on-screen text use the terms in `GLOSSARY.md`. 
 
 - A store whose initializer has side effects (registering a handler with a transport, publishing a snapshot, starting observation) is built at most once for the life of the view: inside the autoclosure of `StateObject(wrappedValue:)`, or as a local `lazy var` when a second state object needs the same instance, as `TodayView` does for the stores Month reads.
 - A plain `let store = Store(...)` in a view's `init` is a finding. SwiftUI may run that initializer again, and the extra store would take over from the live one and then be discarded.
+
+## Shared domain policies
+
+When a diff touches phone and mirror behavior, compare their ordering, project assignment and task reopening paths early in source review. Equivalent operations use one canonical domain policy unless the spec or ADR names a difference. A finding needs a scenario showing how the duplicated policies can drift; matching syntax alone is not the criterion.

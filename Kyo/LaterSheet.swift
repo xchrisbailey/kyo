@@ -34,6 +34,9 @@ struct LaterSheet: View {
                                     .foregroundStyle(theme.secondaryText)
                                     .accessibilityIdentifier("later-task-planned-day-\(task.id.uuidString)")
                             }
+                            TaskProjectAssignmentMenu(task: task, projects: taskList.projectCatalog) {
+                                taskList.assignTask(id: task.id, to: $0)
+                            }
                             Button("Edit") { editingTask = task }
                                 .buttonStyle(.borderless)
                                 .accessibilityIdentifier("later-task-edit-\(task.id.uuidString)")

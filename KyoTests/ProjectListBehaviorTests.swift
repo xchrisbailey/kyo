@@ -23,7 +23,9 @@ final class ProjectListBehaviorTests: XCTestCase {
         let pastDone = try XCTUnwrap(tasks.toggleTask(id: historical.id))
         now = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
         tasks.refreshForCurrentDay()
-        for original in [everyday, deferred, chosen, unscheduled, done, pastDone] {
+        let todayTask = try XCTUnwrap(tasks.addTask(text: "Completed today"))
+        let todayDone = try XCTUnwrap(tasks.toggleTask(id: todayTask.id))
+        for original in [everyday, deferred, chosen, unscheduled, done, pastDone, todayDone] {
             let moved = try XCTUnwrap(behavior.assignTask(id: original.id, to: second.id))
             XCTAssertEqual(moved, DailyTask(id: original.id, text: original.text, creationOrder: original.creationOrder,
                                            isComplete: original.isComplete, completedOn: original.completedOn,
@@ -34,14 +36,16 @@ final class ProjectListBehaviorTests: XCTestCase {
                                              isComplete: original.isComplete, completedOn: original.completedOn,
                                              plannedOn: original.plannedOn))
         }
-        XCTAssertEqual(tasks.taskCount, 3)
+        XCTAssertEqual(tasks.taskCount, 4)
+        XCTAssertEqual(tasks.completedCount, 1)
+        XCTAssertEqual(tasks.tasksCompleted(on: now).map(\.id), [todayDone.id])
         XCTAssertEqual(tasks.laterTasks.map(\.id), [deferred.id])
         XCTAssertEqual(tasks.tasksPlanned(on: future, calendar: calendar).map(\.id), [deferred.id])
         XCTAssertTrue(tasks.tasks(in: first.id).isEmpty)
         XCTAssertTrue(tasks.tasks(in: second.id).isEmpty)
         XCTAssertNil(behavior.assignTask(id: everyday.id, to: UUID()))
         XCTAssertNil(behavior.assignTask(id: UUID(), to: second.id))
-        XCTAssertEqual(tasks.everydayTasks.map(\.id), [everyday.id, chosen.id, unscheduled.id])
+        XCTAssertEqual(tasks.everydayTasks.map(\.id), [everyday.id, chosen.id, unscheduled.id, todayDone.id])
     }
 
     func testAssignmentSurvivesDiskReopeningAndQueuedDuplicateWatchCommands() throws {

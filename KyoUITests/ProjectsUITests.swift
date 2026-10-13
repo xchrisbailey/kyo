@@ -36,6 +36,12 @@ final class ProjectsUITests: XCTestCase {
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
         XCTAssertEqual(entry.value as? String, "Build widgets")
         XCTAssertEqual(picker.value as? String, "Build Kyo")
+        app.buttons["section-header-tasks"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertEqual(entry.value as? String, "Build widgets")
+        XCTAssertEqual(picker.value as? String, "Build Kyo")
         entry.tap()
         entry.typeText("\n")
         XCTAssertTrue(entry.waitForNonExistence(timeout: 5))
@@ -83,7 +89,7 @@ final class ProjectsUITests: XCTestCase {
         app.buttons["task-scheduling-one-week"].tap()
         app.buttons["task-scheduling-confirm"].tap()
         tapRevealed(app.buttons["section-link-tasks"], in: app)
-        let task = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "later-task-")).matching(NSPredicate(format: "label == %@", "Plan widgets")).firstMatch
+        let task = app.staticTexts.matching(NSPredicate(format: "identifier MATCHES %@", "later-task-[0-9A-F-]+")).firstMatch
         XCTAssertTrue(task.waitForExistence(timeout: 5))
         let id = String(task.identifier.dropFirst("later-task-".count))
         let planned = app.staticTexts["later-task-planned-day-\(id)"].label

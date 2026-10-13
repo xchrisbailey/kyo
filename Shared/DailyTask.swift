@@ -85,6 +85,7 @@ protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
     var laterTasks: [DailyTask] { get }
     var everydayTasks: [DailyTask] { get }
+    var projectCatalog: [Project] { get }
     @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
@@ -106,8 +107,11 @@ protocol TaskListBehavior: AnyObject {
 @MainActor
 final class TaskListStore: ObservableObject, TaskListBehavior {
     static let storageKey = "kyo.dailyTasks.v1"
+    static let projectStorageKey = "kyo.taskProjectCatalog.v1"
 
     @Published private(set) var tasks: [DailyTask] = []
+    @Published private(set) var projectCatalog: [Project] = []
+    private let projectCatalogKey: String
     @Published private(set) var laterTasks: [DailyTask] = []
     @Published private(set) var currentDate: Date
 
@@ -180,6 +184,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         self.outboxKey = storageKey + ".outbox"
         self.tombstonesKey = storageKey + ".tombstones"
         self.processedCommandIDsKey = storageKey + ".processedCommands"
+        self.projectCatalogKey = storageKey + "." + Self.projectStorageKey
         self.currentDate = (calendarProvider?() ?? calendar).startOfDay(for: now())
 
         if case .mirror = sync {
@@ -228,6 +233,13 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         } else {
             self.revision = nil
         }
+        if case .mirror = sync,
+           let data = userDefaults.data(forKey: projectCatalogKey),
+           let decoded = try? JSONDecoder().decode([Project].self, from: data) {
+            projectCatalog = decoded
+        } else {
+            loadProjectCatalog()
+        }
         refreshForCurrentDay()
 
         switch sync {
@@ -248,7 +260,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                 revision = seeded
                 userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
             }
-            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
+            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
         case .mirror(let transport):
             // Registered last: the transport may call the handler synchronously,
             // and everything it touches (baseTasks, outbox, revision, tasks) must already exist.
@@ -568,6 +580,20 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         return result
     }
 
+    func refreshProjectCatalog() {
+        loadProjectCatalog()
+        publishChange()
+    }
+
+    private func loadProjectCatalog() {
+        guard let modelContainer else { return }
+        projectCatalog = ((try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>())) ?? [])
+            .map(\.project).sorted {
+                if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+                return $0.id.uuidString < $1.id.uuidString
+            }
+    }
+
     /// Publishes the current task list to the counterpart device if this store is the
     /// publishing (phone) side of a sync pair. Does nothing for `.mirror` or no sync role.
     /// Bumps the revision with a hybrid clock: strictly increasing even across restarts and
@@ -577,7 +603,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
         revision = candidate
         userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
-        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs))
+        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
     }
 
     /// Applies a Watch-originated command on the phone (`.publish` side), per
@@ -656,6 +682,10 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
         let isNewer = revision.map { snapshot.revision > $0 } ?? true
         if isNewer {
+            projectCatalog = snapshot.projects
+            if let data = try? JSONEncoder().encode(projectCatalog) {
+                userDefaults.set(data, forKey: projectCatalogKey)
+            }
             baseTasks = Self.ordered(snapshot.tasks)
             persistBaseTasks()
             revision = snapshot.revision

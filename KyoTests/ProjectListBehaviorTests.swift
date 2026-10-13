@@ -59,6 +59,36 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertTrue(projects.todayTasks(in: first.id).contains { $0.id == unscheduled.id })
     }
 
+    func testProjectCatalogRoundTripsRenameAndQueuedCommandsThroughWatchCache() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let transport = ControllableTaskTransport()
+        let suite = "ProjectsCatalog.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container, sync: .publish(to: transport))
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: phone)
+        let first = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let second = try XCTUnwrap(projects.createProject(name: "House"))
+        let task = try XCTUnwrap(projects.addTaskForToday(text: "Widgets", to: first.id))
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: transport))
+        XCTAssertEqual(watch.projectCatalog, [first, second])
+        transport.disconnect()
+        _ = watch.editTask(id: task.id, text: "Build widgets")
+        _ = watch.toggleTask(id: task.id)
+        let renamed = try XCTUnwrap(projects.renameProject(id: first.id, name: "Build Kyo"))
+        transport.reconnect()
+        XCTAssertEqual(watch.projectCatalog, [renamed, second])
+        XCTAssertEqual(watch.tasks.first?.projectID, first.id)
+        XCTAssertEqual(watch.tasks.first?.text, "Build widgets")
+        XCTAssertEqual(watch.tasks.first?.isUnscheduled, false)
+        XCTAssertEqual(watch.tasks.first?.isComplete, true)
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: ControllableTaskTransport()))
+        XCTAssertEqual(reopened.projectCatalog, [renamed, second])
+        XCTAssertEqual(reopened.tasks, watch.tasks)
+        let legacy = Data("{\"revision\":1,\"tasks\":[]}".utf8)
+        XCTAssertEqual(try JSONDecoder().decode(TaskListSnapshot.self, from: legacy).projects, [])
+    }
+
     func testCreationAndRenameKeepIdentityAndCreationOrderWhenReopened() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

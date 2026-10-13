@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import SwiftData
 
-struct Project: Identifiable, Equatable, Sendable {
+struct Project: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     let creationOrder: Int64
@@ -97,6 +97,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         context.insert(ProjectRecord(project: project))
         try? context.save()
         reload()
+        taskList.refreshProjectCatalog()
         return project
     }
 
@@ -107,6 +108,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         record.name = name
         try? context.save()
         reload()
+        taskList.refreshProjectCatalog()
         return projects.first { $0.id == id }
     }
 

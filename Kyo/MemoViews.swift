@@ -473,7 +473,7 @@ struct MemoCardSheet: View {
                     .accessibilityLabel("Title")
                     .accessibilityAddTraits(.isHeader)
             } else {
-                let writtenTitle = memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
+                let writtenTitle = isReadOnly || memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
                 Text(writtenTitle.isEmpty ? "Untitled" : writtenTitle)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
@@ -499,7 +499,7 @@ struct MemoCardSheet: View {
 
     private var actionRow: some View {
         HStack(spacing: 10) {
-            if MemoSharePayload.canShare(memo, currentText: text) {
+            if MemoSharePayload.canShare(memo, currentText: isReadOnly ? memo.text : text) {
                 Button(action: share) {
                     Label("Share", systemImage: "square.and.arrow.up")
                         .font(.subheadline.weight(.semibold))
@@ -555,7 +555,7 @@ struct MemoCardSheet: View {
 
     /// Reads the photo bytes only now, when the user shares, and opens the share sheet.
     private func share() {
-        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: text, loadPhoto: loadPhoto))
+        shareItems = ShareItems(MemoSharePayload.make(for: memo, currentText: isReadOnly ? memo.text : text, loadPhoto: loadPhoto))
     }
 
     private var editor: some View {

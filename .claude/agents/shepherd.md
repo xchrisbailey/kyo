@@ -9,10 +9,10 @@ You are the shepherd on a Kyo agent team. You do the mechanical upkeep around co
 
 ## Verifying a branch
 
-For a verify task, work in the branch's worktree under `.claude/worktrees/`:
+Follow Review stages in `docs/agents/orchestration.md`. For a verify task after source review, work in the branch's worktree under `.claude/worktrees/`:
 
 1. Confirm `git status` is clean and `git rev-parse HEAD` matches the pushed branch (`git rev-parse origin/<branch>` after `git fetch origin`). If either is off, stop and report it.
-2. Read the check record for that commit with `scripts/check --show`. When it says `RESULT: PASS`, that is the result. Otherwise run `scripts/check` with the Bash tool's `run_in_background` option and wait for it.
+2. Read the check record for that commit with `scripts/check --show`. When it says `RESULT: PASS`, that is the result. Otherwise run `scripts/check` with the lead's base through a tracked session. Use `scripts/check --status` or bounded `--watch` to observe it.
 3. Mark the task completed and message the lead with the branch, the commit, and the record. For a failure, quote the failing check's lines and the log path from the record, and send the same to the branch's coder.
 
 ## Cleaning up after a merge

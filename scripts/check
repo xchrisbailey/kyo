@@ -32,7 +32,7 @@ set -uo pipefail
 
 usage() {
   echo "usage: scripts/check [--base <ref>] [--all | --quick]" >&2
-  echo "       scripts/check --show [<commit>]" >&2
+  echo "       scripts/check --show | --status | --watch [<commit>]" >&2
   exit 2
 }
 
@@ -48,12 +48,14 @@ base_ref=""
 mode="selected"
 show=0
 show_commit=""
+inspect=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --base) [[ $# -ge 2 ]] || usage; base_ref="$2"; shift 2 ;;
     --all) mode="all"; shift ;;
     --quick) mode="quick"; shift ;;
     --show) show=1; shift ;;
+    --status|--watch) inspect="${1#--}"; show=1; shift ;;
     -*) usage ;;
     *) [[ $show -eq 1 && -z "$show_commit" ]] || usage; show_commit="$1"; shift ;;
   esac
@@ -63,6 +65,9 @@ if [[ $show -eq 1 ]]; then
   [[ -z "$base_ref" && "$mode" == "selected" ]] || usage
   sha="$(git rev-parse --verify --quiet "${show_commit:-HEAD}^{commit}")" \
     || { echo "scripts/check: no such commit: ${show_commit:-HEAD}" >&2; exit 2; }
+  if [[ -n "$inspect" ]]; then
+    exec scripts/check-progress "$inspect" "$sha"
+  fi
   record="$record_dir/$sha.txt"
   [[ -f "$record" ]] || { echo "scripts/check: no record for $sha" >&2; exit 2; }
   cat "$record"
@@ -91,6 +96,38 @@ changed="$(git diff --name-only "$base" HEAD)"
 
 mkdir -p "$record_dir" "$log_dir"
 record="$record_dir/$sha.txt"
+# Atomic ownership prevents concurrent runs from replacing each other's exact-head evidence.
+run_lock="$record_dir/$sha.lock"
+owner="$$|$(ps -o lstart= -p $$ | sed -E 's/^ +//; s/ +$//')"
+if ! ln -s "$owner" "$run_lock" 2>/dev/null; then
+  holder="$(readlink "$run_lock" 2>/dev/null || true)"
+  pid="${holder%%|*}"
+  started="${holder#*|}"
+  live="$(ps -o lstart= -p "$pid" 2>/dev/null | sed -E 's/^ +//; s/ +$//')"
+  if [[ -n "$holder" && -n "$live" && "$live" == "$started" ]]; then
+    echo "scripts/check: another run owns $sha; use --status or --watch" >&2
+    exit 2
+  fi
+  moved="$run_lock.stale.$$"
+  mv "$run_lock" "$moved" 2>/dev/null || exit 2
+  if [[ "$(readlink "$moved")" != "$holder" ]]; then
+    ln -s "$(readlink "$moved")" "$run_lock" 2>/dev/null || true
+  fi
+  rm -f "$moved"
+  ln -s "$owner" "$run_lock" 2>/dev/null || exit 2
+fi
+check_child=""
+release_run() {
+  if [[ -n "$check_child" ]]; then
+    kill -TERM "$check_child" 2>/dev/null || true
+    wait "$check_child" 2>/dev/null || true
+  fi
+  [[ "$(readlink "$run_lock" 2>/dev/null || true)" != "$owner" ]] || rm -f "$run_lock"
+}
+trap release_run EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+scripts/check-progress start "$sha" --pid $$ || exit 2
 # An interrupted run must not leave the previous run's record standing for this commit.
 rm -f "$record"
 
@@ -104,9 +141,9 @@ matched_prefixes() {
   echo "$hits"
 }
 
-ios_paths="$(matched_prefixes Kyo KyoUITests Shared)"
-watch_paths="$(matched_prefixes KyoWatch KyoWatchWidgets KyoWatchUITests Shared)"
-ui_test_paths="$(matched_prefixes KyoUITests KyoWatchUITests)"
+ios_paths="$(matched_prefixes Kyo KyoUITests UITestSupport Shared)"
+watch_paths="$(matched_prefixes KyoWatch KyoWatchWidgets KyoWatchUITests UITestSupport Shared)"
+ui_test_paths="$(matched_prefixes KyoUITests KyoWatchUITests UITestSupport)"
 project_paths=""
 if grep -qx 'project.yml' <<<"$changed"; then project_paths="project.yml"; fi
 
@@ -124,8 +161,12 @@ run_check() {
   index=$((index + 1))
   log="$log_dir/$sha-$log_name.log"
   echo "scripts/check: [$index] $name"
-  "$@" >"$log" 2>&1
+  scripts/check-progress update "$sha" --pid $$ --phase "$name" --log "$log" || exit 2
+  "$@" >"$log" 2>&1 &
+  check_child=$!
+  wait "$check_child"
   status=$?
+  check_child=""
   result="$(grep -E '^\*\* (TEST |BUILD |XCODEGEN |LINT )?(SUCCEEDED|FAILED) \*\*' "$log" | tail -n 1 || true)"
   count="$(grep -E 'Executed [0-9]+ tests?, with' "$log" | tail -n 1 | sed -E 's/^[[:space:]]+//; s/ in [0-9.]+ \(.*$//' || true)"
   if [[ $status -eq 0 && "$result" == *SUCCEEDED* ]]; then
@@ -193,6 +234,8 @@ if [[ "$mode" == "quick" ]]; then
   partial=1 # a quick run is never a PASS, even when the paths didn't call for a UI suite
 fi
 
+run_check "scripts/lint-accessibility-identifiers" "$always" lint-accessibility-identifiers scripts/lint-accessibility-identifiers
+run_check "scripts/test-tooling" "$always" test-tooling scripts/test-tooling
 plan "scripts/lint-ui-tests" "$ui_test_paths" "no changes under KyoUITests/ or KyoWatchUITests/" lint-ui-tests \
   scripts/lint-ui-tests
 plan "xcodegen generate leaves no diff" "$project_paths" "project.yml unchanged" xcodegen xcodegen_check
@@ -235,6 +278,7 @@ fi
   echo "RESULT: $overall"
 } >"$record.tmp"
 mv "$record.tmp" "$record"
+scripts/check-progress finish "$sha" --pid $$ --outcome "$overall" || exit 2
 
 echo
 cat "$record"

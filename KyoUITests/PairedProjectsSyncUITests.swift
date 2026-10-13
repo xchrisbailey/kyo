@@ -1,6 +1,6 @@
 import XCTest
 
-/// Five serial phases in scripts/test --paired-projects own a fresh pair's real stores.
+/// The Simulator controller runs four supported phases; phone receipt needs physical devices.
 @MainActor
 final class PairedProjectsSyncUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -68,7 +68,12 @@ final class PairedProjectsSyncUITests: XCTestCase {
         let checkbox = taskButton(in: app)
         XCTAssertTrue(checkbox.waitForExistence(timeout: 15))
         let completion = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Completed"), object: checkbox)
-        XCTAssertEqual(XCTWaiter.wait(for: [completion], timeout: 90), .completed,
+        let receipt = XCTWaiter.wait(for: [completion], timeout: 90)
+        if receipt != .completed {
+            retainUIDiagnostics("phone-watch-command-receipt", in: app,
+                                candidates: app.descendants(matching: .any).matching(identifier: checkbox.identifier))
+        }
+        XCTAssertEqual(receipt, .completed,
                        "Watch command must reach the authoritative phone store")
         XCTAssertEqual(checkbox.label, "Edited \(token)")
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).count, 1)
@@ -105,6 +110,8 @@ final class PairedProjectsSyncUITests: XCTestCase {
             }
             app.swipeUp()
         }
+        retainUIDiagnostics("phone-control-unavailable", in: app,
+                            candidates: app.descendants(matching: .any).matching(identifier: element.identifier))
         XCTFail("Control unavailable: \(element.identifier)")
     }
 }

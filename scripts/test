@@ -23,12 +23,16 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: scripts/test --paired-projects | [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]" >&2
+  echo "usage: scripts/test --paired-projects-simulator | --paired-projects | [--platform ios|watchos] <scheme> [extra xcodebuild arguments...]" >&2
   exit 2
 }
 
 paired_projects=0
 if [[ "${1:-}" == "--paired-projects" ]]; then
+  [[ $# -eq 1 ]] || usage
+  echo "scripts/test: full Projects round-trip requires a physical iPhone/Watch pair: Simulator does not deliver WCSession.transferUserInfo. Follow docs/development.md physical-device checklist; use --paired-projects-simulator for the four supported phases." >&2
+  exit 2
+elif [[ "${1:-}" == "--paired-projects-simulator" ]]; then
   [[ $# -eq 1 ]] || usage
   paired_projects=1
   set -- KyoUITests
@@ -273,4 +277,8 @@ fi
 grep -E "Test Suite '.*' (passed|failed)|Executed [0-9]+ tests?, with|: error:|Test Case .* failed|✘|Testing failed:|Result bundle|\*\* (TEST |BUILD )?(SUCCEEDED|FAILED|BUILD FAILED) \*\*" "$log" || true
 
 echo "scripts/test: full log: $log"
+set +e
+"$root/scripts/validate-test-run" "$log" "$status" "$@"
+status=$?
+set -e
 exit "$status"

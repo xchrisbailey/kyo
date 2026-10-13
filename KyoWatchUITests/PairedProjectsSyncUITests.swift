@@ -161,11 +161,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
             format: "identifier BEGINSWITH %@ OR identifier BEGINSWITH %@ OR identifier == %@",
             "project-group-collapse-", "task-checkbox-", "plus"
         ))
-        for control in controls.allElementsBoundByIndex {
-            print("Paired project control: identifier=\(control.identifier), type=\(control.elementType.rawValue), label=\(control.label), value=\(String(describing: control.value)), frame=\(control.frame), hittable=\(control.isHittable)")
-        }
-        print("Paired project accessibility inventory: \(app.debugDescription)")
-        capture("paired-watch-delivered-project-accessibility", in: app)
+        retainUIDiagnostics("paired-watch-project-controls", in: app, candidates: controls)
     }
 
     private func scroll(in app: XCUIApplication, upward: Bool) {

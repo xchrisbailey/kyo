@@ -13,7 +13,7 @@ You are the reviewer on a Kyo agent team. Kyo is a SwiftUI app for iPhone, iPad,
 1. Claim the review task for the ticket and read the ticket with `gh issue view <issue> --comments`.
 2. Read the whole diff of the coder's branch against its base with `git diff <base>...<branch>`, and the surrounding code wherever the diff alone doesn't show whether a change is right.
 3. Check the diff against every rule in `CODING_STANDARDS.md`, every term in `GLOSSARY.md` it touches, and every acceptance criterion on the ticket. Each criterion ends up either shown met by a named test or change, or listed as a finding.
-4. Read the check record for the branch's head commit with `scripts/check --show <commit>`. `RESULT: PASS` is the evidence. With no record, or any other result, finish the rest of the review, tell the coder and the lead which commit lacks a passing record, and end your turn; the coder's next message restarts you. The coder runs the checks; you don't.
+4. Follow `docs/agents/orchestration.md` under Review stages: finish source findings first, then acknowledge the exact-head record after verification. Report a source pass separately from final gate acceptance; you review evidence, and the coder or shepherd runs the checks.
 
 ## Findings
 
@@ -24,4 +24,4 @@ You are the reviewer on a Kyo agent team. Kyo is a SwiftUI app for iPhone, iPad,
 
 ## Passing a branch
 
-When nothing is open, mark the review task completed and message the lead with the branch and head commit, what you checked, and any judgement call you are leaving to it. The lead merges the branch.
+When source findings are resolved, complete the source review task and message the lead with the branch, reviewed head and judgement calls. After verification, acknowledge the gate according to the authoritative Review stages in `docs/agents/orchestration.md`. The lead owns integration.

@@ -169,6 +169,7 @@ targets:
     platform: iOS
     sources:
       - KyoUITests
+      - UITestSupport
     dependencies:
       - target: Kyo
     settings:
@@ -183,6 +184,7 @@ targets:
     platform: watchOS
     sources:
       - KyoWatchUITests
+      - UITestSupport
     dependencies:
       - target: KyoWatch
     settings:

@@ -114,7 +114,7 @@ class Guards(unittest.TestCase):
                                        ('Executed 1 test, with 0 failures', 0, 0), ('', 70, 70)]:
             builder.write_text(f'#!/bin/sh\necho "{body}"\necho "** TEST SUCCEEDED **"\nexit {status}\n')
             builder.chmod(0o755)
-            result = run(ROOT / 'scripts/test', '--platform', 'ios', 'FixtureTests', env=env)
+            result = run('/bin/bash', ROOT / 'scripts/test', '--platform', 'ios', 'FixtureTests', env=env)
             self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
 
     def test_normal_controller_retains_default_and_custom_result_bundles(self):
@@ -143,7 +143,7 @@ sys.exit(int(os.environ.get('FIXTURE_STATUS', '0')))
         env = {**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}', 'TMPDIR': str(self.root)}
         for custom in [None, self.root / 'custom.xcresult']:
             args = [] if custom is None else ['-resultBundlePath', str(custom)]
-            result = run(ROOT / 'scripts/test', '--platform', 'ios', 'FixtureTests', *args,
+            result = run('/bin/bash', ROOT / 'scripts/test', '--platform', 'ios', 'FixtureTests', *args,
                          env={**env, 'FIXTURE_STATUS': '70' if custom else '0'})
             self.assertEqual(result.returncode, 70 if custom else 0, result.stdout + result.stderr)
             path = Path(next(line.split(': ', 2)[2] for line in result.stdout.splitlines()
@@ -167,7 +167,7 @@ sys.exit(int(os.environ.get('FIXTURE_STATUS', '0')))
             binary = tools / name
             binary.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 99\n')
             binary.chmod(0o755)
-        result = run(ROOT / 'scripts/test', '--paired-projects', env={**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}'})
+        result = run('/bin/bash', ROOT / 'scripts/test', '--paired-projects', env={**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}'})
         self.assertEqual(result.returncode, 2)
         self.assertIn('physical', result.stderr)
         self.assertFalse(marker.exists())

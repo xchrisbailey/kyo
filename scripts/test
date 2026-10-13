@@ -251,7 +251,7 @@ set +e
 # extension is killed on first launch. Simulator builds sign to run locally, with no account.
 xcodebuild -project "$project" -scheme "$scheme" \
   -destination "id=$udid" -derivedDataPath "$derived_data" \
-  "${result_arguments[@]}" "$@" test >"$log" 2>&1 &
+  ${result_arguments[@]+"${result_arguments[@]}"} "$@" test >"$log" 2>&1 &
 xcodebuild_pid=$!
 stopped=0
 stopped_helper=0
@@ -310,7 +310,7 @@ grep -E "Test Suite '.*' (passed|failed)|Executed [0-9]+ tests?, with|: error:|T
 
 echo "scripts/test: full log: $log"
 set +e
-"$root/scripts/validate-test-run" "$log" "$status" "${evidence_arguments[@]}" "$@"
+"$root/scripts/validate-test-run" "$log" "$status" ${evidence_arguments[@]+"${evidence_arguments[@]}"} "$@"
 status=$?
 set -e
 exit "$status"

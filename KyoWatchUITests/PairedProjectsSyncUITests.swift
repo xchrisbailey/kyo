@@ -43,7 +43,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(task.label, "Task \(token)")
         XCTAssertEqual(task.value as? String, "Not completed")
         let firstID = task.identifier
-        let second = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).element(boundBy: 1)
+        let second = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND identifier != %@", "task-checkbox-", firstID)).firstMatch
         reveal(second, in: app)
         XCTAssertEqual(second.label, "Delete \(token)")
         let secondID = second.identifier

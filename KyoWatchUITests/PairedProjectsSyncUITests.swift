@@ -68,10 +68,14 @@ final class PairedProjectsSyncUITests: XCTestCase {
 
     private func waitForDelivery(_ element: XCUIElement, label: String, in app: XCUIApplication) {
         reveal(app.buttons["section-header-projects"], in: app)
-        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 90), .completed,
-                       "Project catalog must arrive through actual WatchConnectivity")
-        reveal(element, in: app)
+        // List rows are lazy. Keep drawing the group as new catalog content arrives.
+        for _ in 0..<18 {
+            reveal(element, in: app)
+            let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", label), object: element)
+            if XCTWaiter.wait(for: [expectation], timeout: 5) == .completed { return }
+            app.swipeDown()
+        }
+        XCTFail("Project catalog must arrive through actual WatchConnectivity: \(label)")
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, upward: Bool = true) {

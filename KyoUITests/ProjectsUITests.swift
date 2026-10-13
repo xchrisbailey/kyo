@@ -78,6 +78,55 @@ final class ProjectsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["task-do-today-\(id)"].waitForExistence(timeout: 5))
     }
 
+    func testProjectCaptureDefaultsUnscheduledAndOffersExplicitTodayAndPlannedDay() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        app.buttons["project-new"].tap()
+        let name = app.textFields["project-name-editor"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Kyo")
+        app.buttons["project-name-save"].tap()
+        let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        project.tap()
+        app.buttons["project-add-task"].tap()
+        let task = app.textFields["project-task-editor"]
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["project-task-availability"].label, "Unscheduled")
+        task.tap()
+        task.typeText("Chosen during capture")
+        app.buttons["project-task-today"].tap()
+        app.buttons["project-task-save"].tap()
+        let checkbox = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).firstMatch
+        XCTAssertTrue(checkbox.waitForExistence(timeout: 5))
+        XCTAssertEqual(checkbox.label, "Chosen during capture")
+        let chosenCheckboxID = checkbox.identifier
+        app.buttons["project-add-task"].tap()
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["project-task-availability"].label, "Unscheduled")
+        task.tap()
+        task.typeText("Planned during capture")
+        app.buttons["project-task-schedule"].tap()
+        app.buttons["task-scheduling-one-week"].tap()
+        app.buttons["task-scheduling-confirm"].tap()
+        capture("project-task-planned-capture", in: app)
+        app.buttons["project-task-save"].tap()
+        let day = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-task-planned-day-")).firstMatch
+        XCTAssertTrue(day.waitForExistence(timeout: 5))
+        let id = String(day.identifier.dropFirst("project-task-planned-day-".count))
+        XCTAssertEqual(app.buttons["task-edit-\(id)"].label, "Edit task: Planned during capture")
+        XCTAssertFalse(app.buttons["task-do-today-\(id)"].exists)
+        let detail = app.collectionViews.containing(.button, identifier: "project-add-task").firstMatch
+        let checkboxes = detail.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-"))
+        XCTAssertEqual(checkboxes.count, 2)
+        XCTAssertEqual(Set(checkboxes.allElementsBoundByIndex.map(\.identifier)),
+                       Set([chosenCheckboxID, "task-checkbox-\(id)"]))
+        capture("project-task-capture-details", in: app)
+    }
+
     func testChoosingProjectWorkShowsGroupNavigationCaptureCompletionAndCollapse() {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

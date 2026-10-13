@@ -99,6 +99,7 @@ struct ProjectDetailView: View {
                                 .accessibilityIdentifier("project-task-planned-day-\(task.id.uuidString)")
                         }
                     }
+                    .listRowInsets(EdgeInsets())
                 }
             }
             ThemedListGroup("Unscheduled") {
@@ -178,13 +179,16 @@ struct ProjectDetailView: View {
             }
         }
         .sheet(item: $schedulingTask) { task in
-            TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent)) {
+            TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent), languageModel: languageModel) {
                 taskList.deferTask(id: task.id, to: $0) != nil
             }
         }
         .sheet(isPresented: $isAddingTask) {
-            ProjectTextForm(title: "Add task", field: "Task", identifier: "project-task") {
-                projects.addTask(text: $0, to: projectID) != nil
+            ProjectTaskCaptureSheet(languageModel: languageModel) { text, plannedFor in
+                if let plannedFor {
+                    return projects.addTask(text: text, to: projectID, plannedFor: plannedFor) != nil
+                }
+                return projects.addTask(text: text, to: projectID) != nil
             }
         }
     }
@@ -200,6 +204,62 @@ struct ProjectDetailView: View {
                 onDoLater: { schedulingTask = task },
                 onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) })
             .listRowInsets(EdgeInsets())
+    }
+}
+
+private struct ProjectTaskCaptureSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @State private var plannedFor: Date?
+    @State private var isScheduling = false
+    let languageModel: any OnDeviceLanguageModel
+    let onSave: (String, Date?) -> Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                ThemedListGroup {
+                    TextField("Task", text: $text)
+                        .accessibilityIdentifier("project-task-editor")
+                }
+                ThemedListGroup("Availability") {
+                    Group {
+                        if let plannedFor {
+                            Text(plannedFor, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                        } else {
+                            Text("Unscheduled")
+                        }
+                    }
+                    .accessibilityIdentifier("project-task-availability")
+                    Button("Unscheduled") { plannedFor = nil }
+                        .accessibilityIdentifier("project-task-unscheduled")
+                    Button("Today") { plannedFor = Calendar.autoupdatingCurrent.startOfDay(for: .now) }
+                        .accessibilityIdentifier("project-task-today")
+                    Button("Planned day") { isScheduling = true }
+                        .accessibilityIdentifier("project-task-schedule")
+                }
+            }
+            .themedListBackground()
+            .themedNavigationTitle("Add task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("project-task-cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { if onSave(text, plannedFor) { dismiss() } }
+                        .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("project-task-save")
+                }
+            }
+            .sheet(isPresented: $isScheduling) {
+                TaskSchedulingSheet(date: plannedFor, languageModel: languageModel) {
+                    plannedFor = $0
+                    return true
+                }
+            }
+        }
     }
 }
 

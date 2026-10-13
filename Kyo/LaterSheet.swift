@@ -67,6 +67,7 @@ struct LaterSheet: View {
             }
             .themedListBackground()
             .themedNavigationTitle("Later")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

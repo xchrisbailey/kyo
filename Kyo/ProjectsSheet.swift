@@ -215,11 +215,15 @@ private struct ProjectMemosSection: View {
                 }
                 .accessibilityIdentifier("project-memo-open-\(memo.id.uuidString)")
             }
-            Menu("Add memo") {
+            Menu {
                 Button("Written memo", action: onWrite)
                     .accessibilityIdentifier("project-add-written-memo")
                 Button("Voice memo", action: onRecord)
                     .accessibilityIdentifier("project-add-voice-memo")
+            } label: {
+                Text("Add memo")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
             .accessibilityIdentifier("project-add-memo")

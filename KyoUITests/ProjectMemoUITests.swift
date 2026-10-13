@@ -21,7 +21,9 @@ final class ProjectMemoUITests: XCTestCase {
         let projectID = String(project.identifier.dropFirst("project-open-".count))
         project.tap()
         app.buttons["project-add-memo"].tap()
-        app.buttons["project-add-written-memo"].tap()
+        let write = app.buttons["project-add-written-memo"]
+        XCTAssertTrue(write.waitForExistence(timeout: 5))
+        write.tap()
         let compose = app.textFields["memo-compose-text"]
         XCTAssertTrue(compose.waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons["memo-project-picker"].value as? String, "Kyo")

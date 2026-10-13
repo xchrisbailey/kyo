@@ -46,6 +46,8 @@ final class ProjectsUITests: XCTestCase {
         let memoID = String(memo.identifier.dropFirst("project-memo-open-".count))
         app.buttons["project-archive"].tap()
         XCTAssertTrue(app.buttons["project-restore"].waitForExistence(timeout: 5))
+        let titleCandidates = app.staticTexts.matching(NSPredicate(format: "label == %@", "Kyo")) // label-query: the project title stays visible beside toolbar actions
+        XCTAssertTrue(titleCandidates.allElementsBoundByIndex.contains { $0.isHittable })
         XCTAssertFalse(app.buttons["project-rename"].exists)
         XCTAssertFalse(app.buttons["project-add-task"].exists)
         XCTAssertFalse(app.buttons["project-add-memo"].exists)
@@ -92,6 +94,8 @@ final class ProjectsUITests: XCTestCase {
         project.tap()
         app.buttons["project-restore"].tap()
         XCTAssertTrue(app.buttons["project-archive"].waitForExistence(timeout: 5))
+        XCTAssertTrue(titleCandidates.allElementsBoundByIndex.contains { $0.isHittable })
+        capture("restored-project-actions", in: app)
         XCTAssertTrue(app.buttons["project-add-task"].exists)
         XCTAssertTrue(app.buttons["task-checkbox-\(taskID)"].exists)
         app.buttons["projects-done"].tap()

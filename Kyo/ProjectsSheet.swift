@@ -157,12 +157,14 @@ struct ProjectDetailView: View {
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 if isArchived {
-                    Button("Restore project") { projects.restoreProject(id: projectID) }
+                    Button("Restore") { projects.restoreProject(id: projectID) }
+                        .accessibilityLabel("Restore project")
                         .accessibilityIdentifier("project-restore")
                 } else {
                     Button("Rename") { isRenaming = true }
                         .accessibilityIdentifier("project-rename")
-                    Button("Archive project") { projects.archiveProject(id: projectID) }
+                    Button("Archive") { projects.archiveProject(id: projectID) }
+                        .accessibilityLabel("Archive project")
                         .accessibilityIdentifier("project-archive")
                 }
             }

@@ -89,6 +89,41 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(TaskListSnapshot.self, from: legacy).projects, [])
     }
 
+    func testWatchCompletionStateDoesNotChooseAlreadyUnfinishedReturnedWork() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let transport = ControllableTaskTransport()
+        let suite = "ProjectsReturnedCommand.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let calendar = Calendar(identifier: .gregorian)
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let phone = TaskListStore(userDefaults: defaults, modelContainer: container, now: { now }, calendar: calendar,
+                                  sync: .publish(to: transport))
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: phone)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(projects.addTaskForToday(text: "Widgets", to: project.id))
+        _ = projects.returnToProject(taskID: task.id)
+        transport.redeliver(TaskCommand(id: UUID(), action: .setCompletion(taskID: task.id, isComplete: false, completedOn: nil)))
+        XCTAssertEqual(projects.unscheduledTasks(in: project.id).map(\.id), [task.id])
+        XCTAssertEqual(projects.todayProjects, [])
+        _ = projects.doToday(taskID: task.id)
+        _ = phone.toggleTask(id: task.id)
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+                                  sync: .mirror(from: transport))
+        transport.disconnect()
+        _ = watch.toggleTask(id: task.id)
+        _ = phone.toggleTask(id: task.id)
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        _ = phone.deferTask(id: task.id, to: tomorrow)
+        transport.deliver(try XCTUnwrap(transport.published.last))
+        XCTAssertTrue(watch.tasks.isEmpty)
+        XCTAssertEqual(watch.laterTasks.first?.plannedOn, TaskPlannedDay(date: tomorrow, calendar: calendar))
+        transport.reconnect()
+        XCTAssertTrue(phone.tasks.isEmpty)
+        XCTAssertEqual(phone.laterTasks, watch.laterTasks)
+        XCTAssertEqual(watch.laterTasks.first?.projectID, project.id)
+    }
+
     func testCreationAndRenameKeepIdentityAndCreationOrderWhenReopened() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

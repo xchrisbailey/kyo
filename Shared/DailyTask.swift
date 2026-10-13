@@ -555,9 +555,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
                     completedOn: completedOn,
-                    plannedOn: !isComplete && task.projectID != nil ? nil : task.plannedOn,
+                    plannedOn: task.isComplete && !isComplete && task.projectID != nil ? nil : task.plannedOn,
                     projectID: task.projectID,
-                    isUnscheduled: !isComplete && task.projectID != nil ? false : task.isUnscheduled
+                    isUnscheduled: task.isComplete && !isComplete && task.projectID != nil ? false : task.isUnscheduled
                 )
             case .rename(let taskID, let text):
                 guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
@@ -632,9 +632,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
                     completedOn: completedOn,
-                    plannedOn: !isComplete && task.projectID != nil ? nil : task.plannedOn,
+                    plannedOn: task.isComplete && !isComplete && task.projectID != nil ? nil : task.plannedOn,
                     projectID: task.projectID,
-                    isUnscheduled: !isComplete && task.projectID != nil ? false : task.isUnscheduled
+                    isUnscheduled: task.isComplete && !isComplete && task.projectID != nil ? false : task.isUnscheduled
                 )
             }
         case .rename(let taskID, let text):

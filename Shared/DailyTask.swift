@@ -236,7 +236,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         if case .mirror = sync,
            let data = userDefaults.data(forKey: projectCatalogKey),
            let decoded = try? JSONDecoder().decode([Project].self, from: data) {
-            projectCatalog = decoded
+            projectCatalog = Project.orderedUnique(decoded)
         } else {
             loadProjectCatalog()
         }
@@ -587,11 +587,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     private func loadProjectCatalog() {
         guard let modelContainer else { return }
-        projectCatalog = ((try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>())) ?? [])
-            .map(\.project).sorted {
-                if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
-                return $0.id.uuidString < $1.id.uuidString
-            }
+        let records = (try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>())) ?? []
+        projectCatalog = Project.orderedUnique(records.map(\.project))
     }
 
     /// Publishes the current task list to the counterpart device if this store is the
@@ -682,7 +679,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
         let isNewer = revision.map { snapshot.revision > $0 } ?? true
         if isNewer {
-            projectCatalog = snapshot.projects
+            projectCatalog = Project.orderedUnique(snapshot.projects)
             if let data = try? JSONEncoder().encode(projectCatalog) {
                 userDefaults.set(data, forKey: projectCatalogKey)
             }

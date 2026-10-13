@@ -6,6 +6,15 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     let creationOrder: Int64
+
+    static func orderedUnique(_ projects: [Project]) -> [Project] {
+        var seen: Set<UUID> = []
+        return projects.sorted {
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
+            return $0.name < $1.name
+        }.filter { seen.insert($0.id).inserted }
+    }
 }
 
 @Model

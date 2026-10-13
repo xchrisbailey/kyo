@@ -166,6 +166,39 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(watch.tasks, phone.tasks)
     }
 
+    func testDuplicateProjectIdentitiesHaveOneDeterministicCatalogEntryAcrossLaunchAndCache() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let projectID = UUID()
+        let alpha = Project(id: projectID, name: "Alpha", creationOrder: 0)
+        let duplicate = Project(id: projectID, name: "Zebra", creationOrder: 0)
+        let house = Project(id: UUID(), name: "House", creationOrder: 1)
+        container.mainContext.insert(ProjectRecord(project: duplicate))
+        container.mainContext.insert(ProjectRecord(project: house))
+        container.mainContext.insert(ProjectRecord(project: alpha))
+        try container.mainContext.save()
+        let transport = ControllableTaskTransport()
+        let suite = "ProjectsDuplicateCatalog.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container, sync: .publish(to: transport))
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: phone)
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: transport))
+        XCTAssertEqual(projects.projects, [alpha, house])
+        XCTAssertEqual(phone.projectCatalog, [alpha, house])
+        XCTAssertEqual(watch.projectCatalog, [alpha, house])
+        let task = try XCTUnwrap(projects.addTaskForToday(text: "Widgets", to: projectID))
+        let snapshot = try XCTUnwrap(transport.published.last)
+        transport.deliver(TaskListSnapshot(revision: snapshot.revision + 1, tasks: snapshot.tasks,
+                                          projects: [house, duplicate, alpha]))
+        XCTAssertEqual(watch.projectCatalog, [alpha, house])
+        XCTAssertEqual(watch.tasks.map(\.id), [task.id])
+        let disconnected = ControllableTaskTransport()
+        disconnected.disconnect()
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: disconnected))
+        XCTAssertEqual(reopened.projectCatalog, [alpha, house])
+        XCTAssertEqual(reopened.tasks, watch.tasks)
+    }
+
     func testCreationAndRenameKeepIdentityAndCreationOrderWhenReopened() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let tasks = TaskListStore(modelContainer: container)

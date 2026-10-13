@@ -97,7 +97,11 @@ The paired iPhone and Watch stay in sync over WatchConnectivity. The phone is th
 - `docs/adr/0005-watch-memo-sync.md`: the memo snapshot and the recording outbox.
 - `docs/adr/0008-task-planned-days-and-date-interpretation.md`: fixed calendar-day scheduling and on-device date intent.
 
-To check real device-to-device delivery, boot a paired iPhone and Watch simulator (or use a paired device), install both apps, launch the Watch app, then run the `KyoUITests` target with `KYO_WATCH_SYNC_SMOKE=1` set, which enables `WatchSyncSmokeUITests` (skipped by default).
+Run `scripts/test --paired-projects` to check actual Projects delivery on an owned disposable iPhone/Watch pair. The controller keeps the existing UI-suite lock for signed builds, installation, and five serial public UI phases: phone capture, Watch observation, phone rename, Watch observation and completion, then authoritative phone completion receipt. Both apps use fresh real stores and the production WatchConnectivity transport. Each phase must execute its named test with no skips. Logs and result bundles survive cleanup; only this run's pair, simulators, and derived data are removed.
+
+The controller forwards opt-in, shared token, and phase variables to XCTest using `TEST_RUNNER_KYO_PAIRED_PROJECTS`, `TEST_RUNNER_KYO_PAIRED_PROJECTS_TOKEN`, and `TEST_RUNNER_KYO_PAIRED_PROJECTS_PHASE`; Xcode strips the `TEST_RUNNER_` prefix in the runner. Setting an unprefixed shell variable alone does not enable runner state. Normal `scripts/test` invocations still use a single disposable simulator and skip the staged paired tests.
+
+The older `WatchSyncSmokeUITests` remain opt-in through runner variable `TEST_RUNNER_KYO_WATCH_SYNC_SMOKE=1`. Their phone-side task assertions alone do not verify delivery to Watch; the habit check requires an external Watch interaction. Use the paired Projects controller for an automated observed catalog/command round trip.
 
 ## TestFlight
 

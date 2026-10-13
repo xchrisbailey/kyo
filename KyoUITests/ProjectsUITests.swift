@@ -6,6 +6,104 @@ final class ProjectsUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testBottomProjectCaptureKeepsSelectionThroughSchedulingCancelAndDefaultsToday() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        app.buttons["project-new"].tap()
+        let name = app.textFields["project-name-editor"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Build Kyo")
+        app.buttons["project-name-save"].tap()
+        let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        let projectID = String(project.identifier.dropFirst("project-open-".count))
+        app.buttons["projects-done"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let entry = app.textFields["new-task"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.typeText("Build widgets")
+        let picker = app.buttons["new-task-project-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.tap()
+        app.buttons["new-task-project-option-\(projectID)"].tap()
+        XCTAssertEqual(picker.value as? String, "Build Kyo")
+        app.buttons["new-task-schedule"].tap()
+        app.buttons["task-scheduling-cancel"].tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertEqual(entry.value as? String, "Build widgets")
+        XCTAssertEqual(picker.value as? String, "Build Kyo")
+        app.buttons["section-header-tasks"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertEqual(entry.value as? String, "Build widgets")
+        XCTAssertEqual(picker.value as? String, "Build Kyo")
+        entry.tap()
+        entry.typeText("\n")
+        XCTAssertTrue(entry.waitForNonExistence(timeout: 5))
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-edit-")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let id = String(row.identifier.dropFirst("task-edit-".count))
+        tapRevealed(app.buttons["task-checkbox-\(id)"], in: app)
+        row.press(forDuration: 1)
+        let remove = app.buttons["task-remove-project-\(id)"]
+        XCTAssertTrue(remove.waitForExistence(timeout: 5))
+        remove.tap()
+        XCTAssertTrue(app.buttons["task-checkbox-\(id)"].waitForExistence(timeout: 5))
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertEqual(picker.value as? String, "No project")
+    }
+
+    func testBottomFutureProjectCaptureCanSwitchAndRemoveAssignmentInLater() {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        var projectIDs: [String] = []
+        for title in ["Kyo", "House"] {
+            app.buttons["project-new"].tap()
+            let name = app.textFields["project-name-editor"]
+            XCTAssertTrue(name.waitForExistence(timeout: 5))
+            name.tap()
+            name.typeText(title)
+            app.buttons["project-name-save"].tap()
+            let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).element(boundBy: projectIDs.count)
+            XCTAssertTrue(project.waitForExistence(timeout: 5))
+            projectIDs.append(String(project.identifier.dropFirst("project-open-".count)))
+        }
+        app.buttons["projects-done"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        let entry = app.textFields["new-task"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.typeText("Plan widgets")
+        app.buttons["new-task-project-picker"].tap()
+        app.buttons["new-task-project-option-\(projectIDs[0])"].tap()
+        app.buttons["new-task-schedule"].tap()
+        app.buttons["task-scheduling-one-week"].tap()
+        app.buttons["task-scheduling-confirm"].tap()
+        tapRevealed(app.buttons["section-link-tasks"], in: app)
+        let task = app.staticTexts.matching(NSPredicate(format: "identifier MATCHES %@", "later-task-[0-9A-F-]+")).firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        let id = String(task.identifier.dropFirst("later-task-".count))
+        let planned = app.staticTexts["later-task-planned-day-\(id)"].label
+        XCTAssertEqual(app.staticTexts["later-task-project-\(id)"].label, "Kyo")
+        app.buttons["task-move-project-\(id)"].tap()
+        app.buttons["task-project-option-\(projectIDs[1])"].tap()
+        XCTAssertEqual(app.staticTexts["later-task-project-\(id)"].label, "House")
+        XCTAssertEqual(app.staticTexts["later-task-planned-day-\(id)"].label, planned)
+        app.buttons["task-remove-project-\(id)"].tap()
+        XCTAssertFalse(app.staticTexts["later-task-project-\(id)"].exists)
+        XCTAssertEqual(app.staticTexts["later-task-planned-day-\(id)"].label, planned)
+        XCTAssertEqual(task.label, "Plan widgets")
+    }
+
     func testProjectSchedulingCancellationLaterMonthAndReturn() throws {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

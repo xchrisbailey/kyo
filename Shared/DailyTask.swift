@@ -88,6 +88,7 @@ protocol TaskListBehavior: AnyObject {
     var projectCatalog: [Project] { get }
     @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func assignTask(id: UUID, to projectID: UUID?) -> DailyTask?
     @discardableResult func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask?
     @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
     @discardableResult func deferTask(id: UUID, to date: Date) -> DailyTask?
@@ -314,6 +315,28 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
               let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
               projects.contains(where: { $0.id == projectID }) else { return nil }
         return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar), projectID: projectID)
+    }
+
+    @discardableResult
+    func assignTask(id: UUID, to projectID: UUID?) -> DailyTask? {
+        if case .mirror = sync { return nil }
+        if let projectID {
+            guard let modelContainer,
+                  let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
+                  projects.contains(where: { $0.id == projectID }) else { return nil }
+        }
+        guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
+        let task = savedTasks[index]
+        guard task.projectID != projectID else { return task }
+        let updated = DailyTask(id: task.id, text: task.text, creationOrder: task.creationOrder,
+                                isComplete: task.isComplete, completedOn: task.completedOn,
+                                plannedOn: task.plannedOn, projectID: projectID,
+                                isUnscheduled: projectID == nil ? false : task.isUnscheduled)
+        savedTasks[index] = updated
+        refreshForCurrentDay()
+        persist()
+        publishChange()
+        return updated
     }
 
     private func createTask(text: String, plannedOn: TaskPlannedDay?, projectID: UUID? = nil, isUnscheduled: Bool = false) -> DailyTask? {

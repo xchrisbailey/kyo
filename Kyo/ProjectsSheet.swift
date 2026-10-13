@@ -203,7 +203,9 @@ struct ProjectDetailView: View {
                 onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
                 onDelete: { taskList.deleteTask(id: task.id) },
                 onDoLater: { schedulingTask = task },
-                onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) })
+                onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) },
+                projects: projects.projects,
+                onAssignProject: { taskList.assignTask(id: task.id, to: $0) })
             .listRowInsets(EdgeInsets())
     }
 }
@@ -344,5 +346,53 @@ private struct ProjectMemoDetail: View {
             MemoCardSheet(memo: memo, store: store, languageModel: languageModel,
                 taskList: projects.taskList, projects: projects.projects)
         }
+    }
+}
+
+struct TaskProjectAssignmentMenu: View {
+    let task: DailyTask
+    let projects: [Project]
+    let assign: (UUID?) -> Void
+
+    var body: some View {
+        if !projects.isEmpty {
+            Menu("Move to project", systemImage: "folder") {
+                ForEach(projects) { project in
+                    Button(project.name) { assign(project.id) }
+                        .accessibilityIdentifier("task-project-option-\(project.id.uuidString)")
+                }
+            }
+            .accessibilityIdentifier("task-move-project-\(task.id.uuidString)")
+        }
+        if task.projectID != nil {
+            Button("Remove from project", systemImage: "folder.badge.minus") { assign(nil) }
+                .accessibilityIdentifier("task-remove-project-\(task.id.uuidString)")
+        }
+    }
+}
+
+struct TaskCaptureProjectPicker: View {
+    let projects: [Project]
+    @Binding var projectID: UUID?
+
+    private var selectionName: String {
+        projectID.flatMap { id in projects.first { $0.id == id }?.name } ?? "No project"
+    }
+
+    var body: some View {
+        Menu {
+            Button("No project") { projectID = nil }
+                .accessibilityIdentifier("new-task-project-none")
+            ForEach(projects) { project in
+                Button(project.name) { projectID = project.id }
+                    .accessibilityIdentifier("new-task-project-option-\(project.id.uuidString)")
+            }
+        } label: {
+            Label(selectionName, systemImage: "folder")
+                .frame(minHeight: 44)
+        }
+        .accessibilityLabel("Project")
+        .accessibilityValue(selectionName)
+        .accessibilityIdentifier("new-task-project-picker")
     }
 }

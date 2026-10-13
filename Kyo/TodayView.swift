@@ -30,6 +30,7 @@ struct TodayView: View {
     @State private var voiceMemoPendingDelete: UUID?
     @State private var isShowingTaskDraft = false
     @State private var taskDraft = ""
+    @State private var taskDraftProjectID: UUID?
     /// Set when + → Task brings back a draft that was hidden by collapsing Tasks, so the row scrolls
     /// into view and takes focus once it's on screen again.
     @State private var revealTaskDraftWhenShown = false
@@ -142,7 +143,7 @@ struct TodayView: View {
                         LaterSheet(taskList: taskList, languageModel: languageModel)
                     case .scheduleTaskDraft:
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { date in
-                            guard taskList.addTask(text: taskDraft, plannedFor: date) != nil else { return false }
+                            guard createTaskDraft(plannedFor: date) else { return false }
                             abandonTaskDraft()
                             return true
                         })
@@ -325,13 +326,15 @@ struct TodayView: View {
                         onToggle: { taskList.toggleTask(id: task.id) },
                         onEdit: { text in taskList.editTask(id: task.id, text: text) != nil },
                         onDelete: { _ = taskList.deleteTask(id: task.id) },
-                        onDoLater: { activeSheet = .scheduleTask(task.id) }
+                        onDoLater: { activeSheet = .scheduleTask(task.id) },
+                        projects: projects.projects,
+                        onAssignProject: { taskList.assignTask(id: task.id, to: $0) }
                     )
                 }
                 if isShowingTaskDraft {
                     if !taskList.everydayTasks.isEmpty { rowDivider }
                     TaskDraftRow(
-                        text: $taskDraft, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
+                        text: $taskDraft, projectID: $taskDraftProjectID, projects: projects.projects, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
                         schedule: {
                             isTaskDraftFocused = false
                             activeSheet = .scheduleTaskDraft
@@ -618,7 +621,9 @@ struct TodayView: View {
                             onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
                             onDelete: { taskList.deleteTask(id: task.id) },
                             onDoLater: { activeSheet = .scheduleTask(task.id) },
-                            onReturnToProject: { projects.returnToProject(taskID: task.id) })
+                            onReturnToProject: { projects.returnToProject(taskID: task.id) },
+                            projects: projects.projects,
+                            onAssignProject: { taskList.assignTask(id: task.id, to: $0) })
                 }
                 Button("Add task") { activeSheet = .addProjectTask(project.id) }
                     .foregroundStyle(theme.accent)
@@ -638,6 +643,7 @@ struct TodayView: View {
         sections.startTaskDraft()
         if !isShowingTaskDraft {
             taskDraft = ""
+            taskDraftProjectID = nil
             isShowingTaskDraft = true
         } else if draftWasHidden {
             revealTaskDraftWhenShown = true
@@ -656,8 +662,16 @@ struct TodayView: View {
     }
 
     private func saveTaskDraft() {
-        taskList.addTask(text: taskDraft)
+        guard createTaskDraft() else { return }
         abandonTaskDraft()
+    }
+
+    private func createTaskDraft(plannedFor date: Date? = nil) -> Bool {
+        if let taskDraftProjectID {
+            return taskList.addTask(text: taskDraft, projectID: taskDraftProjectID, plannedFor: date ?? .now) != nil
+        }
+        if let date { return taskList.addTask(text: taskDraft, plannedFor: date) != nil }
+        return taskList.addTask(text: taskDraft) != nil
     }
 
     private func abandonTaskDraft() {
@@ -665,6 +679,7 @@ struct TodayView: View {
         isShowingTaskDraft = false
         revealTaskDraftWhenShown = false
         taskDraft = ""
+        taskDraftProjectID = nil
     }
 }
 
@@ -707,41 +722,49 @@ private enum TodayPreviewSheet: Identifiable {
 private struct TaskDraftRow: View {
     @Environment(\.theme) private var theme
     @Binding var text: String
+    @Binding var projectID: UUID?
+    let projects: [Project]
     var isFocused: FocusState<Bool>.Binding
     let submit: () -> Void
     let schedule: () -> Void
     let cancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .strokeBorder(theme.tertiaryText, lineWidth: 1.5)
-                .frame(width: 23, height: 23)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 0) {
+            if !projects.isEmpty {
+                TaskCaptureProjectPicker(projects: projects, projectID: $projectID)
+                    .foregroundStyle(theme.accent)
+            }
+            HStack(spacing: 10) {
+                Circle()
+                    .strokeBorder(theme.tertiaryText, lineWidth: 1.5)
+                    .frame(width: 23, height: 23)
+                    .accessibilityHidden(true)
 
-            TextField("New task", text: $text)
-                .font(.body)
-                .textFieldStyle(.plain)
-                .focused(isFocused)
-                .submitLabel(.done)
-                .onSubmit(submit)
-                .accessibilityLabel("New task")
-                .accessibilityIdentifier("new-task")
+                TextField("New task", text: $text)
+                    .font(.body)
+                    .textFieldStyle(.plain)
+                    .focused(isFocused)
+                    .submitLabel(.done)
+                    .onSubmit(submit)
+                    .accessibilityLabel("New task")
+                    .accessibilityIdentifier("new-task")
 
-            Button("Planned day", systemImage: "calendar", action: schedule)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.accent)
-                .frame(width: 44, height: 44)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("new-task-schedule")
+                Button("Planned day", systemImage: "calendar", action: schedule)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(theme.accent)
+                    .frame(width: 44, height: 44)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("new-task-schedule")
 
-            Button("Cancel task", systemImage: "xmark", action: cancel)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.secondaryText)
-                .frame(width: 44, height: 44)
-                .accessibilityIdentifier("new-task-cancel")
+                Button("Cancel task", systemImage: "xmark", action: cancel)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(theme.secondaryText)
+                    .frame(width: 44, height: 44)
+                    .accessibilityIdentifier("new-task-cancel")
+            }
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
@@ -1119,6 +1142,8 @@ struct TaskRow: View {
     let onDelete: () -> Void
     var onDoLater: (() -> Void)? = nil
     var onReturnToProject: (() -> Void)? = nil
+    var projects: [Project] = []
+    var onAssignProject: ((UUID?) -> Void)? = nil
 
     @State private var isEditing = false
     @State private var draft = ""
@@ -1164,6 +1189,9 @@ struct TaskRow: View {
         }
         .clipped()
         .contextMenu {
+            if let onAssignProject {
+                TaskProjectAssignmentMenu(task: task, projects: projects, assign: onAssignProject)
+            }
             if !task.isComplete, let onDoLater {
                 Button("Do later", systemImage: "calendar", action: onDoLater)
                     .accessibilityIdentifier("task-do-later-\(task.id.uuidString)")

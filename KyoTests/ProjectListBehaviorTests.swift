@@ -3,6 +3,113 @@ import XCTest
 
 @MainActor
 final class ProjectListBehaviorTests: XCTestCase {
+    func testAssignmentPreservesEveryTaskStateAndRemovingUnscheduledMakesEverydayWork() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 4, to: now))
+        let tasks: TaskListStore = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
+        let behavior: any TaskListBehavior = tasks
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: tasks)
+        let first = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let second = try XCTUnwrap(projects.createProject(name: "House"))
+        let everyday = try XCTUnwrap(tasks.addTask(text: "Everyday"))
+        let deferred = try XCTUnwrap(tasks.addTask(text: "Later", plannedFor: future))
+        let chosen = try XCTUnwrap(projects.addTaskForToday(text: "Chosen", to: first.id))
+        let unscheduled = try XCTUnwrap(projects.addTask(text: "Unscheduled", to: first.id))
+        let completed = try XCTUnwrap(tasks.addTask(text: "Completed"))
+        let done = try XCTUnwrap(tasks.toggleTask(id: completed.id))
+        let historical = try XCTUnwrap(projects.addTaskForToday(text: "Historical", to: first.id))
+        let pastDone = try XCTUnwrap(tasks.toggleTask(id: historical.id))
+        now = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        tasks.refreshForCurrentDay()
+        let todayTask = try XCTUnwrap(tasks.addTask(text: "Completed today"))
+        let todayDone = try XCTUnwrap(tasks.toggleTask(id: todayTask.id))
+        for original in [everyday, deferred, chosen, unscheduled, done, pastDone, todayDone] {
+            let moved = try XCTUnwrap(behavior.assignTask(id: original.id, to: second.id))
+            XCTAssertEqual(moved, DailyTask(id: original.id, text: original.text, creationOrder: original.creationOrder,
+                                           isComplete: original.isComplete, completedOn: original.completedOn,
+                                           plannedOn: original.plannedOn, projectID: second.id, isUnscheduled: original.isUnscheduled))
+            XCTAssertEqual(behavior.assignTask(id: original.id, to: second.id), moved)
+            let removed = try XCTUnwrap(behavior.assignTask(id: original.id, to: nil))
+            XCTAssertEqual(removed, DailyTask(id: original.id, text: original.text, creationOrder: original.creationOrder,
+                                             isComplete: original.isComplete, completedOn: original.completedOn,
+                                             plannedOn: original.plannedOn))
+        }
+        XCTAssertEqual(tasks.taskCount, 4)
+        XCTAssertEqual(tasks.completedCount, 1)
+        XCTAssertEqual(tasks.tasksCompleted(on: now).map(\.id), [todayDone.id])
+        XCTAssertEqual(tasks.laterTasks.map(\.id), [deferred.id])
+        XCTAssertEqual(tasks.tasksPlanned(on: future, calendar: calendar).map(\.id), [deferred.id])
+        XCTAssertTrue(tasks.tasks(in: first.id).isEmpty)
+        XCTAssertTrue(tasks.tasks(in: second.id).isEmpty)
+        XCTAssertNil(behavior.assignTask(id: everyday.id, to: UUID()))
+        XCTAssertNil(behavior.assignTask(id: UUID(), to: second.id))
+        XCTAssertEqual(tasks.everydayTasks.map(\.id), [everyday.id, chosen.id, unscheduled.id, todayDone.id])
+    }
+
+    func testAssignmentSurvivesDiskReopeningAndQueuedDuplicateWatchCommands() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let suite = "ProjectAssignment.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let calendar = Calendar(identifier: .gregorian)
+        let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 4, to: today))
+        let transport = ControllableTaskTransport()
+        var expected: DailyTask?
+        var projectID: UUID?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+                                      now: { today }, calendar: calendar, sync: .publish(to: transport))
+            let projects = ProjectListStore(modelContainer: container, taskList: phone)
+            let first = try XCTUnwrap(projects.createProject(name: "Kyo"))
+            let second = try XCTUnwrap(projects.createProject(name: "House"))
+            projectID = second.id
+            let task = try XCTUnwrap(phone.addTask(text: "Widgets"))
+            let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { today }, calendar: calendar,
+                                      sync: .mirror(from: transport))
+            XCTAssertNil(watch.assignTask(id: task.id, to: first.id))
+            transport.disconnect()
+            _ = watch.editTask(id: task.id, text: "Edited widgets")
+            _ = watch.toggleTask(id: task.id)
+            _ = phone.assignTask(id: task.id, to: first.id)
+            _ = phone.deferTask(id: task.id, to: future)
+            _ = phone.assignTask(id: task.id, to: second.id)
+            _ = projects.renameProject(id: second.id, name: "Renamed House")
+            transport.reconnect()
+            let completion = try XCTUnwrap(transport.sentCommands.last)
+            let rename = try XCTUnwrap(transport.sentCommands.first)
+            expected = try XCTUnwrap(phone.tasks.first)
+            XCTAssertEqual(expected?.projectID, second.id)
+            XCTAssertEqual(expected?.plannedOn, TaskPlannedDay(date: future, calendar: calendar))
+            XCTAssertEqual(expected?.text, "Edited widgets")
+            XCTAssertEqual(expected?.isComplete, true)
+            XCTAssertEqual(watch.tasks, phone.tasks)
+            XCTAssertEqual(watch.projectCatalog.last?.name, "Renamed House")
+            _ = phone.assignTask(id: task.id, to: nil)
+            transport.redeliver(rename)
+            transport.redeliver(completion)
+            XCTAssertNil(phone.tasks.first?.projectID)
+            _ = phone.assignTask(id: task.id, to: second.id)
+            expected = phone.tasks.first
+            XCTAssertEqual(phone.taskCount, 1)
+        }
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: try KyoModelContainer.make(storeURL: url),
+                                     now: { today }, calendar: calendar)
+        XCTAssertEqual(reopened.tasks, [try XCTUnwrap(expected)])
+        XCTAssertEqual(reopened.tasks(in: try XCTUnwrap(projectID)), reopened.tasks)
+        XCTAssertEqual(reopened.tasksCompleted(on: today), reopened.tasks)
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { today }, calendar: calendar,
+                                  sync: .mirror(from: ControllableTaskTransport()))
+        XCTAssertEqual(watch.tasks, reopened.tasks)
+        XCTAssertEqual(watch.projectCatalog.last?.name, "Renamed House")
+    }
+
     func testSchedulingUnscheduledProjectTaskSelectsLaterAndReturnClearsItsProjection() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let calendar = Calendar(identifier: .gregorian)

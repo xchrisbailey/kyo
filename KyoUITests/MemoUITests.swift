@@ -28,6 +28,8 @@ final class MemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Memos, 1 memo"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["Tap + to add a memo"].exists)
 
+        // The Projects section can leave Memos below the fold; reveal the row before its horizontal swipe.
+        app.scrollViews.firstMatch.swipeUp()
         // Swiping the row left reveals its Delete button without opening the memo (#202); swiping right hides it.
         row.swipeLeft()
         XCTAssertTrue(app.buttons["Delete memo: Weekend idea"].waitForExistence(timeout: 10)) // label-query: the Delete button is found by its label

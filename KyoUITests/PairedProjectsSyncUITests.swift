@@ -111,7 +111,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
             app.swipeUp()
         }
         retainUIDiagnostics("phone-control-unavailable", in: app,
-                            candidates: app.descendants(matching: .any).matching(identifier: element.identifier))
-        XCTFail("Control unavailable: \(element.identifier)")
+                            candidates: app.descendants(matching: .any))
+        XCTFail("Requested control unavailable; retained candidate hierarchy and screenshot")
     }
 }

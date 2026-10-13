@@ -114,9 +114,9 @@ release_run() {
 trap release_run EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-scripts/check-progress start "$sha" --pid $$ || exit 2
 # An interrupted run must not leave the previous run's record standing for this commit.
 rm -f "$record"
+scripts/check-progress start "$sha" --pid $$ || exit 2
 
 # The given directory prefixes that have changed paths under them, comma-separated; empty when none
 # do.

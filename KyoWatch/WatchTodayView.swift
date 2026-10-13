@@ -558,6 +558,7 @@ private struct WatchProjectHeader: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(project.name), \(done) of \(tasks.count) done")
         .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("project-group-collapse-\(project.id.uuidString)")
     }
 }

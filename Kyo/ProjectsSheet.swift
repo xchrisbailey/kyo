@@ -15,7 +15,7 @@ struct ProjectsSheet: View {
             List {
                 ForEach(projects.projects) { project in
                     NavigationLink {
-                        ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList)
+                        ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, onDone: { dismiss() })
                     } label: {
                         Text(project.name)
                     }
@@ -44,6 +44,7 @@ private struct ProjectDetailView: View {
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var taskList: TaskListStore
+    let onDone: () -> Void
     @State private var isRenaming = false
     @State private var isAddingTask = false
     @State private var editingTask: DailyTask?
@@ -75,6 +76,10 @@ private struct ProjectDetailView: View {
         }
         .navigationTitle(name)
         .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", action: onDone)
+                    .accessibilityIdentifier("projects-done")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Rename") { isRenaming = true }
                     .accessibilityIdentifier("project-rename")

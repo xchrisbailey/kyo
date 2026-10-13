@@ -6,6 +6,78 @@ final class ProjectsUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testProjectSchedulingCancellationLaterMonthAndReturn() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        app.buttons["project-new"].tap()
+        let name = app.textFields["project-name-editor"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Build Kyo")
+        app.buttons["project-name-save"].tap()
+        let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).firstMatch
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        project.tap()
+        app.buttons["project-add-task"].tap()
+        let task = app.textFields["project-task-editor"]
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        task.tap()
+        task.typeText("Plan widgets")
+        app.buttons["project-task-save"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-edit-")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let id = String(row.identifier.dropFirst("task-edit-".count))
+        row.press(forDuration: 1)
+        let schedule = app.buttons["task-do-later-\(id)"]
+        XCTAssertTrue(schedule.waitForExistence(timeout: 5))
+        schedule.tap()
+        app.buttons["task-scheduling-one-week"].tap()
+        app.buttons["task-scheduling-cancel"].tap()
+        XCTAssertTrue(app.buttons["task-do-today-\(id)"].waitForExistence(timeout: 5))
+        row.press(forDuration: 1)
+        schedule.tap()
+        app.buttons["task-scheduling-one-week"].tap()
+        XCTAssertTrue(app.staticTexts["task-planned-day-preview"].exists)
+        app.buttons["task-scheduling-confirm"].tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["task-do-today-\(id)"].exists)
+        app.buttons["projects-done"].tap()
+        tapRevealed(app.buttons["section-link-tasks"], in: app)
+        XCTAssertTrue(app.staticTexts["later-task-\(id)"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["later-task-\(id)"].label, "Plan widgets")
+        XCTAssertEqual(app.staticTexts["later-task-project-\(id)"].label, "Build Kyo")
+        capture("project-task-unified-later", in: app)
+        app.buttons["later-done"].tap()
+        app.buttons["main-view-month"].tap()
+        let calendar = Calendar.current
+        let date = try XCTUnwrap(calendar.date(byAdding: .day, value: 7, to: Date.now))
+        if !calendar.isDate(date, equalTo: Date.now, toGranularity: .month) { app.buttons["month-next"].tap() }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let cell = app.buttons["month-day-\(formatter.string(from: date))"]
+        XCTAssertTrue(cell.waitForExistence(timeout: 5))
+        XCTAssertTrue(cell.label.contains("1 task planned"))
+        cell.tap()
+        let summary = app.descendants(matching: .any)["month-summary-row-task-\(id)"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        XCTAssertEqual(summary.label, "Plan widgets, Build Kyo")
+        XCTAssertEqual(summary.value as? String, "Planned")
+        XCTAssertNotEqual(summary.elementType, .button)
+        capture("project-task-read-only-month", in: app)
+        app.buttons["main-view-today"].tap()
+        tapRevealed(app.buttons["section-link-tasks"], in: app)
+        let returned = app.buttons["later-task-return-to-project-\(id)"]
+        XCTAssertTrue(returned.waitForExistence(timeout: 5))
+        returned.tap()
+        XCTAssertTrue(app.staticTexts["later-task-\(id)"].waitForNonExistence(timeout: 5))
+        app.buttons["later-done"].tap()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        project.tap()
+        XCTAssertTrue(app.buttons["task-do-today-\(id)"].waitForExistence(timeout: 5))
+    }
+
     func testChoosingProjectWorkShowsGroupNavigationCaptureCompletionAndCollapse() {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LaterSheet: View {
+    @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var taskList: TaskListStore
     var languageModel: any OnDeviceLanguageModel = FoundationOnDeviceLanguageModel()
@@ -11,31 +12,46 @@ struct LaterSheet: View {
         NavigationStack {
             List {
                 if taskList.laterTasks.isEmpty {
-                    Text("No deferred tasks")
-                        .accessibilityIdentifier("later-empty")
+                    ThemedListGroup {
+                        Text("No deferred tasks")
+                            .accessibilityIdentifier("later-empty")
+                    }
                 }
                 ForEach(taskList.laterTasks) { task in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(task.text)
-                            .accessibilityIdentifier("later-task-\(task.id.uuidString)")
-                        if let date = task.plannedOn?.date(in: .autoupdatingCurrent) {
-                            Text(date, format: .dateTime.weekday(.wide).month(.wide).day().year())
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("later-task-planned-day-\(task.id.uuidString)")
+                    ThemedListGroup {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(task.text)
+                                .accessibilityIdentifier("later-task-\(task.id.uuidString)")
+                            if let project = taskList.projectCatalog.first(where: { $0.id == task.projectID }) {
+                                Text(project.name)
+                                    .font(.subheadline)
+                                    .foregroundStyle(theme.secondaryText)
+                                    .accessibilityIdentifier("later-task-project-\(task.id.uuidString)")
+                            }
+                            if let date = task.plannedOn?.date(in: .autoupdatingCurrent) {
+                                Text(date, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                                    .font(.subheadline)
+                                    .foregroundStyle(theme.secondaryText)
+                                    .accessibilityIdentifier("later-task-planned-day-\(task.id.uuidString)")
+                            }
+                            Button("Edit") { editingTask = task }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("later-task-edit-\(task.id.uuidString)")
+                            Button("Reschedule") { reschedulingTask = task }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("later-task-reschedule-\(task.id.uuidString)")
+                            Button("Bring to Today") { taskList.bringTaskToToday(id: task.id) }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("task-bring-to-today-\(task.id.uuidString)")
+                            if task.projectID != nil {
+                                Button("Return to project") { taskList.returnTaskToProject(id: task.id) }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityIdentifier("later-task-return-to-project-\(task.id.uuidString)")
+                            }
+                            Button("Delete", role: .destructive) { taskList.deleteTask(id: task.id) }
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("later-task-delete-\(task.id.uuidString)")
                         }
-                        Button("Edit") { editingTask = task }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("later-task-edit-\(task.id.uuidString)")
-                        Button("Reschedule") { reschedulingTask = task }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("later-task-reschedule-\(task.id.uuidString)")
-                        Button("Bring to Today") { taskList.bringTaskToToday(id: task.id) }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("task-bring-to-today-\(task.id.uuidString)")
-                        Button("Delete", role: .destructive) { taskList.deleteTask(id: task.id) }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("later-task-delete-\(task.id.uuidString)")
                     }
                 }
             }
@@ -49,7 +65,8 @@ struct LaterSheet: View {
                     taskList.deferTask(id: task.id, to: date) != nil
                 }
             }
-            .navigationTitle("Later")
+            .themedListBackground()
+            .themedNavigationTitle("Later")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

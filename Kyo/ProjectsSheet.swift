@@ -47,6 +47,7 @@ struct ProjectsSheet: View {
 }
 
 struct ProjectDetailView: View {
+    @Environment(\.theme) private var theme
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var taskList: TaskListStore
@@ -54,6 +55,7 @@ struct ProjectDetailView: View {
     let onDone: () -> Void
     @State private var isRenaming = false
     @State private var isAddingTask = false
+    @State private var schedulingTask: DailyTask?
 
     private var name: String { projects.projects.first { $0.id == projectID }?.name ?? "Project" }
 
@@ -62,6 +64,20 @@ struct ProjectDetailView: View {
             ThemedListGroup("Today") {
                 ForEach(projects.todayTasks(in: projectID).filter { !$0.isComplete }) { task in
                     taskRow(task)
+                }
+            }
+            ThemedListGroup("Later") {
+                ForEach(projects.laterTasks(in: projectID)) { task in
+                    VStack(alignment: .leading, spacing: 4) {
+                        taskRow(task)
+                        if let date = task.plannedOn?.date(in: .autoupdatingCurrent) {
+                            Text(date, format: .dateTime.weekday(.wide).month(.wide).day().year())
+                                .font(.caption)
+                                .foregroundStyle(theme.secondaryText)
+                                .padding(.horizontal, 14)
+                                .accessibilityIdentifier("project-task-planned-day-\(task.id.uuidString)")
+                        }
+                    }
                 }
             }
             ThemedListGroup("Unscheduled") {
@@ -106,6 +122,11 @@ struct ProjectDetailView: View {
                 projects.renameProject(id: projectID, name: $0) != nil
             }
         }
+        .sheet(item: $schedulingTask) { task in
+            TaskSchedulingSheet(date: task.plannedOn?.date(in: .autoupdatingCurrent)) {
+                taskList.deferTask(id: task.id, to: $0) != nil
+            }
+        }
         .sheet(isPresented: $isAddingTask) {
             ProjectTextForm(title: "Add task", field: "Task", identifier: "project-task") {
                 projects.addTask(text: $0, to: projectID) != nil
@@ -121,6 +142,7 @@ struct ProjectDetailView: View {
                 },
                 onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
                 onDelete: { taskList.deleteTask(id: task.id) },
+                onDoLater: { schedulingTask = task },
                 onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) })
             .listRowInsets(EdgeInsets())
     }

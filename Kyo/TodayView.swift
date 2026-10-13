@@ -606,6 +606,7 @@ struct TodayView: View {
                             onToggle: { taskList.toggleTask(id: task.id) },
                             onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
                             onDelete: { taskList.deleteTask(id: task.id) },
+                            onDoLater: { activeSheet = .scheduleTask(task.id) },
                             onReturnToProject: { projects.returnToProject(taskID: task.id) })
                 }
                 Button("Add task") { activeSheet = .addProjectTask(project.id) }

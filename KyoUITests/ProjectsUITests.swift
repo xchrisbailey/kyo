@@ -6,6 +6,98 @@ final class ProjectsUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testArchiveKeepsReadOnlyProjectReferencesAndDayMemoActionsThenRestores() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+        app.launch()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        var projectIDs: [String] = []
+        for title in ["Kyo", "House"] {
+            app.buttons["project-new"].tap()
+            let name = app.textFields["project-name-editor"]
+            XCTAssertTrue(name.waitForExistence(timeout: 5))
+            name.tap()
+            name.typeText(title)
+            app.buttons["project-name-save"].tap()
+            let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).element(boundBy: projectIDs.count)
+            XCTAssertTrue(project.waitForExistence(timeout: 5))
+            projectIDs.append(String(project.identifier.dropFirst("project-open-".count)))
+        }
+        let project = app.buttons["project-open-\(projectIDs[0])"]
+        project.tap()
+        app.buttons["project-add-task"].tap()
+        let taskEditor = app.textFields["project-task-editor"]
+        XCTAssertTrue(taskEditor.waitForExistence(timeout: 5))
+        taskEditor.tap()
+        taskEditor.typeText("Chosen task")
+        app.buttons["project-task-today"].tap()
+        app.buttons["project-task-save"].tap()
+        let task = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 5))
+        let taskID = String(task.identifier.dropFirst("task-checkbox-".count))
+        app.buttons["project-add-memo"].tap()
+        app.buttons["project-add-written-memo"].tap()
+        let compose = app.textFields["memo-compose-text"]
+        XCTAssertTrue(compose.waitForExistence(timeout: 5))
+        compose.typeText("Retained thought")
+        app.buttons["memo-compose-save"].tap()
+        let memo = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-memo-open-")).firstMatch
+        XCTAssertTrue(memo.waitForExistence(timeout: 5))
+        let memoID = String(memo.identifier.dropFirst("project-memo-open-".count))
+        app.buttons["project-archive"].tap()
+        XCTAssertTrue(app.buttons["project-restore"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["project-rename"].exists)
+        XCTAssertFalse(app.buttons["project-add-task"].exists)
+        XCTAssertFalse(app.buttons["project-add-memo"].exists)
+        let reference = app.descendants(matching: .any)["project-task-reference-\(taskID)"]
+        XCTAssertTrue(reference.waitForExistence(timeout: 5))
+        XCTAssertEqual(reference.label, "Chosen task")
+        XCTAssertFalse(app.buttons["task-edit-\(taskID)"].exists)
+        capture("archived-project-reference", in: app)
+        memo.tap()
+        let text = app.staticTexts["memo-reference-text"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        XCTAssertEqual(text.label, "Retained thought")
+        XCTAssertFalse(app.textFields["memo-text"].exists)
+        XCTAssertFalse(app.buttons["memo-project-move"].exists)
+        XCTAssertFalse(app.buttons["memo-to-task"].exists)
+        XCTAssertFalse(app.buttons["memo-delete"].exists)
+        capture("archived-memo-reference", in: app)
+        app.buttons["memo-close"].tap()
+        app.buttons["projects-done"].tap()
+        XCTAssertFalse(app.buttons["task-checkbox-\(taskID)"].exists)
+        tapRevealed(app.buttons["memo-open-\(memoID)"], in: app)
+        XCTAssertTrue(app.textFields["memo-text"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["memo-to-task"].exists)
+        XCTAssertTrue(app.buttons["memo-delete"].exists)
+        app.buttons["memo-close"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-task"].tap()
+        app.buttons["new-task-project-picker"].tap()
+        XCTAssertFalse(app.buttons["new-task-project-option-\(projectIDs[0])"].exists)
+        XCTAssertTrue(app.buttons["new-task-project-option-\(projectIDs[1])"].exists)
+        app.buttons["new-task-project-none"].tap()
+        app.buttons["new-task-cancel"].tap()
+        app.buttons["add-item"].tap()
+        app.buttons["add-item-written-memo"].tap()
+        app.buttons["memo-project-picker"].tap()
+        XCTAssertFalse(app.buttons["memo-project-option-\(projectIDs[0])"].exists)
+        XCTAssertTrue(app.buttons["memo-project-option-\(projectIDs[1])"].exists)
+        app.buttons["memo-project-none"].tap()
+        app.buttons["memo-compose-cancel"].tap()
+        tapRevealed(app.buttons["section-link-projects"], in: app)
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Archived"].exists) // label-query: asserting the archived section title
+        capture("active-and-archived-projects", in: app)
+        project.tap()
+        app.buttons["project-restore"].tap()
+        XCTAssertTrue(app.buttons["project-archive"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["project-add-task"].exists)
+        XCTAssertTrue(app.buttons["task-checkbox-\(taskID)"].exists)
+        app.buttons["projects-done"].tap()
+        XCTAssertTrue(app.buttons["task-checkbox-\(taskID)"].waitForExistence(timeout: 5))
+    }
+
     func testBottomProjectCaptureKeepsSelectionThroughSchedulingCancelAndDefaultsToday() {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"

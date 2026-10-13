@@ -312,6 +312,7 @@ struct MemoPhotoCarousel: View {
     let loadPhoto: (UUID) -> Data?
     let onAdd: (StoredPhoto) -> Void
     let onRemove: (UUID) -> Void
+    var isReadOnly: Bool = false
 
     private let tile: CGFloat = 150
 
@@ -326,10 +327,11 @@ struct MemoPhotoCarousel: View {
                         size: tile,
                         loadThumbnail: loadThumbnail,
                         loadPhoto: loadPhoto,
-                        onRemove: { onRemove(id) }
+                        onRemove: { onRemove(id) },
+                        isReadOnly: isReadOnly
                     )
                 }
-                if photoIDs.count < Memo.maximumPhotos {
+                if !isReadOnly && photoIDs.count < Memo.maximumPhotos {
                     MemoPhotoMenu(remaining: Memo.maximumPhotos - photoIDs.count, onAdd: onAdd) {
                         VStack(spacing: 6) {
                             Image(systemName: "photo.badge.plus")
@@ -366,6 +368,7 @@ private struct CarouselPhoto: View {
     let loadThumbnail: (UUID) -> Data?
     let loadPhoto: (UUID) -> Data?
     let onRemove: () -> Void
+    var isReadOnly: Bool = false
 
     @State private var image: UIImage?
     @Environment(\.displayScale) private var displayScale
@@ -383,16 +386,18 @@ private struct CarouselPhoto: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(alignment: .topTrailing) {
-            Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(theme.onScrim, theme.scrim)
-                    .frame(width: 44, height: 44, alignment: .center)
-                    .contentShape(Rectangle())
+            if !isReadOnly {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(theme.onScrim, theme.scrim)
+                        .frame(width: 44, height: 44, alignment: .center)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove photo \(position)")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Remove photo \(position)")
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Photo \(position) of \(count)")

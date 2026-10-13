@@ -140,6 +140,7 @@ struct MemoRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("memo-open-\(memo.id.uuidString)")
         .accessibilityHint("Opens this memo")
         .accessibilityAction { onOpen() }
         .accessibilityActions {
@@ -260,6 +261,7 @@ struct MemoCardSheet: View {
     let memo: Memo
     var projects: [Project] = []
     var onAssign: ((UUID?) -> Void)?
+    var isReadOnly: Bool = false
     let onEdit: (String) -> Void
     /// Names a Voice memo. The user's title replaces a generated one for good.
     let onRename: (String) -> Void
@@ -298,11 +300,13 @@ struct MemoCardSheet: View {
         onRetryTranscription: @escaping () -> Void,
         makeTaskSuggestions: @escaping (String) -> MemoTaskSuggestions,
         projects: [Project] = [],
-        onAssign: ((UUID?) -> Void)? = nil
+        onAssign: ((UUID?) -> Void)? = nil,
+        isReadOnly: Bool = false
     ) {
         self.memo = memo
         self.projects = projects
         self.onAssign = onAssign
+        self.isReadOnly = isReadOnly
         self.onEdit = onEdit
         self.onRename = onRename
         self.onDelete = onDelete
@@ -320,7 +324,7 @@ struct MemoCardSheet: View {
 
     /// The card for any memo, from Today or memo history, wired to the store. **Memo → Task**
     /// adds to **Today**, whatever the memo's day.
-    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore, projects: [Project] = []) {
+    init(memo: Memo, store: MemoStore, languageModel: any OnDeviceLanguageModel, taskList: TaskListStore, projects: [Project] = [], isReadOnly: Bool = false) {
         let id = memo.id
         self.init(
             memo: memo,
@@ -338,7 +342,8 @@ struct MemoCardSheet: View {
                 MemoTaskSuggestions(memoText: text, model: languageModel, tasks: taskList)
             },
             projects: projects,
-            onAssign: { store.assignMemo(id: id, to: $0) }
+            onAssign: { store.assignMemo(id: id, to: $0) },
+            isReadOnly: isReadOnly
         )
     }
 
@@ -349,10 +354,10 @@ struct MemoCardSheet: View {
                 if let note = memo.capNote {
                     capNote(note)
                 }
-                actionRow
-                if let onAssign, !projects.isEmpty || memo.projectID != nil {
+                if !isReadOnly { actionRow }
+                if !isReadOnly, let onAssign, projects.contains(where: { !$0.isArchived }) || memo.projectID != nil {
                     Menu {
-                        ForEach(projects) { project in
+                        ForEach(projects.filter { !$0.isArchived }) { project in
                             Button(project.name) { onAssign(project.id) }
                                 .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
                         }
@@ -372,9 +377,14 @@ struct MemoCardSheet: View {
                     loadThumbnail: loadThumbnail,
                     loadPhoto: loadPhoto,
                     onAdd: onAddPhoto,
-                    onRemove: onRemovePhoto
+                    onRemove: onRemovePhoto,
+                    isReadOnly: isReadOnly
                 )
-                if memo.kind == .voice {
+                if isReadOnly {
+                    Text(memo.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("memo-reference-text")
+                } else if memo.kind == .voice {
                     transcriptArea
                 } else {
                     editor
@@ -392,10 +402,10 @@ struct MemoCardSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(32)
-        .onChange(of: text) { _, newText in onEdit(newText) }
+        .onChange(of: text) { _, newText in if !isReadOnly { onEdit(newText) } }
         // Typing a title is renaming; a generated title arriving in the field is not.
         .onChange(of: title) { _, newTitle in
-            if isTitleFocused { onRename(newTitle) }
+            if isTitleFocused && !isReadOnly { onRename(newTitle) }
         }
         // A generated title that arrives while the card is open shows, unless the user is typing.
         .onChange(of: memo.title) { _, newTitle in
@@ -454,7 +464,7 @@ struct MemoCardSheet: View {
             .foregroundStyle(theme.accent)
             .padding(.top, 14)
 
-            if memo.kind == .voice {
+            if memo.kind == .voice && !isReadOnly {
                 TextField(Memo.voiceFallbackTitle, text: $title)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
@@ -463,7 +473,7 @@ struct MemoCardSheet: View {
                     .accessibilityLabel("Title")
                     .accessibilityAddTraits(.isHeader)
             } else {
-                let writtenTitle = Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
+                let writtenTitle = memo.kind == .voice ? memo.title : Memo.title(ofWrittenText: text, photoCount: memo.photoCount)
                 Text(writtenTitle.isEmpty ? "Untitled" : writtenTitle)
                     .font(.system(size: 30, weight: .bold))
                     .tracking(-0.8)
@@ -515,6 +525,7 @@ struct MemoCardSheet: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("memo-to-task")
             .accessibilityHint("Turns this memo into tasks on Today")
 
             Button(role: .destructive) {
@@ -534,6 +545,7 @@ struct MemoCardSheet: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("memo-delete")
             .accessibilityLabel("Delete memo")
             .accessibilityHint("Deletes this memo permanently")
         }
@@ -653,7 +665,7 @@ struct MemoProjectPicker: View {
             Menu {
                 Button("No project") { projectID = nil }
                     .accessibilityIdentifier("memo-project-none")
-                ForEach(projects) { project in
+                ForEach(projects.filter { !$0.isArchived }) { project in
                     Button(project.name) { projectID = project.id }
                         .accessibilityIdentifier("memo-project-option-\(project.id.uuidString)")
                 }

@@ -28,19 +28,19 @@ struct ProjectsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                ThemedListGroup {
-                    ForEach(projects.projects) { project in
-                        NavigationLink {
-                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList,
-                                languageModel: languageModel, voiceRecording: voiceRecording,
-                                onCaptureSurfaceChange: onCaptureSurfaceChange, sections: sections, onDone: { dismiss() })
-                        } label: {
-                            Text(project.name)
-                        }
-                        .accessibilityIdentifier("project-open-\(project.id.uuidString)")
+                ThemedListGroup("Active") {
+                    ForEach(projects.activeProjects) { project in
+                        projectLink(project)
                     }
                     Button("New project") { isCreating = true }
                         .accessibilityIdentifier("project-new")
+                }
+                if !projects.archivedProjects.isEmpty {
+                    ThemedListGroup("Archived") {
+                        ForEach(projects.archivedProjects) { project in
+                            projectLink(project)
+                        }
+                    }
                 }
             }
             .themedListBackground()
@@ -58,6 +58,17 @@ struct ProjectsSheet: View {
                 }
             }
         }
+    }
+
+    private func projectLink(_ project: Project) -> some View {
+        NavigationLink {
+            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList,
+                languageModel: languageModel, voiceRecording: voiceRecording,
+                onCaptureSurfaceChange: onCaptureSurfaceChange, sections: sections, onDone: { dismiss() })
+        } label: {
+            Text(project.name)
+        }
+        .accessibilityIdentifier("project-open-\(project.id.uuidString)")
     }
 }
 
@@ -77,6 +88,8 @@ struct ProjectDetailView: View {
     @State private var isRenaming = false
     @State private var isAddingTask = false
     @State private var schedulingTask: DailyTask?
+
+    private var isArchived: Bool { projects.projects.first { $0.id == projectID }?.isArchived == true }
 
     private var name: String { projects.projects.first { $0.id == projectID }?.name ?? "Project" }
 
@@ -107,8 +120,10 @@ struct ProjectDetailView: View {
                 ForEach(projects.unscheduledTasks(in: projectID)) { task in
                     taskRow(task)
                 }
-                Button("Add task") { isAddingTask = true }
-                    .accessibilityIdentifier("project-add-task")
+                if !isArchived {
+                    Button("Add task") { isAddingTask = true }
+                        .accessibilityIdentifier("project-add-task")
+                }
             }
             ThemedListGroup {
                 Button {
@@ -140,9 +155,16 @@ struct ProjectDetailView: View {
                 Button("Done", action: onDone)
                     .accessibilityIdentifier("projects-done")
             }
-            ToolbarItem(placement: .primaryAction) {
-                Button("Rename") { isRenaming = true }
-                    .accessibilityIdentifier("project-rename")
+            ToolbarItemGroup(placement: .primaryAction) {
+                if isArchived {
+                    Button("Restore project") { projects.restoreProject(id: projectID) }
+                        .accessibilityIdentifier("project-restore")
+                } else {
+                    Button("Rename") { isRenaming = true }
+                        .accessibilityIdentifier("project-rename")
+                    Button("Archive project") { projects.archiveProject(id: projectID) }
+                        .accessibilityIdentifier("project-archive")
+                }
             }
         }
         .onChange(of: isWritingMemo) { _, showing in
@@ -171,7 +193,7 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: Binding(get: { openMemoID != nil }, set: { if !$0 { openMemoID = nil } })) {
             if let id = openMemoID, let memoStore = projects.memoStore {
-                ProjectMemoDetail(id: id, store: memoStore, projects: projects, languageModel: languageModel)
+                ProjectMemoDetail(id: id, projectID: projectID, store: memoStore, projects: projects, languageModel: languageModel)
             }
         }
         .sheet(isPresented: $isRenaming) {
@@ -194,19 +216,32 @@ struct ProjectDetailView: View {
         }
     }
 
+    @ViewBuilder
     private func taskRow(_ task: DailyTask) -> some View {
-        TaskRow(task: task,
-                onToggle: {
-                    if task.isUnscheduled && !task.isComplete { projects.doToday(taskID: task.id) }
-                    else { taskList.toggleTask(id: task.id) }
-                },
-                onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
-                onDelete: { taskList.deleteTask(id: task.id) },
-                onDoLater: { schedulingTask = task },
-                onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) },
-                projects: projects.projects,
-                onAssignProject: { taskList.assignTask(id: task.id, to: $0) })
-            .listRowInsets(EdgeInsets())
+        if isArchived {
+            HStack {
+                Image(systemName: task.isComplete ? "checkmark.circle.fill" : "circle")
+                    .accessibilityHidden(true)
+                Text(task.text)
+            }
+            .foregroundStyle(task.isComplete ? theme.secondaryText : theme.primaryText)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(task.isComplete ? "\(task.text), completed" : task.text)
+            .accessibilityIdentifier("project-task-reference-\(task.id.uuidString)")
+        } else {
+            TaskRow(task: task,
+                    onToggle: {
+                        if task.isUnscheduled && !task.isComplete { projects.doToday(taskID: task.id) }
+                        else { taskList.toggleTask(id: task.id) }
+                    },
+                    onEdit: { taskList.editTask(id: task.id, text: $0) != nil },
+                    onDelete: { taskList.deleteTask(id: task.id) },
+                    onDoLater: { schedulingTask = task },
+                    onReturnToProject: task.isUnscheduled ? nil : { projects.returnToProject(taskID: task.id) },
+                    projects: projects.projects,
+                    onAssignProject: { taskList.assignTask(id: task.id, to: $0) })
+                .listRowInsets(EdgeInsets())
+        }
     }
 }
 
@@ -319,24 +354,27 @@ private struct ProjectMemosSection: View {
                 }
                 .accessibilityIdentifier("project-memo-open-\(memo.id.uuidString)")
             }
-            Menu {
-                Button("Written memo", action: onWrite)
-                    .accessibilityIdentifier("project-add-written-memo")
-                Button("Voice memo", action: onRecord)
-                    .accessibilityIdentifier("project-add-voice-memo")
-            } label: {
-                Text("Add memo")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+            if projects.activeProjects.contains(where: { $0.id == projectID }) {
+                Menu {
+                    Button("Written memo", action: onWrite)
+                        .accessibilityIdentifier("project-add-written-memo")
+                    Button("Voice memo", action: onRecord)
+                        .accessibilityIdentifier("project-add-voice-memo")
+                } label: {
+                    Text("Add memo")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("project-add-memo")
             }
-            .buttonStyle(.borderless)
-            .accessibilityIdentifier("project-add-memo")
         }
     }
 }
 
 private struct ProjectMemoDetail: View {
     let id: UUID
+    let projectID: UUID
     @ObservedObject var store: MemoStore
     @ObservedObject var projects: ProjectListStore
     let languageModel: any OnDeviceLanguageModel
@@ -344,7 +382,8 @@ private struct ProjectMemoDetail: View {
     var body: some View {
         if let memo = store.memo(id: id) {
             MemoCardSheet(memo: memo, store: store, languageModel: languageModel,
-                taskList: projects.taskList, projects: projects.projects)
+                taskList: projects.taskList, projects: projects.projects,
+                isReadOnly: projects.archivedProjects.contains { $0.id == projectID })
         }
     }
 }
@@ -355,9 +394,9 @@ struct TaskProjectAssignmentMenu: View {
     let assign: (UUID?) -> Void
 
     var body: some View {
-        if !projects.isEmpty {
+        if projects.contains(where: { !$0.isArchived }) {
             Menu("Move to project", systemImage: "folder") {
-                ForEach(projects) { project in
+                ForEach(projects.filter { !$0.isArchived }) { project in
                     Button(project.name) { assign(project.id) }
                         .accessibilityIdentifier("task-project-option-\(project.id.uuidString)")
                 }
@@ -383,7 +422,7 @@ struct TaskCaptureProjectPicker: View {
         Menu {
             Button("No project") { projectID = nil }
                 .accessibilityIdentifier("new-task-project-none")
-            ForEach(projects) { project in
+            ForEach(projects.filter { !$0.isArchived }) { project in
                 Button(project.name) { projectID = project.id }
                     .accessibilityIdentifier("new-task-project-option-\(project.id.uuidString)")
             }

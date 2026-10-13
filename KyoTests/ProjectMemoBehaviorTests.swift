@@ -24,7 +24,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         XCTAssertEqual(memos.memos, [memo])
         XCTAssertTrue(projects.memos(in: second.id).isEmpty)
     }
-    func testRecoveredRecordingKeepsChosenProjectAndOriginalDayAcrossTimeZoneChange() async throws {
+    func testRecoveredRecordingKeepsArchivedProjectAndOriginalDayAcrossTimeZoneChange() async throws {
         let container = try KyoModelContainer.make(inMemory: true)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: -7 * 3600))
@@ -40,6 +40,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         let session = VoiceRecordingSession(recorder: recorder, memos: memos, now: { start }, calendar: calendar, userDefaults: defaults)
         session.selectProject(project.id)
         await session.begin()
+        _ = projects.archiveProject(id: project.id)
         XCTAssertFalse(session.selectProject(UUID()))
         XCTAssertEqual(session.projectID, project.id)
         let id = try XCTUnwrap(recorder.startedIDs.first)
@@ -55,7 +56,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         XCTAssertTrue(recoveredSession.recoverInterruptedRecordings().isEmpty)
     }
 
-    func testCaptureAndBackgroundTranscriptionPreserveAssignmentMediaAndDayVisibility() async throws {
+    func testArchiveDuringBackgroundTranscriptionPreservesAssignmentMediaAndDayVisibility() async throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let calendar = Calendar(identifier: .gregorian)
         let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
@@ -72,6 +73,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         let voice = try memos.saveVoiceMemo(audio, stoppedAtCap: true, photos: [photo], context: context)
         _ = memos.assignMemo(id: voice.id, to: second.id)
         _ = memos.renameMemo(id: voice.id, title: "Chosen title")
+        _ = projects.archiveProject(id: second.id)
         transcriber.release(.transcript("Transcript arrived"))
         for _ in 0..<100 where memos.memo(id: voice.id)?.transcriptState != .transcribed {
             try await Task.sleep(for: .milliseconds(10))
@@ -96,7 +98,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         XCTAssertEqual(memos.memoGroups(matching: "arrived", limit: 50).groups.flatMap(\.results).map(\.id), [voice.id])
     }
 
-    func testAssignmentSurvivesDelayedTitleAndPhotoChangesWithoutChangingWatchSnapshot() async throws {
+    func testArchiveSurvivesDelayedTitleAndPhotoChangesWithoutChangingWatchSnapshot() async throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let calendar = Calendar(identifier: .gregorian)
         let today = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
@@ -118,6 +120,7 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         for _ in 0..<100 where model.receivedTitleTexts.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertFalse(model.receivedTitleTexts.isEmpty)
         let snapshot = try XCTUnwrap(transport.published.last)
+        _ = projects.archiveProject(id: project.id)
         _ = store.assignMemo(id: original.id, to: project.id)
         XCTAssertEqual(transport.published.last, snapshot)
         let photo = StoredPhoto(data: Data([5]), thumbnail: Data([6]))

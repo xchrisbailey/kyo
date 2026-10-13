@@ -88,6 +88,8 @@ protocol TaskListBehavior: AnyObject {
     var projectCatalog: [Project] { get }
     @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
+    func referenceTodayTasks(in projectID: UUID) -> [DailyTask]
+    func referenceLaterTasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func assignTask(id: UUID, to projectID: UUID?) -> DailyTask?
     @discardableResult func addTask(text: String, projectID: UUID, plannedFor date: Date) -> DailyTask?
     @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
@@ -303,7 +305,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         if case .mirror = sync { return nil }
         guard let modelContainer,
               let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
-              projects.contains(where: { $0.id == projectID }) else { return nil }
+              projects.contains(where: { $0.id == projectID && !$0.isArchived }) else { return nil }
         return createTask(text: text, plannedOn: nil, projectID: projectID, isUnscheduled: true)
     }
 
@@ -313,7 +315,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         guard calendar.startOfDay(for: date) >= calendar.startOfDay(for: now()),
               let modelContainer,
               let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
-              projects.contains(where: { $0.id == projectID }) else { return nil }
+              projects.contains(where: { $0.id == projectID && !$0.isArchived }) else { return nil }
         return createTask(text: text, plannedOn: TaskPlannedDay(date: date, calendar: calendar), projectID: projectID)
     }
 
@@ -323,7 +325,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         if let projectID {
             guard let modelContainer,
                   let projects = try? modelContainer.mainContext.fetch(FetchDescriptor<ProjectRecord>()),
-                  projects.contains(where: { $0.id == projectID }) else { return nil }
+                  projects.contains(where: { $0.id == projectID && !$0.isArchived }) else { return nil }
         }
         guard let index = savedTasks.firstIndex(where: { $0.id == id }) else { return nil }
         let task = savedTasks[index]
@@ -497,7 +499,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             if $0.plannedOn != $1.plannedOn {
                 return ($0.plannedOn?.date(in: calendar) ?? currentDate) < ($1.plannedOn?.date(in: calendar) ?? currentDate)
             }
-            return $0.creationOrder < $1.creationOrder
+            if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
+            return $0.id.uuidString < $1.id.uuidString
         }
     }
 

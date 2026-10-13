@@ -131,13 +131,14 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
 
     @discardableResult
     func doToday(taskID: UUID) -> DailyTask? {
-        guard projects.contains(where: { project in taskList.tasks(in: project.id).contains { $0.id == taskID } }) else { return nil }
+        guard activeProjects.contains(where: { project in taskList.tasks(in: project.id).contains { $0.id == taskID } }) else { return nil }
         return taskList.bringTaskToToday(id: taskID)
     }
 
     @discardableResult
     func returnToProject(taskID: UUID) -> DailyTask? {
-        taskList.returnTaskToProject(id: taskID)
+        guard activeProjects.contains(where: { project in taskList.tasks(in: project.id).contains { $0.id == taskID } }) else { return nil }
+        return taskList.returnTaskToProject(id: taskID)
     }
 
     func laterTasks(in projectID: UUID) -> [DailyTask] {
@@ -146,7 +147,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
 
     @discardableResult
     func addTask(text: String, to projectID: UUID, plannedFor date: Date) -> DailyTask? {
-        guard projects.contains(where: { $0.id == projectID }) else { return nil }
+        guard activeProjects.contains(where: { $0.id == projectID }) else { return nil }
         return taskList.addTask(text: text, projectID: projectID, plannedFor: date)
     }
 
@@ -156,7 +157,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
 
     @discardableResult
     func addTask(text: String, to projectID: UUID) -> DailyTask? {
-        guard projects.contains(where: { $0.id == projectID }) else { return nil }
+        guard activeProjects.contains(where: { $0.id == projectID }) else { return nil }
         return taskList.addUnscheduledTask(text: text, projectID: projectID)
     }
 
@@ -175,7 +176,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
     @discardableResult
     func renameProject(id: UUID, name: String) -> Project? {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, let record = records().first(where: { $0.id == id }) else { return nil }
+        guard !name.isEmpty, let record = records().first(where: { $0.id == id }), !record.isArchived else { return nil }
         record.name = name
         try? context.save()
         reload()

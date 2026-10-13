@@ -38,6 +38,188 @@ final class ProjectListBehaviorTests: XCTestCase {
         XCTAssertEqual(projects.completedTasks(in: project.id), [done])
     }
 
+    func testArchivedProjectsRejectNewTaskAssignmentAndProjectMutations() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let tasks = TaskListStore(modelContainer: container)
+        let projects = ProjectListStore(modelContainer: container, taskList: tasks)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let task = try XCTUnwrap(tasks.addTask(text: "Everyday"))
+        let retained = try XCTUnwrap(projects.addTask(text: "Retained", to: project.id))
+        _ = projects.archiveProject(id: project.id)
+        XCTAssertNil(tasks.assignTask(id: task.id, to: project.id))
+        XCTAssertNil(projects.addTask(text: "New", to: project.id))
+        XCTAssertNil(projects.addTask(text: "Planned", to: project.id, plannedFor: .now))
+        XCTAssertNil(projects.renameProject(id: project.id, name: "Changed"))
+        XCTAssertNil(projects.doToday(taskID: retained.id))
+        XCTAssertNil(projects.returnToProject(taskID: retained.id))
+        XCTAssertEqual(tasks.tasks(in: project.id), [retained])
+    }
+
+    func testArchivedProjectConvergesThroughQueuedWatchCommandsStaleDeliveryAndCacheRestart() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let suite = "ArchiveSync.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let transport = ControllableTaskTransport()
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+            now: { now }, calendar: calendar, sync: .publish(to: transport))
+        let projects = ProjectListStore(modelContainer: container, taskList: phone)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let edited = try XCTUnwrap(projects.addTaskForToday(text: "Original", to: project.id))
+        let deleted = try XCTUnwrap(projects.addTaskForToday(text: "Deleted", to: project.id))
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+            sync: .mirror(from: transport))
+        let stale = try XCTUnwrap(transport.published.last)
+        transport.disconnect()
+        _ = watch.editTask(id: edited.id, text: "Queued edit")
+        _ = watch.toggleTask(id: edited.id)
+        _ = watch.deleteTask(id: deleted.id)
+        _ = projects.renameProject(id: project.id, name: "Renamed")
+        _ = projects.archiveProject(id: project.id)
+        XCTAssertTrue(phone.tasks.isEmpty)
+        transport.reconnect()
+        XCTAssertTrue(phone.tasks.isEmpty)
+        XCTAssertTrue(watch.tasks.isEmpty)
+        XCTAssertEqual(watch.taskCount, 0)
+        XCTAssertEqual(phone.tasks(in: project.id).map(\.text), ["Queued edit"])
+        XCTAssertEqual(phone.tasksCompleted(on: now).map(\.id), [edited.id])
+        XCTAssertTrue(watch.projectCatalog.first?.isArchived == true)
+        for command in transport.sentCommands { transport.redeliver(command) }
+        transport.deliver(stale)
+        XCTAssertTrue(watch.tasks.isEmpty)
+        let disconnected = ControllableTaskTransport()
+        disconnected.disconnect()
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+            sync: .mirror(from: disconnected))
+        XCTAssertTrue(reopened.tasks.isEmpty)
+        XCTAssertEqual(reopened.projectCatalog.first?.name, "Renamed")
+        XCTAssertTrue(reopened.projectCatalog.first?.isArchived == true)
+        XCTAssertTrue(disconnected.sentCommands.isEmpty)
+        _ = projects.restoreProject(id: project.id)
+        XCTAssertEqual(watch.tasks, phone.tasks)
+        XCTAssertEqual(phone.tasks.map(\.id), [edited.id])
+        XCTAssertEqual(phone.completedCount, 1)
+        transport.redeliver(TaskCommand(id: UUID(), action: .add(taskID: deleted.id, text: "Resurrect")))
+        XCTAssertEqual(phone.tasks.map(\.id), [edited.id])
+        transport.redeliver(TaskCommand(id: UUID(), action: .rename(taskID: edited.id, text: "After restore")))
+        XCTAssertEqual(phone.tasks.first?.text, "After restore")
+        XCTAssertEqual(phone.tasks.first?.projectID, project.id)
+    }
+
+    func testLegacyCatalogCacheRetainsFutureTasksAndPendingCommandsAsActive() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 2, to: now))
+        let id = try XCTUnwrap(UUID(uuidString: "00000000-0000-0000-0000-000000000260"))
+        let legacy = Data("{\"id\":\"00000000-0000-0000-0000-000000000260\",\"name\":\"Legacy\",\"creationOrder\":0}".utf8)
+        let project = try JSONDecoder().decode(Project.self, from: legacy)
+        let chosen = DailyTask(text: "Chosen", creationOrder: 0, projectID: id)
+        let planned = DailyTask(text: "Future", creationOrder: 1,
+            plannedOn: TaskPlannedDay(date: future, calendar: calendar), projectID: id)
+        let suite = "LegacyArchiveCatalog.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let transport = ControllableTaskTransport()
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+            sync: .mirror(from: transport))
+        transport.deliver(TaskListSnapshot(revision: 1, tasks: [chosen, planned], projects: [project]))
+        transport.disconnect()
+        _ = watch.editTask(id: chosen.id, text: "Pending edit")
+        let disconnected = ControllableTaskTransport()
+        disconnected.disconnect()
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+            sync: .mirror(from: disconnected))
+        XCTAssertFalse(try XCTUnwrap(reopened.projectCatalog.first).isArchived)
+        XCTAssertEqual(reopened.tasks.map(\.text), ["Pending edit"])
+        XCTAssertEqual(reopened.laterTasks, [planned])
+        XCTAssertEqual(disconnected.sentCommands.count, 1)
+        now = future
+        reopened.refreshForCurrentDay()
+        XCTAssertEqual(reopened.tasks.map(\.text), ["Pending edit", "Future"])
+        XCTAssertTrue(reopened.laterTasks.isEmpty)
+    }
+
+    func testArchiveTieCanonicalizationRetainsAssociatedContentAcrossSourceAndCache() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let id = UUID()
+        let active = Project(id: id, name: "Same", creationOrder: 0)
+        let archived = Project(id: id, name: "Same", creationOrder: 0, isArchived: true)
+        container.mainContext.insert(ProjectRecord(project: active))
+        container.mainContext.insert(ProjectRecord(project: archived))
+        let task = DailyTask(text: "Retained", creationOrder: 0, projectID: id)
+        container.mainContext.insert(TaskRecord(task: task))
+        try container.mainContext.save()
+        let suite = "ArchiveTie.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let transport = ControllableTaskTransport()
+        let phone = TaskListStore(modelContainer: container, sync: .publish(to: transport))
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: transport))
+        XCTAssertEqual(phone.projectCatalog, [archived])
+        XCTAssertEqual(watch.projectCatalog, [archived])
+        XCTAssertTrue(watch.tasks.isEmpty)
+        let projects = ProjectListStore(modelContainer: container, taskList: phone)
+        XCTAssertEqual(projects.projects, [archived])
+        XCTAssertEqual(phone.tasks(in: id), [task])
+        let snapshot = try XCTUnwrap(transport.published.last)
+        transport.deliver(TaskListSnapshot(revision: snapshot.revision + 1, tasks: snapshot.tasks, projects: [active, archived]))
+        let reopened = TaskListStore(userDefaults: defaults, storageKey: "watch", sync: .mirror(from: ControllableTaskTransport()))
+        XCTAssertEqual(reopened.projectCatalog, [archived])
+        XCTAssertTrue(reopened.tasks.isEmpty)
+        _ = projects.restoreProject(id: id)
+        XCTAssertEqual(phone.tasks, [task])
+    }
+
+    func testArchivedDiskAndWatchCacheKeepFutureWorkSuppressedAtArrivalUntilRestored() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("Kyo.store")
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 2, to: now))
+        let suite = "ArchiveDiskCache.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var projectID: UUID?
+        var planned: DailyTask?
+        do {
+            let container = try KyoModelContainer.make(storeURL: url)
+            let transport = ControllableTaskTransport()
+            let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+                now: { now }, calendar: calendar, sync: .publish(to: transport))
+            let projects = ProjectListStore(modelContainer: container, taskList: phone)
+            let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+            projectID = project.id
+            planned = try XCTUnwrap(projects.addTask(text: "Arriving", to: project.id, plannedFor: future))
+            let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+                sync: .mirror(from: transport))
+            _ = projects.archiveProject(id: project.id)
+            XCTAssertTrue(watch.laterTasks.isEmpty)
+        }
+        now = future
+        let container = try KyoModelContainer.make(storeURL: url)
+        let transport = ControllableTaskTransport()
+        transport.disconnect()
+        let watch = TaskListStore(userDefaults: defaults, storageKey: "watch", now: { now }, calendar: calendar,
+            sync: .mirror(from: transport))
+        XCTAssertTrue(watch.tasks.isEmpty)
+        XCTAssertTrue(watch.laterTasks.isEmpty)
+        let phone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,
+            now: { now }, calendar: calendar, sync: .publish(to: transport))
+        let projects = ProjectListStore(modelContainer: container, taskList: phone)
+        XCTAssertTrue(phone.tasks.isEmpty)
+        XCTAssertEqual(projects.todayTasks(in: try XCTUnwrap(projectID)), [try XCTUnwrap(planned)])
+        _ = projects.restoreProject(id: try XCTUnwrap(projectID))
+        transport.reconnect()
+        XCTAssertEqual(phone.tasks, [try XCTUnwrap(planned)])
+        XCTAssertEqual(watch.tasks, phone.tasks)
+        XCTAssertTrue(phone.laterTasks.isEmpty)
+        XCTAssertEqual(phone.taskCount, 1)
+    }
+
     func testAssignmentPreservesEveryTaskStateAndRemovingUnscheduledMakesEverydayWork() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let calendar = Calendar(identifier: .gregorian)

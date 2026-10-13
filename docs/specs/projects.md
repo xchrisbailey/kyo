@@ -20,11 +20,15 @@ Tasks for a body of work such as building Kyo are mixed with everyday tasks on T
 - Archive project retains its tasks and memos for reference and holds its tasks out of Today and Later until restored. Completing all tasks does not automatically archive a project. Permanent project deletion is outside the first version.
 - A task or memo belongs to at most one project. Move to project can assign or switch its project; Remove from project clears that association. Moving a task preserves its completion and planned day. Removing an unscheduled project task makes it an everyday task available on Today.
 - Full project management is on iPhone and iPad. Watch shows chosen project tasks in a separate Projects section grouped by project, supporting completion, editing, and deletion like existing tasks. All projects, project memos, and project assignment are on iPhone and iPad in the first version.
+- Today section order is Schedule, Tasks, Projects, Habits, Memos. Everyday tasks appear only in Tasks; chosen project tasks appear only under their project. The overall task count includes both. Each project group shows its own done count, and completed tasks stay below unfinished tasks until tomorrow. Collapse choices persist per device.
+- Project details show the project name, Tasks, and Memos. Tasks are split into Today, Later, Unscheduled, and a collapsible Completed list. Creation order is preserved within each task list except Later, which uses planned-day order. Memos are newest first.
+- Add task and Add memo inside a project automatically assign that project. The bottom Add menu keeps everyday capture and gains an optional project picker for tasks and memos. New project is available in All projects. Choosing a task for Today does not expand a collapsed project group.
+- Later remains one list of scheduled tasks and shows project names on project tasks. Month includes project tasks under existing planned-day and completion-day rules, showing project names. Unscheduled project tasks appear in neither view.
+- Priorities, subtasks, deadlines, and manual ordering are outside the first version.
 
 ## Open Decisions
 
-- Section placement, counts, completed tasks, Later, and Month behavior.
-- Project detail organization and capture controls.
 - Restoration of previously chosen or scheduled tasks and editing archived content.
+- Empty sections, project ordering, capture defaults, and task actions at the edges of the lists.
 
 Terms follow root GLOSSARY.md. No implementation or architecture decision has been made.

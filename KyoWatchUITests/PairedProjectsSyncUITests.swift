@@ -76,14 +76,16 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(keyboardEditor.value as? String, "Task \(token)")
         capture("paired-watch-project-native-keyboard", in: app)
         keyboardEditor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Task \(token)".count) + "Edited \(token)")
+        XCTAssertEqual(keyboardEditor.value as? String, "Edited \(token)")
         app.buttons["Done"].tap() // label-query: native Watch keyboard has no app-owned identifier
-        XCTAssertEqual(editor.value as? String, "Edited \(token)")
-        app.buttons["task-text-save"].tap()
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         XCTAssertEqual(first.identifier, firstID)
         XCTAssertEqual(first.label, "Edited \(token)")
         capture("paired-watch-project-edited-task", in: app)
         XCTAssertEqual(first.value as? String, "Not completed")
+        reveal(group, in: app, upward: false)
+        XCTAssertEqual(group.label, "Renamed \(token), 0 of 2 done")
         let removed = app.buttons[secondID]
         reveal(removed, in: app)
         removed.swipeLeft()

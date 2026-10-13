@@ -33,6 +33,7 @@ paired_run() {
 
 paired_phase() {
   local phase="$1" target_scheme="$2" destination="$3" test_name="$4" data="$5"
+  local phase_status=0
   TEST_RUNNER_KYO_PAIRED_PROJECTS=1 \
   TEST_RUNNER_KYO_PAIRED_PROJECTS_TOKEN="$paired_token" \
   TEST_RUNNER_KYO_PAIRED_PROJECTS_PHASE="$phase" \
@@ -40,7 +41,14 @@ paired_phase() {
       -destination "id=$destination" -derivedDataPath "$data" \
       -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 \
       -resultBundlePath "$log_dir/$run_id-paired-$phase.xcresult" \
-      "-only-testing:$target_scheme/PairedProjectsSyncUITests/$test_name" test-without-building
+      "-only-testing:$target_scheme/PairedProjectsSyncUITests/$test_name" test-without-building || phase_status=$?
+  local result="$log_dir/$run_id-paired-$phase.xcresult"
+  if [[ -d "$result" ]]; then
+    xcrun xcresulttool export attachments --path "$result" \
+      --output-path "$log_dir/$run_id-paired-$phase-attachments" \
+      || echo "scripts/test: attachment export unavailable; originals retained in $result" >&2
+  fi
+  [[ $phase_status -eq 0 ]] || return "$phase_status"
   # Successful xcodebuild with a skipped or missing test is not paired evidence.
   local passed="Test Case '-[$target_scheme.PairedProjectsSyncUITests $test_name]' passed"
   grep -Fq "$passed" "$log" || { echo "scripts/test: missing executed phase $phase" >&2; return 1; }

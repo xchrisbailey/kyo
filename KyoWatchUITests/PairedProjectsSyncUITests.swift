@@ -19,8 +19,10 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(task.label, "Task \(token)")
         XCTAssertEqual(task.value as? String, "Not completed")
         reveal(group, in: app, upward: false)
+        capture("paired-watch-project-expanded", in: app)
         group.tap()
         XCTAssertEqual(group.value as? String, "collapsed")
+        capture("paired-watch-project-collapsed", in: app)
         app.terminate()
         app.launch()
         reveal(group, in: app)
@@ -53,11 +55,13 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(first.value as? String, "Completed")
         reveal(group, in: app, upward: false)
         XCTAssertEqual(group.label, "Renamed \(token), 1 of 2 done")
+        capture("paired-watch-project-first-completion", in: app)
         reveal(first, in: app)
         first.tap()
         XCTAssertEqual(first.value as? String, "Not completed")
         reveal(group, in: app, upward: false)
         XCTAssertEqual(group.label, "Renamed \(token), 0 of 2 done")
+        capture("paired-watch-project-reopened", in: app)
         reveal(first, in: app)
         first.swipeLeft()
         let edit = app.buttons["task-edit-\(String(firstID.dropFirst("task-checkbox-".count)))"]
@@ -65,12 +69,14 @@ final class PairedProjectsSyncUITests: XCTestCase {
         edit.tap()
         let editor = app.textFields["task-text-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        capture("paired-watch-project-edit-sheet", in: app)
         editor.tap()
         editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Task \(token)".count) + "Edited \(token)")
         app.buttons["task-text-save"].tap()
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         XCTAssertEqual(first.identifier, firstID)
         XCTAssertEqual(first.label, "Edited \(token)")
+        capture("paired-watch-project-edited-task", in: app)
         XCTAssertEqual(first.value as? String, "Not completed")
         let removed = app.buttons[secondID]
         reveal(removed, in: app)
@@ -81,6 +87,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertTrue(removed.waitForNonExistence(timeout: 5))
         reveal(group, in: app, upward: false)
         XCTAssertEqual(group.label, "Renamed \(token), 0 of 1 done")
+        capture("paired-watch-project-task-deleted", in: app)
         reveal(first, in: app)
         first.tap()
         XCTAssertEqual(first.value as? String, "Completed")
@@ -88,6 +95,13 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(group.label, "Renamed \(token), 1 of 1 done")
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "paired-projects-watch-renamed-completed"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func capture(_ name: String, in app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
     }

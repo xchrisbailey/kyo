@@ -16,6 +16,7 @@ final class WatchProjectTaskSyncTests: XCTestCase {
         let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
         let transport = ControllableTaskTransport()
         var project: Project!
+        var newerProject: Project!
         var completed: DailyTask!
         var deleted: DailyTask!
         var staleSnapshot: TaskListSnapshot!
@@ -39,6 +40,8 @@ final class WatchProjectTaskSyncTests: XCTestCase {
             commands = transport.sentCommands
             _ = projects.renameProject(id: project.id, name: "Build Kyo")
             _ = phone.deferTask(id: completed.id, to: tomorrow)
+            newerProject = try XCTUnwrap(projects.createProject(name: "House"))
+            _ = try XCTUnwrap(phone.assignTask(id: completed.id, to: newerProject.id))
         }
         let restart = ControllableTaskTransport()
         restart.disconnect()
@@ -55,7 +58,7 @@ final class WatchProjectTaskSyncTests: XCTestCase {
         let task = try XCTUnwrap(phone.tasks.first)
         XCTAssertEqual(task.id, completed.id)
         XCTAssertEqual(task.creationOrder, completed.creationOrder)
-        XCTAssertEqual(task.projectID, project.id)
+        XCTAssertEqual(task.projectID, newerProject.id)
         XCTAssertEqual(task.plannedOn, TaskPlannedDay(era: 1, year: 2026, month: 10, day: 13))
         XCTAssertFalse(task.isUnscheduled)
         XCTAssertTrue(task.isComplete)
@@ -77,7 +80,7 @@ final class WatchProjectTaskSyncTests: XCTestCase {
         XCTAssertTrue(cached.tasks.isEmpty, "Yesterday's completion must leave Today")
         _ = phone.toggleTask(id: task.id)
         XCTAssertNil(phone.tasks.first?.plannedOn)
-        XCTAssertEqual(phone.tasks.first?.projectID, project.id)
+        XCTAssertEqual(phone.tasks.first?.projectID, newerProject.id)
         XCTAssertFalse(try XCTUnwrap(phone.tasks.first).isUnscheduled)
         let finalTransport = ControllableTaskTransport()
         let reopenedPhone = TaskListStore(userDefaults: defaults, storageKey: "phone", modelContainer: container,

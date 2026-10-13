@@ -29,8 +29,12 @@ A one-off text entry that the user checks off, available on Today or deferred to
 _Avoid_: Todo, item
 
 **Project**:
-A named body of work, such as building Kyo, that groups related tasks separately from everyday tasks.
+A named body of work, such as building Kyo, that groups related tasks and optional memos separately from everyday tasks. A task or memo belongs to at most one project.
 _Avoid_: Category, task list
+
+**Archived project**:
+A project put away with its tasks and memos retained for reference; its tasks are held out of Today and Later until the project is restored.
+_Avoid_: Deleted project, completed project
 
 **Deferred task**:
 A task held out of Today's active list until its planned day arrives. Deferring a task is a one-time choice, not a recurring schedule or a deadline.

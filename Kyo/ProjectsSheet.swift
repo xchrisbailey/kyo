@@ -13,18 +13,22 @@ struct ProjectsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(projects.projects) { project in
-                    NavigationLink {
-                        ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, onDone: { dismiss() })
-                    } label: {
-                        Text(project.name)
+                ThemedListGroup {
+                    ForEach(projects.projects) { project in
+                        NavigationLink {
+                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, onDone: { dismiss() })
+                        } label: {
+                            Text(project.name)
+                        }
+                        .accessibilityIdentifier("project-open-\(project.id.uuidString)")
                     }
-                    .accessibilityIdentifier("project-open-\(project.id.uuidString)")
+                    Button("New project") { isCreating = true }
+                        .accessibilityIdentifier("project-new")
                 }
-                Button("New project") { isCreating = true }
-                    .accessibilityIdentifier("project-new")
             }
-            .navigationTitle("All projects")
+            .themedListBackground()
+            .themedNavigationTitle("All projects")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -41,6 +45,7 @@ struct ProjectsSheet: View {
 }
 
 private struct ProjectDetailView: View {
+    @Environment(\.theme) private var theme
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
     @ObservedObject var taskList: TaskListStore
@@ -54,7 +59,7 @@ private struct ProjectDetailView: View {
 
     var body: some View {
         List {
-            Section("Unscheduled") {
+            ThemedListGroup("Unscheduled") {
                 ForEach(projects.unscheduledTasks(in: projectID)) { task in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(task.text)
@@ -65,6 +70,7 @@ private struct ProjectDetailView: View {
                             Button("Share") { shareItems = ShareItems(.make(for: task)) }
                                 .accessibilityIdentifier("project-task-share-\(task.id.uuidString)")
                             Button("Delete", role: .destructive) { taskList.deleteTask(id: task.id) }
+                                .foregroundStyle(theme.destructive)
                                 .accessibilityIdentifier("project-task-delete-\(task.id.uuidString)")
                         }
                         .buttonStyle(.borderless)
@@ -74,7 +80,9 @@ private struct ProjectDetailView: View {
                     .accessibilityIdentifier("project-add-task")
             }
         }
-        .navigationTitle(name)
+        .themedListBackground()
+        .themedNavigationTitle(LocalizedStringKey(name))
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done", action: onDone)
@@ -119,10 +127,14 @@ private struct ProjectTextForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField(field, text: $text)
-                    .accessibilityIdentifier("\(identifier)-editor")
+                ThemedListGroup {
+                    TextField(field, text: $text)
+                        .accessibilityIdentifier("\(identifier)-editor")
+                }
             }
-            .navigationTitle(title)
+            .themedListBackground()
+            .themedNavigationTitle(LocalizedStringKey(title))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

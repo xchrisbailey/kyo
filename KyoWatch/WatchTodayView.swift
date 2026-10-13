@@ -35,6 +35,7 @@ struct WatchTodayView: View {
                         .listRow()
 
                     taskRows
+                    projectRows
 
                     habitRows
                     memoRows
@@ -127,52 +128,96 @@ struct WatchTodayView: View {
 
     @ViewBuilder
     private var taskRows: some View {
+        let tasks = taskList.everydayTasks
         WatchSectionHeader(
             title: "Tasks",
             section: .tasks,
             sections: sections,
-            count: WatchCollapsedCount.progress(done: taskList.completedCount, total: taskList.taskCount)
+            count: WatchCollapsedCount.progress(done: tasks.filter(\.isComplete).count, total: tasks.count)
         )
         .listRow(top: 8, bottom: 5)
 
         if !sections.isCollapsed(.tasks) {
-            if taskList.tasks.isEmpty {
-                Text("No tasks yet")
-                    .font(.footnote)
-                    .foregroundStyle(palette.secondaryText.style)
-                    .padding(.vertical, 7)
-                    .padding(.horizontal, 9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .listRow(background: WatchTaskRowBackground(position: .only))
+            if tasks.isEmpty {
+                emptyTaskRow("No tasks yet")
+                    .accessibilityIdentifier("tasks-empty")
             } else {
-                ForEach(Array(taskList.tasks.enumerated()), id: \.element.id) { index, task in
-                    WatchCheckRow(
-                        title: task.text,
-                        completed: task.isComplete,
-                        task: true,
-                        onToggle: { taskList.toggleTask(id: task.id) },
-                        onEdit: { activeSheet = .edit(task) },
-                        onDelete: { taskList.deleteTask(id: task.id) }
-                    )
-                    .padding(.horizontal, 9)
-                    .overlay(alignment: .top) {
-                        if index > 0 { rowDivider.padding(.horizontal, 9) }
-                    }
-                    .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: taskList.tasks.count)))
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            taskList.deleteTask(id: task.id)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                        Button {
-                            activeSheet = .edit(task)
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        .tint(palette.editTint.color)
+                taskRows(tasks)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var projectRows: some View {
+        let projects = taskList.projectCatalog.filter { project in
+            taskList.tasks.contains { $0.projectID == project.id }
+        }
+        let tasks = taskList.tasks.filter { $0.projectID != nil }
+        WatchSectionHeader(
+            title: "Projects",
+            section: .projects,
+            sections: sections,
+            count: WatchCollapsedCount.progress(done: tasks.filter(\.isComplete).count, total: tasks.count)
+        )
+        .listRow(top: 8, bottom: 5)
+
+        if !sections.isCollapsed(.projects) {
+            if projects.isEmpty {
+                emptyTaskRow("No project tasks for today")
+                    .accessibilityIdentifier("projects-empty")
+            } else {
+                ForEach(projects) { project in
+                    let tasks = taskList.tasks.filter { $0.projectID == project.id }
+                    WatchProjectHeader(project: project, tasks: tasks, sections: sections)
+                        .listRow(top: 5, bottom: 5)
+                    if !sections.isProjectCollapsed(project.id) {
+                        taskRows(tasks)
                     }
                 }
+            }
+        }
+    }
+
+    private func emptyTaskRow(_ text: String) -> some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(palette.secondaryText.style)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRow(background: WatchTaskRowBackground(position: .only))
+    }
+
+    private func taskRows(_ tasks: [DailyTask]) -> some View {
+        ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+            WatchCheckRow(
+                title: task.text,
+                completed: task.isComplete,
+                task: true,
+                onToggle: { taskList.toggleTask(id: task.id) },
+                onEdit: { activeSheet = .edit(task) },
+                onDelete: { taskList.deleteTask(id: task.id) }
+            )
+            .accessibilityIdentifier("task-checkbox-\(task.id.uuidString)")
+            .padding(.horizontal, 9)
+            .overlay(alignment: .top) {
+                if index > 0 { rowDivider.padding(.horizontal, 9) }
+            }
+            .listRow(background: WatchTaskRowBackground(position: .position(index: index, count: tasks.count)))
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                    taskList.deleteTask(id: task.id)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .accessibilityIdentifier("task-delete-\(task.id.uuidString)")
+                Button {
+                    activeSheet = .edit(task)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .accessibilityIdentifier("task-edit-\(task.id.uuidString)")
+                .tint(palette.editTint.color)
             }
         }
     }
@@ -480,6 +525,44 @@ private struct WatchSectionHeader: View {
     }
 }
 
+private struct WatchProjectHeader: View {
+    let project: Project
+    let tasks: [DailyTask]
+    @ObservedObject var sections: CollapsedSections
+    @Environment(\.watchPalette) private var palette
+
+    private var isCollapsed: Bool { sections.isProjectCollapsed(project.id) }
+    private var done: Int { tasks.filter(\.isComplete).count }
+
+    var body: some View {
+        Button {
+            withAnimation { sections.toggleProject(project.id) }
+        } label: {
+            HStack(alignment: .top, spacing: 5) {
+                Text(project.name)
+                    .font(.footnote.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                    .padding(.top, 4)
+                Spacer(minLength: 2)
+                Text("\(done)/\(tasks.count)")
+                    .font(.caption2.monospacedDigit())
+            }
+            .foregroundStyle(palette.secondaryText.style)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(project.name), \(done) of \(tasks.count) done")
+        .accessibilityValue(isCollapsed ? "collapsed" : "expanded")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("project-group-collapse-\(project.id.uuidString)")
+    }
+}
+
 private struct WatchSummaryStat: View {
     let value: String
     let label: String
@@ -522,6 +605,7 @@ private struct WatchCheckRow: View {
             .accessibilityLabel(title)
             .accessibilityValue(completed ? "Completed" : "Not completed")
             .accessibilityHint(completed ? "Reopens this task" : "Marks this task complete")
+            .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "Edit") { onEdit?() }
             .accessibilityAction(named: "Delete") { onDelete?() }
         } else {
@@ -699,6 +783,7 @@ private struct WatchTaskTextSheet: View {
                     .submitLabel(.done)
                     .onSubmit(commit)
                     .accessibilityLabel(placeholder)
+                    .accessibilityIdentifier("task-text-editor")
 
                 Button(buttonLabel) { commit() }
                     .font(.body.weight(.semibold))
@@ -707,6 +792,7 @@ private struct WatchTaskTextSheet: View {
                     .foregroundStyle(.tint)
                     .tint(palette.accent.color)
                     .accessibilityHint(buttonHint)
+                    .accessibilityIdentifier("task-text-save")
             }
             .padding(.horizontal, 12)
             .padding(.top, 8)

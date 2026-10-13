@@ -9,6 +9,7 @@ struct MemosSheet: View {
     @ObservedObject var memoStore: MemoStore
     let languageModel: any OnDeviceLanguageModel
     @ObservedObject var taskList: TaskListStore
+    var projects: [Project] = []
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
@@ -51,7 +52,7 @@ struct MemosSheet: View {
         .onChange(of: memoStore.revision) { _, _ in reload() }
         .sheet(item: $openMemo) { open in
             if let memo = memoStore.memo(id: open.id) {
-                MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
+                MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList, projects: projects)
             }
         }
         .confirmationDialog(

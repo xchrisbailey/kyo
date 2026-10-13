@@ -12,6 +12,7 @@ import SwiftData
 @Model
 final class MemoRecord {
     var id: UUID = UUID()
+    var projectID: UUID?
     /// `Memo.Kind.rawValue`, stored as a string so a later kind needs no migration.
     var kindRaw: String = Memo.Kind.written.rawValue
     var createdAt: Date = Date(timeIntervalSince1970: 0)
@@ -97,7 +98,8 @@ final class MemoRecord {
             stoppedAtCap: stoppedAtCap,
             voiceTitle: kind == .voice ? title : "",
             isTitleUserSet: kind == .voice && titleIsUserSet,
-            photoIDs: orderedPhotos.map(\.id)
+            photoIDs: orderedPhotos.map(\.id),
+            projectID: projectID
         )
     }
 }

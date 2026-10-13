@@ -44,7 +44,6 @@ struct TodayView: View {
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
         _taskList = StateObject(wrappedValue: taskList)
-        _projects = StateObject(wrappedValue: ProjectListStore(modelContainer: modelContainer, taskList: taskList))
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
@@ -61,6 +60,7 @@ struct TodayView: View {
             watchRecordings: isInMemory ? nil : WatchConnectivityTaskTransport.shared
         )
         _memoStore = StateObject(wrappedValue: memoStore)
+        _projects = StateObject(wrappedValue: ProjectListStore(modelContainer: modelContainer, taskList: taskList, memoStore: memoStore))
         // UI tests pick a fake calendar service; the live one never prompts until Connect is tapped.
         // Built on first use, once, because Month reads events through it as well.
         lazy var schedule = CalendarServiceSelection.makeScheduleStore()
@@ -129,12 +129,13 @@ struct TodayView: View {
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
                         WrittenMemoComposeSheet(
-                            onSave: { text, photos in memoStore.addWrittenMemo(text: text, photos: photos) },
+                            projects: projects.projects,
+                            onSave: { text, photos, projectID in memoStore.addWrittenMemo(text: text, photos: photos, projectID: projectID) },
                             onDraftChange: { composeHasDraft = $0 }
                         )
                     case .memo(let id):
                         if let memo = memoStore.memo(id: id) {
-                            MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList)
+                            MemoCardSheet(memo: memo, store: memoStore, languageModel: languageModel, taskList: taskList, projects: projects.projects)
                         }
                     case .later:
                         LaterSheet(taskList: taskList, languageModel: languageModel)
@@ -147,13 +148,13 @@ struct TodayView: View {
                     case .scheduleTask(let id):
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
                     case .allProjects:
-                        ProjectsSheet(projects: projects)
+                        ProjectsSheet(projects: projects, languageModel: languageModel, voiceRecording: voiceRecording)
                     case .newProject:
-                        ProjectsSheet(projects: projects, startCreating: true)
+                        ProjectsSheet(projects: projects, startCreating: true, languageModel: languageModel, voiceRecording: voiceRecording)
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:
-                        MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList)
+                        MemosSheet(memoStore: memoStore, languageModel: languageModel, taskList: taskList, projects: projects.projects)
                     case .editHabit(let id):
                         if let habit = habitList.habits.first(where: { $0.id == id }) {
                             HabitFormSheet(
@@ -166,7 +167,7 @@ struct TodayView: View {
                 }
                 .fullScreenCover(isPresented: $isShowingRecorder) {
                     if let voiceRecording {
-                        VoiceRecorderView(session: voiceRecording, onFinish: { isShowingRecorder = false })
+                        VoiceRecorderView(session: voiceRecording, projects: projects.projects, onFinish: { isShowingRecorder = false })
                     }
                 }
                 .confirmationDialog(
@@ -208,7 +209,8 @@ struct TodayView: View {
             let live: any LiveTranscribing = KyoModelContainer.isInMemoryRequested ? NoLiveTranscriber() : LiveSpeechTranscriber(support: .shared)
             let recorder = DeviceAudioRecorder()
             recorder.beforeDeactivation = { await live.waitUntilStopped() }
-            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live)
+            let session = VoiceRecordingSession(recorder: recorder, memos: memoStore, live: live,
+                userDefaults: RecordingMemoContextSelection.defaults())
             session.recoverInterruptedRecordings()
             voiceRecording = session
         }

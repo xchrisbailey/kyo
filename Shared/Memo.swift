@@ -47,6 +47,7 @@ struct Memo: Identifiable, Equatable, Sendable {
     let isTitleUserSet: Bool
     /// The ids of the memo's photos, in the order they were added. Never the photo bytes.
     let photoIDs: [UUID]
+    let projectID: UUID?
 
     init(
         id: UUID,
@@ -59,7 +60,8 @@ struct Memo: Identifiable, Equatable, Sendable {
         stoppedAtCap: Bool = false,
         voiceTitle: String = "",
         isTitleUserSet: Bool = false,
-        photoIDs: [UUID] = []
+        photoIDs: [UUID] = [],
+        projectID: UUID? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -72,6 +74,7 @@ struct Memo: Identifiable, Equatable, Sendable {
         self.voiceTitle = voiceTitle
         self.isTitleUserSet = isTitleUserSet
         self.photoIDs = photoIDs
+        self.projectID = projectID
     }
 
     var photoCount: Int { photoIDs.count }

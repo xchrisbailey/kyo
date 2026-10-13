@@ -7,7 +7,7 @@ final class TaskStoragePersistenceTests: XCTestCase {
         static let versionIdentifier = Schema.Version(2, 0, 0)
         static var models: [any PersistentModel.Type] {
             [PrePlannedTaskSchema.TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self,
-             HabitScheduleRecord.self, MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self]
+             HabitScheduleRecord.self, PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self]
         }
     }
 
@@ -28,7 +28,9 @@ final class TaskStoragePersistenceTests: XCTestCase {
             old.mainContext.insert(PrePlannedTaskSchema.TaskRecord(task: completed))
             try old.mainContext.save()
             SwiftDataHabitContent(modelContainer: old).save([Habit(name: "Stretch", order: 0)])
-            _ = MemoStore(modelContainer: old).addWrittenMemo(text: "Remember before upgrade")
+            old.mainContext.insert(PreProjectMemoSchema.MemoRecord(kind: .written, createdAt: Date(),
+                day: TaskCompletionDay(date: Date(), calendar: calendar), text: "Remember before upgrade"))
+            try old.mainContext.save()
         }
         let container = try KyoModelContainer.make(storeURL: url)
         let list = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)
@@ -60,9 +62,16 @@ final class TaskStoragePersistenceTests: XCTestCase {
             for task in [ordinary, deferred, completed] { old.mainContext.insert(PreProjectTaskSchema.TaskRecord(task: task)) }
             try old.mainContext.save()
             SwiftDataHabitContent(modelContainer: old).save([Habit(name: "Stretch", order: 0)])
-            let memos: any MemoStoreBehavior = MemoStore(modelContainer: old, now: { today }, calendar: calendar)
-            writtenID = try XCTUnwrap(memos.addWrittenMemo(text: "Remember this", photos: [photo])).id
-            _ = memos.addVoiceMemo(audio, stoppedAtCap: false, photos: [])
+            let written = PreProjectMemoSchema.MemoRecord(kind: .written, createdAt: today,
+                day: TaskCompletionDay(date: today, calendar: calendar), text: "Remember this")
+            written.photos = [PreProjectMemoSchema.MemoPhotoRecord(id: photo.id, order: 0, data: photo.data, thumbnail: photo.thumbnail)]
+            writtenID = written.id
+            old.mainContext.insert(written)
+            let voice = PreProjectMemoSchema.MemoRecord(id: audio.id, kind: .voice, createdAt: today,
+                day: TaskCompletionDay(date: today, calendar: calendar), text: "", durationSeconds: 3, transcriptState: .noTranscript)
+            voice.audio = PreProjectMemoSchema.MemoAudioRecord(data: audio.data)
+            old.mainContext.insert(voice)
+            try old.mainContext.save()
         }
         let container = try KyoModelContainer.make(storeURL: url)
         let tasks: any TaskListBehavior = TaskListStore(modelContainer: container, now: { today }, calendar: calendar)

@@ -1,6 +1,16 @@
 import Combine
 import Foundation
 
+/// Capture context persists with a recording until its memo is safely saved.
+struct RecordingMemoContext: Codable, Equatable, Sendable {
+    let day: TaskCompletionDay
+    var projectID: UUID?
+}
+
+enum RecordingMemoError: Error {
+    case unknownProject
+}
+
 /// Where a finished recording goes: the phone's memo store, or the Watch's outbox (ADR 0005).
 @MainActor
 protocol VoiceMemoSaving: AnyObject {
@@ -8,6 +18,16 @@ protocol VoiceMemoSaving: AnyObject {
     /// `AudioRecordingError.outOfSpace` when there's no room, saving nothing.
     @discardableResult
     func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto]) throws -> Memo
+    func acceptsProject(_ id: UUID?) -> Bool
+    func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto], context: RecordingMemoContext?) throws -> Memo
+}
+
+extension VoiceMemoSaving {
+    func acceptsProject(_ id: UUID?) -> Bool { id == nil }
+
+    func saveVoiceMemo(_ audio: RecordedAudio, stoppedAtCap: Bool, photos: [StoredPhoto], context: RecordingMemoContext?) throws -> Memo {
+        try saveVoiceMemo(audio, stoppedAtCap: stoppedAtCap, photos: photos)
+    }
 }
 
 extension VoiceMemoSaving where Self: MemoStoreBehavior {
@@ -90,7 +110,12 @@ final class VoiceRecordingSession: ObservableObject {
     private let recorder: any AudioRecording
     private let memos: any VoiceMemoSaving
     private let live: any LiveTranscribing
+    @Published private(set) var projectID: UUID?
     private let now: () -> Date
+    private let calendar: Calendar
+    private let userDefaults: UserDefaults
+    static let storageKey = "kyo.recordingMemoContexts.v1"
+    private var contexts: [String: RecordingMemoContext]
 
     private var recordingID = UUID()
     private var startedAt = Date(timeIntervalSince1970: 0)
@@ -107,12 +132,18 @@ final class VoiceRecordingSession: ObservableObject {
         recorder: any AudioRecording,
         memos: any VoiceMemoSaving,
         live: any LiveTranscribing = NoLiveTranscriber(),
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        calendar: Calendar = .current,
+        userDefaults: UserDefaults = .standard
     ) {
         self.recorder = recorder
         self.memos = memos
         self.live = live
         self.now = now
+        self.calendar = calendar
+        self.userDefaults = userDefaults
+        contexts = userDefaults.data(forKey: Self.storageKey)
+            .flatMap { try? JSONDecoder().decode([String: RecordingMemoContext].self, from: $0) } ?? [:]
         recorder.interruptionHandler = { [weak self] in self?.interrupted() }
     }
 
@@ -128,6 +159,28 @@ final class VoiceRecordingSession: ObservableObject {
     /// `true` in the last 30 seconds before the cap.
     var isNearCap: Bool {
         isActive && remaining <= Self.warningWindow
+    }
+
+    /// Changing assignment never changes the recording's original calendar day.
+    @discardableResult
+    func selectProject(_ id: UUID?) -> Bool {
+        guard memos.acceptsProject(id) else { return false }
+        projectID = id
+        if var context = contexts[recordingID.uuidString], isActive || phase == .starting {
+            context.projectID = id
+            contexts[recordingID.uuidString] = context
+            persistContexts()
+        }
+        return true
+    }
+
+    private func persistContexts() {
+        if let data = try? JSONEncoder().encode(contexts) { userDefaults.set(data, forKey: Self.storageKey) }
+    }
+
+    private func clearContext(id: UUID) {
+        contexts.removeValue(forKey: id.uuidString)
+        persistContexts()
     }
 
     /// Asks for the microphone if needed, then starts recording on the current day.
@@ -155,14 +208,17 @@ final class VoiceRecordingSession: ObservableObject {
 
         let id = UUID()
         let start = now()
+        contexts[id.uuidString] = RecordingMemoContext(day: TaskCompletionDay(date: start, calendar: calendar), projectID: projectID)
+        persistContexts()
+        recordingID = id
+        startedAt = start
         do {
             try await recorder.start(recordingID: id, startedAt: start)
         } catch {
+            clearContext(id: id)
             fail(because: error)
             return
         }
-        recordingID = id
-        startedAt = start
         stretchStartedAt = start
         phase = .recording
         startLive()
@@ -230,6 +286,7 @@ final class VoiceRecordingSession: ObservableObject {
         guard isActive else { return }
         stopLive()
         recorder.discard()
+        clearContext(id: recordingID)
         photos = []
         phase = .idle
         outcome = .discarded
@@ -242,9 +299,10 @@ final class VoiceRecordingSession: ObservableObject {
         var recovered: [Memo] = []
         for audio in recorder.recoverPartialRecordings() {
             // Out of space: the file stays, and the next launch tries again.
-            guard let memo = try? memos.saveVoiceMemo(audio, stoppedAtCap: false, photos: []) else { continue }
+            guard let memo = try? memos.saveVoiceMemo(audio, stoppedAtCap: false, photos: [], context: contexts[audio.id.uuidString]) else { continue }
             recovered.append(memo)
             recorder.removeRecordingFile(id: audio.id)
+            clearContext(id: audio.id)
         }
         return recovered
     }
@@ -309,16 +367,32 @@ final class VoiceRecordingSession: ObservableObject {
             memo = try memos.saveVoiceMemo(
                 RecordedAudio(id: recordingID, startedAt: startedAt, duration: duration, data: data),
                 stoppedAtCap: reachedCap,
-                photos: photos
+                photos: photos,
+                context: contexts[recordingID.uuidString]
             )
         } catch {
             // No room: nothing is saved, so the partial file doesn't come back as a memo later.
-            recorder.removeRecordingFile(id: recordingID)
+            if (error as? AudioRecordingError) == .outOfSpace {
+                recorder.removeRecordingFile(id: recordingID)
+                clearContext(id: recordingID)
+            }
             fail(because: error)
             return
         }
         recorder.removeRecordingFile(id: recordingID)
+        clearContext(id: recordingID)
         phase = .idle
         outcome = .saved(memo, reachedCap: reachedCap)
+    }
+}
+
+/// Isolated UI launches keep recording context out of the device's real defaults.
+enum RecordingMemoContextSelection {
+    static func defaults() -> UserDefaults {
+        if KyoModelContainer.isInMemoryRequested,
+           let defaults = UserDefaults(suiteName: "kyo.recording-memo-contexts.ui-tests.\(UUID().uuidString)") {
+            return defaults
+        }
+        return .standard
     }
 }

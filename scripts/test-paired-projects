@@ -58,7 +58,19 @@ watch_type="$(xcrun simctl list devicetypes | grep -E '^Apple Watch Series [0-9]
 udid="$(xcrun simctl create "$run_id-phone" "$device_type" "$runtime")"
 watch_udid="$(xcrun simctl create "$run_id-watch" "$watch_type" "$watch_runtime")"
 pair_id="$(xcrun simctl pair "$watch_udid" "$udid")"
-xcrun simctl pair_activate "$pair_id"
+if xcrun simctl pair_activate "$pair_id"; then
+  :
+else
+  activation_status=$?
+  [[ $activation_status -eq 37 ]] || exit "$activation_status"
+  # Pair creation can activate it automatically. Accept only that observed state.
+  xcrun simctl list pairs --json | python3 -c '
+import json, sys
+pair = json.load(sys.stdin)["pairs"].get(sys.argv[1], {})
+valid = pair.get("state", "").startswith("(active,") and pair.get("phone", {}).get("udid") == sys.argv[2] and pair.get("watch", {}).get("udid") == sys.argv[3]
+sys.exit(0 if valid else 1)
+' "$pair_id" "$udid" "$watch_udid"
+fi
 echo "scripts/test: owned paired devices phone=$udid watch=$watch_udid pair=$pair_id token=$paired_token"
 phone_data="$work/PhoneDerivedData"
 watch_data="$work/WatchDerivedData"

@@ -96,25 +96,12 @@ changed="$(git diff --name-only "$base" HEAD)"
 
 mkdir -p "$record_dir" "$log_dir"
 record="$record_dir/$sha.txt"
-# Atomic ownership prevents concurrent runs from replacing each other's exact-head evidence.
-run_lock="$record_dir/$sha.lock"
-owner="$$|$(ps -o lstart= -p $$ | sed -E 's/^ +//; s/ +$//')"
-if ! ln -s "$owner" "$run_lock" 2>/dev/null; then
-  holder="$(readlink "$run_lock" 2>/dev/null || true)"
-  pid="${holder%%|*}"
-  started="${holder#*|}"
-  live="$(ps -o lstart= -p "$pid" 2>/dev/null | sed -E 's/^ +//; s/ +$//')"
-  if [[ -n "$holder" && -n "$live" && "$live" == "$started" ]]; then
-    echo "scripts/check: another run owns $sha; use --status or --watch" >&2
-    exit 2
-  fi
-  moved="$run_lock.stale.$$"
-  mv "$run_lock" "$moved" 2>/dev/null || exit 2
-  if [[ "$(readlink "$moved")" != "$holder" ]]; then
-    ln -s "$(readlink "$moved")" "$run_lock" 2>/dev/null || true
-  fi
-  rm -f "$moved"
-  ln -s "$owner" "$run_lock" 2>/dev/null || exit 2
+# The kernel holds this lock until the owner exits; no stale-path reclamation race.
+if [[ "${KYO_CHECK_LOCK_OWNER:-}" != "$$" ]]; then
+  lock_arguments=(--base "$base")
+  [[ "$mode" != "quick" ]] || lock_arguments+=(--quick)
+  if [[ "$mode" == "all" ]]; then lock_arguments=(--all); fi
+  exec scripts/check-lock "$record_dir/$sha.lock" "$root/scripts/check" "${lock_arguments[@]}"
 fi
 check_child=""
 release_run() {
@@ -122,7 +109,7 @@ release_run() {
     kill -TERM "$check_child" 2>/dev/null || true
     wait "$check_child" 2>/dev/null || true
   fi
-  [[ "$(readlink "$run_lock" 2>/dev/null || true)" != "$owner" ]] || rm -f "$run_lock"
+  : # The inherited kernel lock is released on exit. Its file is retained.
 }
 trap release_run EXIT
 trap 'exit 130' INT
@@ -162,7 +149,7 @@ run_check() {
   log="$log_dir/$sha-$log_name.log"
   echo "scripts/check: [$index] $name"
   scripts/check-progress update "$sha" --pid $$ --phase "$name" --log "$log" || exit 2
-  "$@" >"$log" 2>&1 &
+  "$@" >"$log" 2>&1 9>&- &
   check_child=$!
   wait "$check_child"
   status=$?

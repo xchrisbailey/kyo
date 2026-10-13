@@ -37,6 +37,12 @@ def status(directory, sha):
     log = Path(data['log']) if data.get('log') else None
     if log and log.exists():
         lines = log.read_text(errors='replace').splitlines()
+        # The controller streams only summaries; its native log holds live test lines.
+        native_logs = [line.removeprefix('scripts/test: full log: ') for line in lines
+                       if line.startswith('scripts/test: full log: ')]
+        if native_logs and Path(native_logs[-1]).is_file():
+            data['native_log'] = native_logs[-1]
+            lines += Path(native_logs[-1]).read_text(errors='replace').splitlines()
         useful = [line for line in lines if any(token in line for token in ('Test Case ', 'Executed ', 'Test Suite ', 'scripts/test:', ' error:', 'Test run with ', '✔', '✘'))]
         data['last_test_line'] = useful[-1] if useful else (lines[-1] if lines else None)
         if any('waiting for the UI suite lock' in line for line in lines) and not any('got the UI suite lock' in line for line in lines):

@@ -11,7 +11,7 @@
 #
 # Output is quiet: the per-suite "Executed N tests" lines, every failure, the final
 # `** TEST SUCCEEDED **` / `** TEST FAILED **` line, and the path of the full log, which is kept.
-# Exits with xcodebuild's status.
+# Preserves xcodebuild failure status; rejects successful runs without execution evidence.
 #
 # The simulator platform comes from the scheme's test targets: watchOS when every test target
 # supports only watchOS, iOS otherwise. `--platform` overrides that.
@@ -105,6 +105,18 @@ derived_data="$work/DerivedData"
 log_dir="$tmp/kyo-test-logs"
 mkdir -p "$log_dir"
 log="$log_dir/$run_id-$scheme.log"
+# Keep normal result bundles outside disposable derived data too. Respect caller-owned paths.
+result_bundle="$log_dir/$run_id-$scheme.xcresult"
+result_arguments=(-resultBundlePath "$result_bundle")
+previous=""
+for argument in "$@"; do
+  if [[ "$previous" == "-resultBundlePath" ]]; then
+    result_bundle="$argument"
+    result_arguments=()
+  fi
+  previous="$argument"
+done
+[[ "$previous" != "-resultBundlePath" ]] || usage
 
 udid=""
 watch_udid=""
@@ -213,6 +225,7 @@ fi
 udid="$(xcrun simctl create "$run_id" "$device_type" "$runtime")"
 echo "scripts/test: $scheme on $platform simulator $run_id ($udid)"
 echo "scripts/test: full log: $log"
+echo "scripts/test: result bundle: $result_bundle"
 
 # Run in the background and poll, so a signal reaches the trap within a second instead of after
 # xcodebuild. After a failed run xcodebuild can sit for up to ten minutes collecting simulator
@@ -229,7 +242,8 @@ echo "scripts/test: full log: $log"
 # from xcodebuild's own result line and exit status. Stopping the helper is harmless either way.
 failed_pattern="^Test Suite '(All tests|Selected tests)' failed"
 passed_pattern="^Test Suite '(All tests|Selected tests)' passed"
-grace=60
+grace=120
+failure_helper_grace=20
 pass_grace=20
 set +e
 # No CODE_SIGNING_ALLOWED=NO on purpose: unsigned builds give the watch widget extension a signature
@@ -237,7 +251,7 @@ set +e
 # extension is killed on first launch. Simulator builds sign to run locally, with no account.
 xcodebuild -project "$project" -scheme "$scheme" \
   -destination "id=$udid" -derivedDataPath "$derived_data" \
-  "$@" test >"$log" 2>&1 &
+  "${result_arguments[@]}" "$@" test >"$log" 2>&1 &
 xcodebuild_pid=$!
 stopped=0
 stopped_helper=0
@@ -246,6 +260,9 @@ seconds_since_pass=0
 while kill -0 "$xcodebuild_pid" 2>/dev/null; do
   if grep -qE "$failed_pattern" "$log"; then
     seconds_since_failure=$((seconds_since_failure + 1))
+    if [[ $seconds_since_failure -ge $failure_helper_grace ]]; then
+      pkill -TERM -P "$xcodebuild_pid" -f 'simctl diagnose' 2>/dev/null || true
+    fi
     if [[ $seconds_since_failure -ge $grace ]]; then
       stopped=1
       stop_xcodebuild
@@ -268,9 +285,24 @@ status=$?
 xcodebuild_pid=""
 set -e
 if [[ $stopped -eq 1 ]]; then
-  echo "scripts/test: xcodebuild was still running ${grace}s after the tests failed; stopped it" >&2
+  echo "scripts/test: xcodebuild did not finalize ${grace}s after failure; stopped it; retained result bundle may be incomplete: $result_bundle" >&2
   grep -q '^\*\* TEST FAILED \*\*' "$log" || echo "** TEST FAILED **" >>"$log"
   status=65
+fi
+
+evidence_arguments=()
+if [[ -d "$result_bundle" ]]; then
+  result_json="$log_dir/$run_id-$scheme-tests.json"
+  if xcrun xcresulttool get test-results tests --path "$result_bundle" --compact >"$result_json.tmp"; then
+    mv "$result_json.tmp" "$result_json"
+    evidence_arguments=(--result-json "$result_json")
+  else
+    rm -f "$result_json.tmp"
+    echo "scripts/test: structured results unavailable; focused Swift Testing evidence requires a finalized bundle" >&2
+  fi
+  xcrun xcresulttool export attachments --path "$result_bundle" \
+    --output-path "$log_dir/$run_id-$scheme-attachments" \
+    || echo "scripts/test: attachment export unavailable; retained result bundle: $result_bundle" >&2
 fi
 
 # Suite results, failures (XCTest and Swift Testing), build errors, and the final result line.
@@ -278,7 +310,7 @@ grep -E "Test Suite '.*' (passed|failed)|Executed [0-9]+ tests?, with|: error:|T
 
 echo "scripts/test: full log: $log"
 set +e
-"$root/scripts/validate-test-run" "$log" "$status" "$@"
+"$root/scripts/validate-test-run" "$log" "$status" "${evidence_arguments[@]}" "$@"
 status=$?
 set -e
 exit "$status"

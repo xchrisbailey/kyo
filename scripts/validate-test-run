@@ -1,11 +1,43 @@
 #!/usr/bin/env python3
 """Validate completed xcodebuild output, retaining the builder's failure status."""
+import json
 import re
 import sys
 from pathlib import Path
 
 
-def validate(log, selectors):
+def structured_cases(report):
+    cases = {}
+    def walk(node, bundle=None, suites=()):
+        kind = node.get('nodeType')
+        if kind in ('Unit test bundle', 'UI test bundle'):
+            bundle, suites = node['name'], ()
+        elif kind == 'Test Suite':
+            suites += (node['name'],)
+        elif kind == 'Test Case' and bundle:
+            identifier = node.get('nodeIdentifier') or '/'.join((*suites, node['name']))
+            if not identifier.startswith(bundle + '/'):
+                identifier = bundle + '/' + identifier
+            identifier = '/'.join(part.removesuffix('()') for part in identifier.split('/'))
+            cases[identifier] = node.get('result')
+        for child in node.get('children', []):
+            walk(child, bundle, suites)
+    for node in report['testNodes']:
+        walk(node)
+    return cases
+
+
+def validate(log, selectors, report=None):
+    if report is not None:
+        cases = structured_cases(report)
+        passed = [name for name, result in cases.items() if result in ('Passed', 'Expected Failure')]
+        if not passed:
+            return 'no non-skipped test execution in result bundle'
+        for selector in selectors:
+            prefix = '/'.join(part.removesuffix('()') for part in selector.rstrip('/').split('/'))
+            if not any(name == prefix or name.startswith(prefix + '/') for name in passed):
+                return f'requested test did not execute successfully: {selector}'
+        return None
     cases = {}
     for target, suite, method, result in re.findall(
         r"Test Case '-\[([^ .]+)\.([^ ]+) ([^\]]+)\]' (passed|failed|skipped)", log
@@ -15,7 +47,6 @@ def validate(log, selectors):
     summaries = re.findall(r"Executed (\d+) tests?, with (?:(\d+) tests? skipped and )?(\d+) failures", log)
     executed = max((int(total) - int(skipped or 0) for total, skipped, _ in summaries), default=0)
     swift_skipped = len(re.findall(r'[↷○] Test .* skipped', log))
-    swift_suites = re.findall(r'[✔✓] Suite (.+?) passed after', log)
     swift_total = max((int(n) for n in re.findall(r"Test run with (\d+) tests? (?:in .*? )?passed", log)), default=0)
     if not any(result == "passed" for result in cases.values()) and not swift and max(executed, swift_total - swift_skipped) <= 0:
         return "no non-skipped test execution evidence"
@@ -23,15 +54,8 @@ def validate(log, selectors):
         prefix = selector.rstrip("/")
         if any((name == prefix or name.startswith(prefix + "/")) and result == "passed" for name, result in cases.items()):
             continue
-        if '/' not in prefix and (swift or swift_total > swift_skipped):
-            continue
-        suite = prefix.rsplit('/', 1)[-1]
-        if any(name.strip('"') == suite for name in swift_suites) and swift:
-            continue
-        # Swift Testing emits the test function name, without an XCTest target/class path.
-        function = prefix.rsplit("/", 1)[-1]
-        if any(name.split("(", 1)[0].strip('"') == function.split("(", 1)[0] for name in swift):
-            continue
+        # Log-only Swift Testing does not identify its bundle or suite reliably.
+        # Require structured provenance rather than borrowing unrelated execution.
         return f"requested test did not execute successfully: {selector}"
     return None
 
@@ -44,8 +68,19 @@ def main():
     if status:
         return status
     log = Path(sys.argv[1]).read_text(errors="replace")
-    selectors = [arg.split(":", 1)[1] for arg in sys.argv[3:] if arg.startswith("-only-testing:")]
-    error = validate(log, selectors)
+    arguments = sys.argv[3:]
+    report = None
+    if arguments[:1] == ['--result-json']:
+        try:
+            report = json.loads(Path(arguments[1]).read_text())
+            if not isinstance(report.get('testNodes'), list):
+                raise ValueError('missing testNodes')
+        except (OSError, ValueError, IndexError) as error:
+            print(f'scripts/test: invalid structured execution evidence: {error}', file=sys.stderr)
+            return 65
+        arguments = arguments[2:]
+    selectors = [arg.split(":", 1)[1] for arg in arguments if arg.startswith("-only-testing:")]
+    error = validate(log, selectors, report)
     if "** TEST SUCCEEDED **" not in log:
         error = "missing xcodebuild TEST SUCCEEDED result"
     if error:

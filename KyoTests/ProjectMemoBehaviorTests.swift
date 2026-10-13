@@ -40,6 +40,8 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         let session = VoiceRecordingSession(recorder: recorder, memos: memos, now: { start }, calendar: calendar, userDefaults: defaults)
         session.selectProject(project.id)
         await session.begin()
+        XCTAssertFalse(session.selectProject(UUID()))
+        XCTAssertEqual(session.projectID, project.id)
         let id = try XCTUnwrap(recorder.startedIDs.first)
         recorder.partialRecordings = [RecordedAudio(id: id, startedAt: start, duration: 4, data: Data([7, 8]))]
         calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 9 * 3600))
@@ -88,6 +90,9 @@ final class ProjectMemoBehaviorTests: XCTestCase {
         XCTAssertEqual(projects.memos(in: second.id), [updated])
         XCTAssertEqual(memos.memos(on: today).map(\.id), [voice.id, written.id])
         XCTAssertEqual(memos.daysWithMemos(from: today, through: today), [today])
+        let month = try XCTUnwrap(MemoMonthContent(store: memos).content(on: [today])[today])
+        XCTAssertEqual(month.phrase, "2 memos")
+        XCTAssertEqual(month.rows.map(\.target), [.memo(voice.id), .memo(written.id)])
         XCTAssertEqual(memos.memoGroups(matching: "arrived", limit: 50).groups.flatMap(\.results).map(\.id), [voice.id])
     }
 

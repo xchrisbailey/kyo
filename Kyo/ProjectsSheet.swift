@@ -6,11 +6,13 @@ struct ProjectsSheet: View {
     @State private var isCreating = false
     let languageModel: any OnDeviceLanguageModel
     let voiceRecording: VoiceRecordingSession?
+    let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
 
-    init(projects: ProjectListStore, startCreating: Bool = false, languageModel: any OnDeviceLanguageModel = NoLanguageModel(), voiceRecording: VoiceRecordingSession? = nil) {
+    init(projects: ProjectListStore, startCreating: Bool = false, languageModel: any OnDeviceLanguageModel = NoLanguageModel(), voiceRecording: VoiceRecordingSession? = nil, onCaptureSurfaceChange: @escaping (QuickCaptureRouter.Surface?) -> Void = { _ in }) {
         self.projects = projects
         self.languageModel = languageModel
         self.voiceRecording = voiceRecording
+        self.onCaptureSurfaceChange = onCaptureSurfaceChange
         _isCreating = State(initialValue: startCreating)
     }
 
@@ -20,7 +22,7 @@ struct ProjectsSheet: View {
                 ThemedListGroup {
                     ForEach(projects.projects) { project in
                         NavigationLink {
-                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, languageModel: languageModel, voiceRecording: voiceRecording, onDone: { dismiss() })
+                            ProjectDetailView(projectID: project.id, projects: projects, taskList: projects.taskList, languageModel: languageModel, voiceRecording: voiceRecording, onCaptureSurfaceChange: onCaptureSurfaceChange, onDone: { dismiss() })
                         } label: {
                             Text(project.name)
                         }
@@ -55,6 +57,7 @@ private struct ProjectDetailView: View {
     @ObservedObject var taskList: TaskListStore
     let languageModel: any OnDeviceLanguageModel
     let voiceRecording: VoiceRecordingSession?
+    let onCaptureSurfaceChange: (QuickCaptureRouter.Surface?) -> Void
     let onDone: () -> Void
     @State private var isWritingMemo = false
     @State private var isRecordingMemo = false
@@ -107,12 +110,22 @@ private struct ProjectDetailView: View {
                     .accessibilityIdentifier("project-rename")
             }
         }
+        .onChange(of: isWritingMemo) { _, showing in
+            onCaptureSurfaceChange(showing ? .compose(hasUnsavedDraft: false) : nil)
+        }
+        .onChange(of: isRecordingMemo) { _, showing in
+            onCaptureSurfaceChange(showing ? .recorder : nil)
+        }
+        .onDisappear {
+            if !isWritingMemo && !isRecordingMemo { onCaptureSurfaceChange(nil) }
+        }
         .sheet(isPresented: $isWritingMemo) {
             if let memoStore = projects.memoStore {
                 WrittenMemoComposeSheet(projects: projects.projects, initialProjectID: projectID,
                     onSave: { text, photos, selected in
                         memoStore.addWrittenMemo(text: text, photos: photos, projectID: selected)
-                    })
+                    },
+                    onDraftChange: { onCaptureSurfaceChange(.compose(hasUnsavedDraft: $0)) })
             }
         }
         .fullScreenCover(isPresented: $isRecordingMemo) {
@@ -208,6 +221,7 @@ private struct ProjectMemosSection: View {
                 Button("Voice memo", action: onRecord)
                     .accessibilityIdentifier("project-add-voice-memo")
             }
+            .buttonStyle(.borderless)
             .accessibilityIdentifier("project-add-memo")
         }
     }

@@ -24,6 +24,7 @@ struct TodayView: View {
     @State private var isShowingRecorder = false
     /// Whether the compose sheet holds text or a photo, which quick capture mustn't throw away.
     @State private var composeHasDraft = false
+    @State private var projectCaptureSurface: QuickCaptureRouter.Surface?
     /// The capture quick capture opens once the sheet it closed has finished dismissing.
     @State private var captureAfterSheetDismissal: QuickCaptureRouter.Target?
     @State private var voiceMemoPendingDelete: UUID?
@@ -148,9 +149,11 @@ struct TodayView: View {
                     case .scheduleTask(let id):
                         TaskSchedulingSheet(languageModel: languageModel, onConfirm: { taskList.deferTask(id: id, to: $0) != nil })
                     case .allProjects:
-                        ProjectsSheet(projects: projects, languageModel: languageModel, voiceRecording: voiceRecording)
+                        ProjectsSheet(projects: projects, languageModel: languageModel, voiceRecording: voiceRecording,
+                            onCaptureSurfaceChange: { projectCaptureSurface = $0 })
                     case .newProject:
-                        ProjectsSheet(projects: projects, startCreating: true, languageModel: languageModel, voiceRecording: voiceRecording)
+                        ProjectsSheet(projects: projects, startCreating: true, languageModel: languageModel, voiceRecording: voiceRecording,
+                            onCaptureSurfaceChange: { projectCaptureSurface = $0 })
                     case .allHabits:
                         HabitsSheet(habitList: habitList)
                     case .allMemos:
@@ -511,6 +514,7 @@ struct TodayView: View {
 
     /// What quick capture needs to know is showing over Today.
     private var captureSurface: QuickCaptureRouter.Surface {
+        if let projectCaptureSurface { return projectCaptureSurface }
         if isShowingRecorder { return .recorder }
         switch activeSheet {
         case nil: return .none
@@ -526,6 +530,7 @@ struct TodayView: View {
         guard let request = quickCapture.pending, voiceRecording != nil else { return }
         quickCapture.markApplied(request)
         let command = request.command
+        guard command.startsNew else { return }
         if command.closesOpenSheets, activeSheet != nil {
             captureAfterSheetDismissal = command.target
             activeSheet = nil
@@ -542,6 +547,7 @@ struct TodayView: View {
     }
 
     private func openCaptureAfterSheetDismissal() {
+        projectCaptureSurface = nil
         composeHasDraft = false
         guard let target = captureAfterSheetDismissal else { return }
         captureAfterSheetDismissal = nil

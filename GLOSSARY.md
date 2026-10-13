@@ -73,7 +73,7 @@ A weekly-target habit's check-offs so far in the current calendar week against i
 _Avoid_: Weekly count, tally
 
 **Memo**:
-A captured thought, written or spoken, that belongs to the day it was created; Today shows only today's memos.
+A captured thought, written or spoken, that belongs to the day it was created and may also belong to one project; Today shows only today's memos.
 _Avoid_: Note, entry, journal
 
 **Written memo**:

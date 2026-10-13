@@ -12,13 +12,16 @@ Tasks for a body of work such as building Kyo are mixed with everyday tasks on T
 - Today has one Projects section, with a collapsible group for each project, rather than a separate top-level section for every project.
 - The full task list is accessible inside the project. Today shows only project tasks the user has chosen for today.
 - Chosen project tasks carry forward when unfinished, like existing tasks.
+- Keep Today and Month as the bottom navigation. An All projects link in the Projects header opens the full project list, including projects with no tasks chosen for today. Tapping a project's name on Today opens its full tasks and details.
+- A task added inside a project stays in the project by default. Do today brings it onto Today; Do later selects a planned day through the existing scheduling flow. A task added directly in Today's project group starts on Today.
+- Return to project removes an unfinished task from Today without deleting or completing it.
+- A memo may belong to one project. It keeps its creation day and remains accessible through existing day-based memo views and Memo history, as well as inside the project.
+- Today's Projects section shows tasks. Project memos are accessible inside the project.
 
 ## Open Decisions
 
-- Where the full project list and project details are reached, including projects with no tasks chosen for today.
-- How project tasks are captured, chosen for Today, scheduled for a future day, and returned to the project without completing them.
-- Whether projects include memos and how those relate to existing day-based memos.
 - Project lifecycle and removal behavior.
+- Task ownership, moving existing tasks and memos into projects, and capture controls.
 - Section placement, counts, completed tasks, Later, Month, and Apple Watch behavior.
 
 Terms follow root GLOSSARY.md. No implementation or architecture decision has been made.

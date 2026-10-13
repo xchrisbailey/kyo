@@ -84,6 +84,8 @@ struct DailyTask: Identifiable, Codable, Equatable, Sendable {
 protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
     var laterTasks: [DailyTask] { get }
+    var everydayTasks: [DailyTask] { get }
+    @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func addUnscheduledTask(text: String, projectID: UUID) -> DailyTask?
     @discardableResult func deferTask(id: UUID, to date: Date) -> DailyTask?
@@ -144,6 +146,8 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     /// Persisted sets are bounded to this many most-recent entries (insertion order) so they
     /// cannot grow without bound over the life of an install.
     private static let maxBoundedSetSize = 500
+
+    var everydayTasks: [DailyTask] { tasks.filter { $0.projectID == nil } }
 
     var taskCount: Int { tasks.count }
     var completedCount: Int { tasks.filter(\.isComplete).count }
@@ -394,9 +398,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
             creationOrder: task.creationOrder,
             isComplete: !task.isComplete,
             completedOn: task.isComplete ? nil : TaskCompletionDay(date: now(), calendar: calendar),
-            plannedOn: task.plannedOn,
+            plannedOn: task.isComplete && task.projectID != nil ? nil : task.plannedOn,
             projectID: task.projectID,
-            isUnscheduled: task.isUnscheduled
+            isUnscheduled: task.isComplete && task.projectID != nil ? false : task.isUnscheduled
         )
         savedTasks[index] = updatedTask
         refreshForCurrentDay()
@@ -437,17 +441,23 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     @discardableResult
     func bringTaskToToday(id: UUID) -> DailyTask? {
-        setPlannedDay(id: id, day: nil)
+        setPlannedDay(id: id, day: nil, isUnscheduled: false)
     }
 
-    private func setPlannedDay(id: UUID, day: TaskPlannedDay?) -> DailyTask? {
+    @discardableResult
+    func returnTaskToProject(id: UUID) -> DailyTask? {
+        guard currentFullTaskList.contains(where: { $0.id == id && $0.projectID != nil }) else { return nil }
+        return setPlannedDay(id: id, day: nil, isUnscheduled: true)
+    }
+
+    private func setPlannedDay(id: UUID, day: TaskPlannedDay?, isUnscheduled: Bool? = nil) -> DailyTask? {
         if case .mirror = sync { return nil }
         guard let index = savedTasks.firstIndex(where: { $0.id == id }),
               !savedTasks[index].isComplete else { return nil }
         let task = savedTasks[index]
         let updated = DailyTask(id: task.id, text: task.text, creationOrder: task.creationOrder,
                                 isComplete: task.isComplete, completedOn: task.completedOn, plannedOn: day,
-                                projectID: task.projectID, isUnscheduled: task.isUnscheduled)
+                                projectID: task.projectID, isUnscheduled: isUnscheduled ?? task.isUnscheduled)
         savedTasks[index] = updated
         refreshForCurrentDay()
         persist()
@@ -533,9 +543,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
                     completedOn: completedOn,
-                    plannedOn: task.plannedOn,
+                    plannedOn: !isComplete && task.projectID != nil ? nil : task.plannedOn,
                     projectID: task.projectID,
-                    isUnscheduled: task.isUnscheduled
+                    isUnscheduled: !isComplete && task.projectID != nil ? false : task.isUnscheduled
                 )
             case .rename(let taskID, let text):
                 guard let index = result.firstIndex(where: { $0.id == taskID }) else { continue }
@@ -596,9 +606,9 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                     creationOrder: task.creationOrder,
                     isComplete: isComplete,
                     completedOn: completedOn,
-                    plannedOn: task.plannedOn,
+                    plannedOn: !isComplete && task.projectID != nil ? nil : task.plannedOn,
                     projectID: task.projectID,
-                    isUnscheduled: task.isUnscheduled
+                    isUnscheduled: !isComplete && task.projectID != nil ? false : task.isUnscheduled
                 )
             }
         case .rename(let taskID, let text):

@@ -26,6 +26,12 @@ final class ProjectRecord {
 @MainActor
 protocol ProjectListBehavior: AnyObject {
     var projects: [Project] { get }
+    var todayProjects: [Project] { get }
+    func todayTasks(in projectID: UUID) -> [DailyTask]
+    func completedTasks(in projectID: UUID) -> [DailyTask]
+    @discardableResult func addTaskForToday(text: String, to projectID: UUID) -> DailyTask?
+    @discardableResult func doToday(taskID: UUID) -> DailyTask?
+    @discardableResult func returnToProject(taskID: UUID) -> DailyTask?
     func unscheduledTasks(in projectID: UUID) -> [DailyTask]
     @discardableResult func addTask(text: String, to projectID: UUID) -> DailyTask?
     @discardableResult func createProject(name: String) -> Project?
@@ -42,6 +48,35 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         context = modelContainer.mainContext
         self.taskList = taskList
         reload()
+    }
+
+    var todayProjects: [Project] {
+        projects.filter { !todayTasks(in: $0.id).isEmpty }
+    }
+
+    func todayTasks(in projectID: UUID) -> [DailyTask] {
+        taskList.tasks.filter { $0.projectID == projectID }
+    }
+
+    func completedTasks(in projectID: UUID) -> [DailyTask] {
+        taskList.tasks(in: projectID).filter(\.isComplete)
+    }
+
+    @discardableResult
+    func addTaskForToday(text: String, to projectID: UUID) -> DailyTask? {
+        guard let task = addTask(text: text, to: projectID) else { return nil }
+        return doToday(taskID: task.id)
+    }
+
+    @discardableResult
+    func doToday(taskID: UUID) -> DailyTask? {
+        guard projects.contains(where: { project in taskList.tasks(in: project.id).contains { $0.id == taskID } }) else { return nil }
+        return taskList.bringTaskToToday(id: taskID)
+    }
+
+    @discardableResult
+    func returnToProject(taskID: UUID) -> DailyTask? {
+        taskList.returnTaskToProject(id: taskID)
     }
 
     func unscheduledTasks(in projectID: UUID) -> [DailyTask] {

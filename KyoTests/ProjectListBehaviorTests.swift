@@ -3,6 +3,41 @@ import XCTest
 
 @MainActor
 final class ProjectListBehaviorTests: XCTestCase {
+    func testArchiveSuppressesActiveWorkAndRestoreRespectsRetainedChoicesAfterTimePasses() throws {
+        let container = try KyoModelContainer.make(inMemory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        var now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 12)))
+        let tomorrow = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: now))
+        let future = try XCTUnwrap(calendar.date(byAdding: .day, value: 4, to: now))
+        let tasks = TaskListStore(modelContainer: container, now: { now }, calendar: calendar)
+        let projects: any ProjectListBehavior = ProjectListStore(modelContainer: container, taskList: tasks)
+        let project = try XCTUnwrap(projects.createProject(name: "Kyo"))
+        let chosen = try XCTUnwrap(projects.addTaskForToday(text: "Chosen", to: project.id))
+        let arriving = try XCTUnwrap(projects.addTask(text: "Arriving", to: project.id, plannedFor: tomorrow))
+        let later = try XCTUnwrap(projects.addTask(text: "Later", to: project.id, plannedFor: future))
+        let unscheduled = try XCTUnwrap(projects.addTask(text: "Unscheduled", to: project.id))
+        let completed = try XCTUnwrap(projects.addTaskForToday(text: "Completed", to: project.id))
+        let done = try XCTUnwrap(tasks.toggleTask(id: completed.id))
+        XCTAssertNotNil(projects.archiveProject(id: project.id))
+        XCTAssertTrue(projects.activeProjects.isEmpty)
+        XCTAssertEqual(projects.archivedProjects.map(\.id), [project.id])
+        XCTAssertTrue(tasks.tasks.isEmpty)
+        XCTAssertTrue(tasks.laterTasks.isEmpty)
+        XCTAssertEqual(tasks.taskCount, 0)
+        XCTAssertEqual(projects.todayTasks(in: project.id).map(\.id), [chosen.id, done.id])
+        XCTAssertEqual(projects.laterTasks(in: project.id).map(\.id), [arriving.id, later.id])
+        XCTAssertEqual(tasks.tasks(in: project.id), [chosen, arriving, later, unscheduled, done])
+        XCTAssertEqual(tasks.tasksCompleted(on: now), [done])
+        now = tomorrow
+        tasks.refreshForCurrentDay()
+        XCTAssertTrue(tasks.tasks.isEmpty)
+        XCTAssertNotNil(projects.restoreProject(id: project.id))
+        XCTAssertEqual(tasks.tasks.map(\.id), [chosen.id, arriving.id])
+        XCTAssertEqual(tasks.laterTasks, [later])
+        XCTAssertEqual(projects.unscheduledTasks(in: project.id), [unscheduled])
+        XCTAssertEqual(projects.completedTasks(in: project.id), [done])
+    }
+
     func testAssignmentPreservesEveryTaskStateAndRemovingUnscheduledMakesEverydayWork() throws {
         let container = try KyoModelContainer.make(inMemory: true)
         let calendar = Calendar(identifier: .gregorian)

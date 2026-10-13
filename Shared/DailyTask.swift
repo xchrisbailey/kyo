@@ -262,7 +262,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
                 revision = seeded
                 userDefaults.set(NSNumber(value: seeded), forKey: revisionKey)
             }
-            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
+            transport.publish(TaskListSnapshot(revision: revision ?? 0, tasks: synchronizedTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
         case .mirror(let transport):
             // Registered last: the transport may call the handler synchronously,
             // and everything it touches (baseTasks, outbox, revision, tasks) must already exist.
@@ -463,14 +463,41 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         currentDate = calendar.startOfDay(for: now)
         let day = TaskCompletionDay(date: now, calendar: calendar)
         tasks = Self.ordered(currentFullTaskList.filter { task in
-            task.isComplete ? task.completedOn == day : !task.isUnscheduled && !isDeferred(task)
+            !isArchived(task) && (task.isComplete ? task.completedOn == day : !task.isUnscheduled && !isDeferred(task))
         })
-        laterTasks = currentFullTaskList.filter { !$0.isUnscheduled && !$0.isComplete && isDeferred($0) }.sorted {
+        laterTasks = currentFullTaskList.filter { !isArchived($0) && !$0.isUnscheduled && !$0.isComplete && isDeferred($0) }.sorted {
             let lhs = $0.plannedOn?.date(in: calendar) ?? currentDate
             let rhs = $1.plannedOn?.date(in: calendar) ?? currentDate
             if lhs != rhs { return lhs < rhs }
             if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
             return $0.id.uuidString < $1.id.uuidString
+        }
+    }
+
+    private func isArchived(_ task: DailyTask) -> Bool {
+        projectCatalog.contains { $0.id == task.projectID && $0.isArchived }
+    }
+
+    private var synchronizedTasks: [DailyTask] {
+        let day = TaskCompletionDay(date: now(), calendar: calendar)
+        return Self.ordered(currentFullTaskList.filter {
+            $0.isComplete ? $0.completedOn == day : !$0.isUnscheduled
+        })
+    }
+
+    func referenceTodayTasks(in projectID: UUID) -> [DailyTask] {
+        let day = TaskCompletionDay(date: now(), calendar: calendar)
+        return Self.ordered(tasks(in: projectID).filter {
+            $0.isComplete ? $0.completedOn == day : !$0.isUnscheduled && !isDeferred($0)
+        })
+    }
+
+    func referenceLaterTasks(in projectID: UUID) -> [DailyTask] {
+        tasks(in: projectID).filter { !$0.isComplete && !$0.isUnscheduled && isDeferred($0) }.sorted {
+            if $0.plannedOn != $1.plannedOn {
+                return ($0.plannedOn?.date(in: calendar) ?? currentDate) < ($1.plannedOn?.date(in: calendar) ?? currentDate)
+            }
+            return $0.creationOrder < $1.creationOrder
         }
     }
 
@@ -616,6 +643,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
 
     func refreshProjectCatalog() {
         loadProjectCatalog()
+        refreshForCurrentDay()
         publishChange()
     }
 
@@ -634,7 +662,7 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
         let candidate = max((revision ?? 0) + 1, Int64(now().timeIntervalSince1970 * 1000))
         revision = candidate
         userDefaults.set(NSNumber(value: candidate), forKey: revisionKey)
-        transport.publish(TaskListSnapshot(revision: candidate, tasks: tasks + laterTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
+        transport.publish(TaskListSnapshot(revision: candidate, tasks: synchronizedTasks, acknowledgedCommandIDs: processedCommandIDs, projects: projectCatalog))
     }
 
     /// Applies a Watch-originated command on the phone (`.publish` side), per

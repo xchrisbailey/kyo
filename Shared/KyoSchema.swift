@@ -34,7 +34,7 @@ enum KyoSchemaV4: VersionedSchema {
     static let versionIdentifier = Schema.Version(4, 0, 0)
     static var models: [any PersistentModel.Type] {
         [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
-         PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self, ProjectRecord.self]
+         PreProjectMemoSchema.MemoRecord.self, PreProjectMemoSchema.MemoAudioRecord.self, PreProjectMemoSchema.MemoPhotoRecord.self, PreArchiveProjectSchema.ProjectRecord.self]
     }
 }
 
@@ -43,13 +43,38 @@ enum KyoSchemaV5: VersionedSchema {
     static let versionIdentifier = Schema.Version(5, 0, 0)
     static var models: [any PersistentModel.Type] {
         [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
+         MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self, PreArchiveProjectSchema.ProjectRecord.self]
+    }
+}
+
+/// Version 6 adds project archive state without changing retained content.
+enum KyoSchemaV6: VersionedSchema {
+    static let versionIdentifier = Schema.Version(6, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [TaskRecord.self, HabitRecord.self, HabitCheckOffRecord.self, HabitScheduleRecord.self,
          MemoRecord.self, MemoAudioRecord.self, MemoPhotoRecord.self, ProjectRecord.self]
+    }
+}
+
+/// Frozen project shape installed in versions 4 and 5.
+enum PreArchiveProjectSchema {
+    @Model
+    final class ProjectRecord {
+        var id: UUID = UUID()
+        var name: String = ""
+        var creationOrder: Int64 = 0
+
+        init(project: Project) {
+            id = project.id
+            name = project.name
+            creationOrder = project.creationOrder
+        }
     }
 }
 
 enum KyoMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [KyoSchemaV1.self, KyoSchemaV2.self, KyoSchemaV3.self, KyoSchemaV4.self, KyoSchemaV5.self]
+        [KyoSchemaV1.self, KyoSchemaV2.self, KyoSchemaV3.self, KyoSchemaV4.self, KyoSchemaV5.self, KyoSchemaV6.self]
     }
 
     /// New models and optional task attributes migrate without replacing existing content.
@@ -57,7 +82,8 @@ enum KyoMigrationPlan: SchemaMigrationPlan {
         [.lightweight(fromVersion: KyoSchemaV1.self, toVersion: KyoSchemaV2.self),
          .lightweight(fromVersion: KyoSchemaV2.self, toVersion: KyoSchemaV3.self),
          .lightweight(fromVersion: KyoSchemaV3.self, toVersion: KyoSchemaV4.self),
-         .lightweight(fromVersion: KyoSchemaV4.self, toVersion: KyoSchemaV5.self)]
+         .lightweight(fromVersion: KyoSchemaV4.self, toVersion: KyoSchemaV5.self),
+         .lightweight(fromVersion: KyoSchemaV5.self, toVersion: KyoSchemaV6.self)]
     }
 }
 
@@ -92,7 +118,7 @@ enum KyoModelContainer {
     }
 
     private static func make(configuration: (Schema) -> ModelConfiguration) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: KyoSchemaV5.self)
+        let schema = Schema(versionedSchema: KyoSchemaV6.self)
         let configuration = configuration(schema)
         return try ModelContainer(
             for: schema,

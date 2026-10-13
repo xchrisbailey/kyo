@@ -6,13 +6,32 @@ struct Project: Identifiable, Codable, Equatable, Sendable {
     let id: UUID
     let name: String
     let creationOrder: Int64
+    let isArchived: Bool
+
+    init(id: UUID, name: String, creationOrder: Int64, isArchived: Bool = false) {
+        self.id = id
+        self.name = name
+        self.creationOrder = creationOrder
+        self.isArchived = isArchived
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, creationOrder, isArchived }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        creationOrder = try values.decode(Int64.self, forKey: .creationOrder)
+        isArchived = try values.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+    }
 
     static func orderedUnique(_ projects: [Project]) -> [Project] {
         var seen: Set<UUID> = []
         return projects.sorted {
             if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
             if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
-            return $0.name < $1.name
+            if $0.name != $1.name { return $0.name < $1.name }
+            return $0.isArchived && !$1.isArchived
         }.filter { seen.insert($0.id).inserted }
     }
 }
@@ -22,19 +41,25 @@ final class ProjectRecord {
     var id: UUID = UUID()
     var name: String = ""
     var creationOrder: Int64 = 0
+    var isArchived: Bool = false
 
     init(project: Project) {
         id = project.id
         name = project.name
         creationOrder = project.creationOrder
+        isArchived = project.isArchived
     }
 
-    var project: Project { Project(id: id, name: name, creationOrder: creationOrder) }
+    var project: Project { Project(id: id, name: name, creationOrder: creationOrder, isArchived: isArchived) }
 }
 
 @MainActor
 protocol ProjectListBehavior: AnyObject {
     var projects: [Project] { get }
+    var activeProjects: [Project] { get }
+    var archivedProjects: [Project] { get }
+    @discardableResult func archiveProject(id: UUID) -> Project?
+    @discardableResult func restoreProject(id: UUID) -> Project?
     func memos(in projectID: UUID) -> [Memo]
     var todayProjects: [Project] { get }
     func todayTasks(in projectID: UUID) -> [DailyTask]
@@ -68,12 +93,30 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         memoStore?.memos(in: projectID) ?? []
     }
 
+    var activeProjects: [Project] { projects.filter { !$0.isArchived } }
+    var archivedProjects: [Project] { projects.filter(\.isArchived) }
+
+    @discardableResult
+    func archiveProject(id: UUID) -> Project? { setArchived(id: id, isArchived: true) }
+
+    @discardableResult
+    func restoreProject(id: UUID) -> Project? { setArchived(id: id, isArchived: false) }
+
+    private func setArchived(id: UUID, isArchived: Bool) -> Project? {
+        guard let record = records().first(where: { $0.id == id }) else { return nil }
+        record.isArchived = isArchived
+        try? context.save()
+        reload()
+        taskList.refreshProjectCatalog()
+        return projects.first { $0.id == id }
+    }
+
     var todayProjects: [Project] {
-        projects.filter { !todayTasks(in: $0.id).isEmpty }
+        activeProjects.filter { !todayTasks(in: $0.id).isEmpty }
     }
 
     func todayTasks(in projectID: UUID) -> [DailyTask] {
-        taskList.tasks.filter { $0.projectID == projectID }
+        taskList.referenceTodayTasks(in: projectID)
     }
 
     func completedTasks(in projectID: UUID) -> [DailyTask] {
@@ -98,7 +141,7 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
     }
 
     func laterTasks(in projectID: UUID) -> [DailyTask] {
-        taskList.laterTasks.filter { $0.projectID == projectID }
+        taskList.referenceLaterTasks(in: projectID)
     }
 
     @discardableResult
@@ -144,7 +187,8 @@ final class ProjectListStore: ObservableObject, ProjectListBehavior {
         ((try? context.fetch(FetchDescriptor<ProjectRecord>())) ?? []).sorted {
             if $0.creationOrder != $1.creationOrder { return $0.creationOrder < $1.creationOrder }
             if $0.id != $1.id { return $0.id.uuidString < $1.id.uuidString }
-            return $0.name < $1.name
+            if $0.name != $1.name { return $0.name < $1.name }
+            return $0.isArchived && !$1.isArchived
         }
     }
 

@@ -350,7 +350,7 @@ struct MemoCardSheet: View {
                     capNote(note)
                 }
                 actionRow
-                if let onAssign {
+                if let onAssign, !projects.isEmpty || memo.projectID != nil {
                     Menu {
                         ForEach(projects) { project in
                             Button(project.name) { onAssign(project.id) }

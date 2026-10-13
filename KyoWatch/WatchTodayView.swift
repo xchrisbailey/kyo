@@ -605,6 +605,7 @@ private struct WatchCheckRow: View {
             .accessibilityLabel(title)
             .accessibilityValue(completed ? "Completed" : "Not completed")
             .accessibilityHint(completed ? "Reopens this task" : "Marks this task complete")
+            .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "Edit") { onEdit?() }
             .accessibilityAction(named: "Delete") { onDelete?() }
         } else {

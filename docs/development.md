@@ -139,7 +139,7 @@ The older `WatchSyncSmokeUITests` remain opt-in through runner variable `TEST_RU
 
 ## TestFlight
 
-`.github/workflows/testflight.yml` archives the `Kyo` scheme (with the Watch app and widgets) unsigned, then signs it with Xcode automatic signing on export and uploads it to TestFlight. It starts when a tag matching `v*` is pushed, and when started by hand from the Actions tab (`workflow_dispatch`). A push to `main` starts nothing. The build number is the workflow run number.
+`.github/workflows/testflight.yml` archives the `Kyo` scheme (with the Watch app and widgets) using Xcode automatic signing, then re-signs it for distribution on export and uploads it to TestFlight. Signing the archive carries the Projects preference sync entitlement into export. Before exporting, the workflow checks the archived app signature against the configured iCloud key-value store identifier and fails if it is missing or incorrect. It starts when a tag matching `v*` is pushed, and when started by hand from the Actions tab (`workflow_dispatch`). A push to `main` starts nothing. The build number is the workflow run number.
 
 To cut a build, change `MARKETING_VERSION` in `project.yml`, run `xcodegen generate`, and merge both files to `main`. Then tag the merged commit `v<version>` and push the tag:
 
@@ -158,7 +158,7 @@ Before archiving, a version check can fail the run, each with a message saying w
 
 To ship another build under the current version, start the workflow by hand. A manual run always archives and uploads, with no tag involved, and runs only the last check above.
 
-Signing uses an App Store Connect API key, so no certificates or provisioning profiles are stored. Add these repository secrets to turn it on:
+Archive and export use the same App Store Connect API key for automatic provisioning, so no certificates or provisioning profiles are stored in the repository. The app identifier must support the configured iCloud key-value store entitlement. Add these repository secrets to turn it on:
 
 - `ASC_KEY_ID`: the key's ID.
 - `ASC_ISSUER_ID`: the issuer ID shown above the keys list in App Store Connect.

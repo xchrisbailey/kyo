@@ -1,18 +1,22 @@
 # Projects
 
-Status: Product behavior and testing boundaries confirmed. Specification only; implementation requires a separate user request.
+Status: Original Projects behavior implemented. Opt-in revision confirmed; this specification update and its follow-up issue do not start implementation.
 
 ## Problem Statement
 
-Tasks for a body of work such as building Kyo are mixed with everyday tasks on Today. The user wants project work kept together without turning Today into a list of everything they may eventually do. Related memos should also be easy to find after their creation day has passed.
+Tasks for a body of work such as building Kyo are mixed with everyday tasks on Today. The user wants project work kept together without turning Today into a list of everything they may eventually do. Related memos should also be easy to find after their creation day has passed. Projects is optional: people who do not use it should not lose space on Today to its header, empty state, or setup prompts.
 
 ## Solution
 
-Add one Projects section to Today, with a collapsible group for each project that has available tasks or tasks completed today. Keep everyday tasks in Tasks. All projects opens the full project list, and opening a project shows its complete task list and linked memos.
+Make Projects an opt-in feature, off by default, enabled through Settings on iPhone and iPad. While enabled, show one Projects section on Today only when an active project has available tasks or tasks completed today, with a collapsible group for each such project. Keep everyday tasks in Tasks. All projects is reachable through Settings while enabled, including when Today has no project work; it also remains in a visible Projects header. Opening a project shows its complete task list and linked memos.
+
+The preference applies across iPhone and iPad; Watch follows its paired phone. Automatically enable Projects during upgrade for users who already have any projects, including archived projects, unless they have already made an explicit preference choice. Turning Projects off hides project navigation and assignment controls and retains all project data. Available project tasks remain actionable in Tasks, with their assignments preserved. Turning Projects off does not schedule unscheduled work, bring future work forward, or restore archived work.
 
 Project tasks can be held unscheduled, chosen for Today, or deferred to a planned day. Available unfinished tasks carry forward. Project memos keep their creation day and remain accessible through existing memo views. Archiving puts a project away without losing its content; restoration respects its previous task choices. Full project management is on iPhone and iPad, while Watch shows and supports acting on available project tasks.
 
 ## User Stories
+
+Project organization and management stories apply while Projects is enabled, unless they explicitly describe the disabled state or migration.
 
 1. As a Kyo user, I want a project to represent a named body of work, so that related work such as building Kyo stays together.
 2. As a Kyo user, I want to keep a project active without a fixed finishing point, so that ongoing work fits the same model.
@@ -20,17 +24,17 @@ Project tasks can be held unscheduled, chosen for Today, or deferred to a planne
 4. As an iPhone or iPad user, I want to rename an active project, so that its name can follow changes in my work.
 5. As a Kyo user, I want projects listed in creation order, so that their position stays predictable.
 6. As an iPhone or iPad user, I want All projects to separate active and archived projects, so that current work is easy to find.
-7. As a Kyo user, I want one Projects section on Today, so that project work is separated without multiplying top-level sections.
+7. As a Kyo user who has enabled Projects, I want one Projects section on Today when it has tasks to show, so that project work is separated without reserving empty space.
 8. As a Kyo user, I want Projects between Tasks and Habits, so that task work stays together in the existing layout.
 9. As a Kyo user, I want available project tasks grouped by project, so that I can see which body of work each task belongs to.
-10. As a Kyo user, I want everyday tasks to stay in Tasks, so that personal daily work remains distinct from project work.
+10. As a Kyo user who has enabled Projects, I want everyday tasks to stay in Tasks, so that personal daily work remains distinct from project work.
 11. As a Kyo user, I want a task to appear in only one Today list, so that organization does not create duplicate work.
 12. As a Kyo user, I want only chosen or now-available planned project tasks on Today, so that eventual work does not crowd my day.
 13. As an iPhone or iPad user, I want to tap a project name on Today to open its details, so that I can reach its full content.
-14. As an iPhone or iPad user, I want All projects in the Projects header even when the section is collapsed or empty, so that every project remains reachable.
+14. As an iPhone or iPad user who has enabled Projects, I want All projects in Settings and in any visible Projects header, including when collapsed, so that every project remains reachable without an empty Today section.
 15. As a Kyo user, I want a project group hidden when it has no available tasks or tasks completed today, so that Today stays compact.
-16. As a Kyo user, I want an empty Projects section to say No project tasks for today, so that I understand why it has no rows.
-17. As an iPhone or iPad user, I want New project offered when no projects exist, so that the empty section helps me begin.
+16. As a Kyo user, I want the entire Projects section hidden when it has no available tasks or tasks completed today, so that Today has no empty header, message, or setup prompt.
+17. As an iPhone or iPad user who has enabled Projects, I want New project offered through All projects, so that I can begin without a setup prompt on Today.
 18. As a Kyo user, I want to collapse Projects and individual project groups, so that I can control how much project work Today shows.
 19. As a Kyo user, I want collapse choices remembered across days and launches on each device, so that my layout stays consistent.
 20. As a Kyo user, I want new projects expanded initially, so that their available tasks are visible when first shown.
@@ -82,13 +86,20 @@ Project tasks can be held unscheduled, chosen for Today, or deferred to a planne
 66. As a Kyo user, I want completing every task to leave the project active, so that I decide when the body of work is put away.
 67. As an iPhone or iPad user, I want one Later list with project names shown on project tasks, so that I can review all scheduled work together.
 68. As an iPhone or iPad user, I want Month to identify project tasks using existing planned-day and completion-day rules, so that the overview reflects project work consistently.
-69. As an Apple Watch user, I want a separate Projects section grouped by project, so that chosen project work is distinct from everyday tasks on my wrist.
+69. As an Apple Watch user whose paired phone has enabled Projects, I want a separate Projects section grouped by project when it has tasks to show, so that chosen project work is distinct from everyday tasks on my wrist.
 70. As an Apple Watch user, I want to complete, reopen, edit, and delete available project tasks, so that supported daily task actions work from my wrist.
 71. As a phone and Watch user, I want project task changes to converge after disconnection and retry, so that both devices show consistent work without duplication or resurrection.
 72. As an Apple Watch user, I want synchronized future project tasks to become available on their planned day while offline, so that existing planned-day behavior continues to work.
 73. As a Kyo user, I want saved projects, assignments, and availability choices to survive relaunch, so that my organization is durable.
 74. As an existing Kyo user, I want an upgrade to preserve tasks, habits, memos, completion records, planned days, and pending Watch changes, so that adding projects does not damage my data.
 75. As a VoiceOver user, I want project navigation, task controls, counts, and collapse states announced clearly, so that I can organize and act on project work accessibly.
+76. As a new Kyo user, I want Projects off by default and a toggle in Settings, so that I choose whether to use it.
+77. As an existing Kyo user with projects, I want Projects enabled on upgrade unless I have explicitly turned it off, so that my current workflow continues.
+78. As a Kyo user, I want my Projects preference shared across iPhone and iPad and followed by my paired Watch, so that I only choose once.
+79. As a Kyo user, I want turning Projects off to hide its navigation, labels, and assignment controls while retaining all content and assignments, so that opting out is reversible.
+80. As a Kyo user with Projects off, I want available project tasks and tasks completed today shown in Tasks exactly once, so that disabling organization does not hide daily work.
+81. As a Kyo user with Projects off, I want deferred project tasks to remain in Later and become available in Tasks on their planned day, so that my scheduling choices still take effect.
+82. As a Kyo user, I want unscheduled and archived project tasks to keep their existing availability when Projects is off, so that disabling the feature does not choose work for me.
 
 ## Implementation Decisions
 
@@ -97,20 +108,23 @@ Project tasks can be held unscheduled, chosen for Today, or deferred to a planne
 - Represent unscheduled project task availability explicitly. A missing planned day alone cannot mean Unscheduled: existing everyday tasks without planned days are available on Today. Archiving preserves availability and planned days rather than rewriting them.
 - Preserve existing task and memo identities, creation order or creation time, completion-day records, and calendar-day associations through assignment changes. Remove from project converts an unscheduled task to an available everyday task; otherwise timing and completion stay intact.
 - Extend the existing task-list and memo interfaces rather than creating parallel task or memo storage. Use one project-list/detail behavior interface consumed by the project screens to compose these capabilities and own project lifecycle operations. Exact types and storage relationships remain implementation choices.
-- Today order is Schedule, Tasks, Projects, Habits, Memos. Tasks shows everyday tasks only. Projects groups tasks from active projects that are available or completed today. Overall Today task summaries count both lists exactly once; each project group has its own done count.
+- When Projects is enabled and has content, Today order is Schedule, Tasks, Projects, Habits, Memos. Tasks shows everyday tasks; Projects groups tasks from active projects that are available or completed today. When Projects is off, omit its section and show those same eligible project tasks alongside everyday tasks in Tasks. This changes presentation, not project membership, availability, or completion. Overall Today task summaries count each task exactly once; each visible project group has its own done count.
 - Preserve existing task ordering on Today: unfinished before completed, creation order within each. Completed tasks leave Today after their completion day; available unfinished tasks carry forward until returned to their project or the project is archived.
-- Keep Today and Month in bottom navigation. All projects remains in the Projects header when empty or collapsed. Tapping a project name opens its details. All projects separates active and archived projects and offers New project.
+- Keep Today and Month in bottom navigation. Settings provides the Projects toggle and, while enabled, an All projects route independent of Today section visibility. A visible Projects header also provides All projects when expanded or collapsed. Tapping a project name opens its details. All projects separates active and archived projects and offers New project.
 - Projects use creation order. Project details show Tasks and Memos; task lists are Today, Later, Unscheduled, and collapsible Completed. Preserve creation order within each task list except Later, which uses planned-day order. Memos are newest first.
 - Projects and project groups can collapse independently. Persist collapse choices per device across launches and days using the existing collapse-state approach with stable identities. New projects start expanded. Choosing a task for Today does not expand a collapsed project group.
-- Keep the Projects header visible without available work. The expanded empty section says No project tasks for today and offers New project when no projects exist.
+- Hide the whole Projects section, including its header, when Projects is off or no active project has available tasks or tasks completed today. Do not show No project tasks for today or New project on Today. Tasks completed today keep the section visible even when no unfinished project tasks remain.
+- Projects defaults off on an installation without a saved preference. On upgrade, existing projects (active or archived) enable it only when no explicit preference exists. An explicit off choice remains off after relaunch, upgrade, or finding stored projects; do not derive the ongoing preference from project count.
+- The Projects preference persists and synchronizes across iPhone and iPad; Watch follows the latest value received from its paired phone and retains it offline. Migration and older-version handling must preserve existing project task access until the phone supplies an explicit preference. Preference synchronization is a narrow exception to the earlier no-new-iCloud-synchronization scope; SwiftData content synchronization remains disabled under ADR 0004. Review the preference synchronization design against existing ADRs before coding.
+- Turning Projects off hides All projects, project details, creation and assignment controls, project labels, and Return to project actions throughout the app. Keep the Settings toggle available. Preserve projects, task and memo assignments, archive state, availability, planned days, identities, completion records, and per-device collapse choices. Re-enabling restores project organization without moving or copying content. Unscheduled work remains held in its project; archived work remains excluded from active lists. Memos retain their existing day-based access and capabilities.
 - Inside a project, Add task assigns the project and starts Unscheduled. Do today makes it available; Do later uses the existing scheduling workflow. Return to project makes an unfinished task Unscheduled and clears its planned day, whether invoked from Today or Later.
 - A task added directly in Today's project group starts on Today. Today's bottom Add menu keeps everyday capture, with an optional project picker; task capture there starts on Today unless a future planned day is chosen. Reopening a completed project task makes it available on Today.
 - Add memo inside a project assigns it automatically. The bottom Add menu offers optional project assignment for memos. Move to project and Remove from project apply to existing tasks and memos; assignment pickers list only active projects.
 - Linked memos retain all existing written and voice memo capabilities and their day-based visibility. They also appear inside their project without duplicating records or day-based counts. Today's Projects section displays tasks, not memos.
 - Archive project keeps its content but holds its tasks out of Today and Later. Archived project details and reference views opened from them are read-only until restored. Historical completions and memos remain accessible in Month and Memo history; existing memo actions through those day-based routes remain available. Archiving does not cancel in-flight recording, transcription, title generation, or media saving. Finishing all tasks never archives the project automatically.
 - Restore project preserves Unscheduled tasks, returns previously available unfinished tasks to Today, returns future deferred tasks to Later, and makes deferred tasks whose planned day has arrived available on Today. Completed tasks retain their completion-day behavior.
-- Later stays one list across everyday and active project tasks, ordered by planned day and displaying project names. Month uses existing planned-day and completion-day rules and identifies project tasks. Unscheduled project tasks appear in neither view.
-- On iPhone and iPad, implement full project management. On Watch, add a Projects section grouped by project with supported task completion, reopening, editing, and deletion. Project creation, assignment, All projects, and project memo browsing stay on iPhone and iPad.
+- Later stays one list across everyday and active project tasks, ordered by planned day. Month uses existing planned-day and completion-day rules. Both views identify project tasks only while Projects is enabled; turning it off hides project labels and navigation without removing otherwise eligible tasks or changing their planned or completion days. Unscheduled project tasks appear in neither view.
+- On iPhone and iPad, offer full project management while Projects is enabled. On Watch, group eligible project tasks in Projects while enabled and place them in Tasks while off; never show an empty Projects section. Preserve supported task completion, reopening, editing, deletion, and offline planned-day rollover in either presentation. Project creation, assignment, All projects, and project memo browsing stay on iPhone and iPad.
 - Continue phone-authoritative task snapshots and Watch commands under ADRs 0001 and 0002. Carry enough project identity, display information, and availability in synchronized data for Watch grouping, archive/restore updates, and local planned-day rollover. Future incomplete project tasks remain available to the Watch cache for offline rollover; Unscheduled and archived project tasks must not emerge on Watch Today.
 - Preserve revisions, pending-command replay, acknowledgments, duplicate-delivery handling, and delete tombstones. Existing Watch adds remain everyday tasks because Watch project assignment is outside scope. Project organization must not be inferred or overwritten by task edit or completion commands. Apply queued Watch commands under the existing receipt-order rules even when their project has been archived, while keeping archived tasks out of active views; archiving must not discard queued edits or completion, or undo deletion after restoration.
 - Continue memo synchronization under ADR 0005. Project association does not remove an otherwise eligible memo from the Watch's existing day-based memo list or introduce project memo browsing there.
@@ -121,14 +135,17 @@ Project tasks can be held unscheduled, chosen for Today, or deferred to a planne
 
 ## Testing Decisions
 
-The user approved these testing boundaries together with the seven-ticket implementation breakdown.
+The original testing boundaries remain applicable. The opt-in revision adds coverage for preference migration, synchronization, section visibility, and task access while disabled.
 
 - Prefer the existing view-consumed TaskListBehavior and MemoStoreBehavior boundaries for task availability, assignment, completion, counts, and memo day preservation. Use one additional project-list/detail behavior boundary for project creation, rename, archive/restore, grouped Today content, and full project lists. Exercise real task and memo stores behind it, rather than mocking the collaborating behavior being verified.
 - Test observable actions and results, not view structure, private helpers, particular database relationships, or which internal methods were called. Assert stable identities, visible lists, counts, preserved dates, persistence after reopening, and convergence after delivery.
 - Cover project creation and rename, creation ordering, active/archived listing, read-only archived details, and project ownership changes through the behavior interfaces. Verify moving content never duplicates it and invalid assignments cannot create orphaned content.
 - Drive availability with controlled clocks and calendars: project capture starts Unscheduled; Do today, Do later, Return to project, and reopening transition the same task; unfinished available tasks carry forward; completed tasks leave Today at rollover; unscheduled tasks do not become available merely because time passes.
 - Exercise capture defaults from project details, a Today project group, and the bottom Add menu. Verify schedule confirmation and moving existing tasks retain the chosen planned day and intact text.
-- Assert disjoint everyday and project Today lists, correct total and per-project counts, task ordering, empty project sections, and group visibility with only tasks completed today. Verify Later and Month projections identify project tasks without counting them twice.
+- With Projects enabled, assert disjoint everyday and project Today lists, correct total and per-project counts, task ordering, absence of an empty Projects section, and group visibility with only tasks completed today. With Projects off, assert the same eligible tasks appear exactly once in Tasks, with intact assignments, dates, actions, ordering, and total counts. Verify Later and Month keep eligible tasks in either state and only display project labels while enabled.
+- Cover fresh-install default off, upgrade with active or archived projects default on, upgrade without projects default off, and persistence of an explicit off choice across relaunch and subsequent upgrades. Verify disabling and re-enabling preserves task and memo identity, assignments, availability, archive state, media, planned days, historical completions, and collapse choices.
+- Cover Projects preference convergence between iPhone and iPad and from phone to Watch, offline reuse, reconnection, stale or missing preference data from older versions, and pending Watch task actions during preference changes. Use real supported-device checks for preference transport integration; simulated delivery alone does not establish platform synchronization.
+- Verify Settings always exposes the toggle, All projects is available there while enabled even with no Today project tasks, and project navigation, creation, assignment, labels, and Return to project actions are absent while off. Verify everyday capture and existing memo access continue to work.
 - Verify memo assignment preserves identity, creation day, ordering, written text or transcript, audio, and photos. Use existing memo capture/media coverage for unchanged behavior and focused project tests for association and visibility through project details, Today, Memo history, and Month.
 - Archive a project with available, future, unscheduled, and completed tasks plus memos. Advance the clock before restoration and verify each availability state, retained historical access, and the read-only behavior while archived. Verify completed-all projects remain active.
 - Test relaunch persistence and an installed pre-project database upgrade through real storage, including existing unassigned tasks, deferred tasks, past completions, habits, memos, and external media. Assert no unintended availability or identity changes.
@@ -143,16 +160,16 @@ The user approved these testing boundaries together with the seven-ticket implem
 - Implementing the feature or launching coding agents as part of this specification request.
 - Permanent project deletion or automatic archiving when all tasks are completed.
 - Priorities, subtasks, deadlines, reminders, tags, project nesting, and manual ordering.
-- Full project management, project assignment, project memo browsing, and new Watch capture routes.
+- Full project management, project assignment, project memo browsing, and new capture routes on Watch.
 - Replacing Today and Month navigation, reordering arbitrary sections, or placing a separate top-level Today section for every project.
 - Editing historical tasks through Month, changing existing memo day associations, or treating planned days as deadlines.
-- New iCloud synchronization, accounts, servers, collaboration, or a second authoritative Watch writer.
+- New task or memo iCloud synchronization, accounts, servers, collaboration, or a second authoritative Watch writer. Synchronizing the Projects preference across iPhone and iPad is explicitly in scope for the opt-in revision.
 - A separate project memo storage or media pipeline, and additional project-specific memo AI behavior.
 
 ## Further Notes
 
-- The user accepted all recommendations in the design interview and confirmed the complete product design. This expanded specification synthesizes that discussion; it does not reopen product decisions.
-- The user approved seven vertical implementation slices and the testing boundaries. Publish those child tickets with ready-for-agent and their blocking relationships; leave parent issue #253 unchanged under the to-tickets workflow.
+- The user accepted the opt-in revision: default off, upgrade existing project users to on, share the preference across devices, preserve actionable work in Tasks while off, and hide an empty Projects section even when enabled. These requirements supersede the original always-visible header and empty-state requirements. Implementation remains a separate task.
+- The original Projects implementation was tracked under [feat: add projects with chosen daily tasks and linked memos](https://github.com/xchrisbailey/kyo/issues/253) and its seven implementation slices. Do not reopen or republish those completed tickets; the opt-in revision is tracked in [feat: make Projects opt in and hide unused Today sections](https://github.com/xchrisbailey/kyo/issues/265).
 - Keep this document as the specification's single home. The issue carries the Problem Statement, Solution, and a link to the document; implementation tickets should refer back to it.
 - Root glossary definitions were updated during the interview. No architecture ADR was added for reversible layout choices. Any implementation decision that meaningfully changes existing storage or synchronization constraints needs explicit architectural review before coding.
 - Follow repository orchestration for coding, review, and verification. The lead owns schema integration: after a slice changes the schema or migration chain, later branches must rebase and rerun installed-store migration and reopening checks before merge. Previously released schema shapes remain frozen. Ticket publication does not assign or start implementation.

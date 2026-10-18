@@ -115,9 +115,17 @@ paired_phase phone-seed KyoUITests "$udid" testPhoneSeed "$phone_data"
 xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
   | tee "$log_dir/$run_id-paired-handoff-original.log"
 paired_phase watch-original KyoWatchUITests "$watch_udid" testWatchObserveOriginal "$watch_data"
+paired_phase phone-off KyoUITests "$udid" testPhoneDisableProjects "$phone_data"
+xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
+  | tee "$log_dir/$run_id-paired-handoff-off.log"
+paired_phase watch-off KyoWatchUITests "$watch_udid" testWatchObserveProjectsDisabled "$watch_data"
+paired_phase phone-on KyoUITests "$udid" testPhoneEnableProjects "$phone_data"
+xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
+  | tee "$log_dir/$run_id-paired-handoff-on.log"
+paired_phase watch-on KyoWatchUITests "$watch_udid" testWatchObserveProjectsEnabledAgain "$watch_data"
 paired_phase phone-rename KyoUITests "$udid" testPhoneRename "$phone_data"
 xcrun simctl launch --terminate-running-process "$udid" "$phone_bundle" \
   | tee "$log_dir/$run_id-paired-handoff-renamed.log"
 paired_phase watch-command KyoWatchUITests "$watch_udid" testWatchObserveRenameAndComplete "$watch_data"
-echo "scripts/test: supported Projects Simulator coverage verified; 4 executed phases, no skips; token=$paired_token"
+echo "scripts/test: supported Projects Simulator coverage verified; 8 executed phases, no skips; token=$paired_token"
 echo "scripts/test: physical-device round-trip PENDING: queued Watch command receipt and authoritative reconciliation are not covered by Simulator."

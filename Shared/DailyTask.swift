@@ -99,6 +99,8 @@ protocol TaskListBehavior: AnyObject {
     var tasks: [DailyTask] { get }
     var laterTasks: [DailyTask] { get }
     var everydayTasks: [DailyTask] { get }
+    func tasksSection(projectsEnabled: Bool) -> [DailyTask]
+    func projectSections(projectsEnabled: Bool) -> [Project]
     var projectCatalog: [Project] { get }
     @discardableResult func returnTaskToProject(id: UUID) -> DailyTask?
     func tasks(in projectID: UUID) -> [DailyTask]
@@ -170,6 +172,17 @@ final class TaskListStore: ObservableObject, TaskListBehavior {
     private static let maxBoundedSetSize = 500
 
     var everydayTasks: [DailyTask] { tasks.filter { $0.projectID == nil } }
+
+    func tasksSection(projectsEnabled: Bool) -> [DailyTask] {
+        projectsEnabled ? everydayTasks : tasks
+    }
+
+    func projectSections(projectsEnabled: Bool) -> [Project] {
+        guard projectsEnabled else { return [] }
+        return projectCatalog.filter { project in
+            !project.isArchived && tasks.contains { $0.projectID == project.id }
+        }
+    }
 
     var taskCount: Int { tasks.count }
     var completedCount: Int { tasks.filter(\.isComplete).count }

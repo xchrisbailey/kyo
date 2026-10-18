@@ -10,7 +10,7 @@ import os
 /// docs/adr/0002-watch-commands-and-phone-reconciliation.md). Watch recordings travel the same
 /// way as files over `transferFile` (see docs/adr/0005-watch-memo-sync.md).
 @MainActor
-final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, ThemeIDTransport, MemoFileTransport, WCSessionDelegate {
+final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, HabitSnapshotTransport, MemoSnapshotTransport, ThemeIDTransport, ProjectsPreferenceTransport, MemoFileTransport, WCSessionDelegate {
     static let shared = WatchConnectivityTaskTransport()
 
     nonisolated static let snapshotKey = "kyo.taskSnapshot"
@@ -18,6 +18,7 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     nonisolated static let memoSnapshotKey = "kyo.memoSnapshot"
     /// The phone's theme id, as the UTF-8 bytes of the id string (see
     /// `docs/adr/0007-watch-follows-the-phone-theme.md`).
+    nonisolated static let projectsPreferenceKey = "kyo.projectsPreference"
     nonisolated static let themeIDKey = "kyo.themeID"
     nonisolated static let snapshotKeys = [snapshotKey, habitSnapshotKey, memoSnapshotKey]
     nonisolated static let commandKey = "kyo.taskCommand"
@@ -34,6 +35,8 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     private var habitHandler: (@MainActor (HabitListSnapshot) -> Void)?
     private var latestIncomingMemos: MemoListSnapshot?
     private var memoHandler: (@MainActor (MemoListSnapshot) -> Void)?
+    private var latestIncomingProjectsPreference: WatchProjectsPreference?
+    private var projectsPreferenceHandler: (@MainActor (WatchProjectsPreference) -> Void)?
     private var latestIncomingThemeID: String?
     private var themeIDHandler: (@MainActor (String) -> Void)?
     private var commandHandler: (@MainActor (TaskCommand) -> Void)?
@@ -104,9 +107,9 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     }
 
     /// The context the next `updateApplicationContext` writes: the latest payload of every key, or
-    /// `nil` while no snapshot has been published in this process. The theme id rides in every write,
-    /// but never causes the first one: a Watch with nothing stored would otherwise get a theme and
-    /// none of its tasks, habits or memos, from a launch that never built the lists.
+    /// `nil` while no snapshot has been published in this process. Theme and Projects preferences
+    /// ride in every write but never cause the first one: a Watch with nothing stored must also
+    /// receive task, habit or memo content from a launch that built the lists.
     var contextToWrite: [String: Any]? {
         guard outgoingContext.hasPayload(forAnyOf: Self.snapshotKeys) else { return nil }
         return outgoingContext.context
@@ -121,8 +124,11 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         let memoData: Data?
         /// The theme id, or `nil` when the context has none or none that reads as an id.
         let themeID: String?
+        let projectsPreference: WatchProjectsPreference?
 
         init(_ context: [String: Any]) {
+            projectsPreference = (context[WatchConnectivityTaskTransport.projectsPreferenceKey] as? Data)
+                .flatMap { try? JSONDecoder().decode(WatchProjectsPreference.self, from: $0) }
             taskData = context[WatchConnectivityTaskTransport.snapshotKey] as? Data
             habitData = context[WatchConnectivityTaskTransport.habitSnapshotKey] as? Data
             memoData = context[WatchConnectivityTaskTransport.memoSnapshotKey] as? Data
@@ -169,6 +175,16 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
     func publish(themeID: String) {
         publishContextEntry(Data(themeID.utf8), forKey: Self.themeIDKey)
         logger.log("published theme \(themeID)")
+    }
+
+    func publish(projectsPreference: WatchProjectsPreference) {
+        guard let data = try? JSONEncoder().encode(projectsPreference) else { return }
+        publishContextEntry(data, forKey: Self.projectsPreferenceKey)
+    }
+
+    func setProjectsPreferenceHandler(_ handler: @escaping @MainActor (WatchProjectsPreference) -> Void) {
+        projectsPreferenceHandler = handler
+        if let latestIncomingProjectsPreference { handler(latestIncomingProjectsPreference) }
     }
 
     func setThemeIDHandler(_ handler: @escaping @MainActor (String) -> Void) {
@@ -316,6 +332,12 @@ final class WatchConnectivityTaskTransport: NSObject, TaskSnapshotTransport, Hab
         if let taskData = context.taskData { receive(data: taskData) }
         if let habitData = context.habitData { receiveHabits(data: habitData) }
         if let memoData = context.memoData { receiveMemos(data: memoData) }
+        if let preference = context.projectsPreference {
+            if latestIncomingProjectsPreference == nil || preference.revision > latestIncomingProjectsPreference!.revision {
+                latestIncomingProjectsPreference = preference
+                projectsPreferenceHandler?(preference)
+            }
+        }
         if let themeID = context.themeID { receiveThemeID(themeID) }
     }
 

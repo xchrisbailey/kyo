@@ -57,6 +57,10 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+    entitlements:
+      path: Config/Kyo.entitlements
+      properties:
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)computer.srcery.kyo
     dependencies:
       - target: KyoWatch
         embed: true
@@ -141,6 +145,7 @@ targets:
         excludes:
           # A placeholder SwiftUI view with no logic to test.
           - ContentView.swift
+      - KyoWatch/WatchAudioRecorder.swift
       - Kyo/CalendarService.swift
       - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift

@@ -33,6 +33,44 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(task.label, "Task \(token)")
     }
 
+    func testWatchObserveProjectsDisabled() throws {
+        let token = try requirePhase("watch-off")
+        let app = XCUIApplication()
+        app.launch()
+        let header = app.buttons["section-header-tasks"]
+        reveal(header, in: app, upward: false)
+        XCTAssertTrue(header.isHittable)
+        if header.value as? String == "expanded" { header.tap() }
+        let delivery = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", "Tasks, 0 of 2 done"), object: header)
+        XCTAssertEqual(XCTWaiter.wait(for: [delivery], timeout: 90), .completed,
+            "the phone's off preference must move both tasks into Tasks")
+        capture("paired-watch-projects-disabled-logical-count", in: app)
+        header.tap()
+        let expanded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "expanded"), object: header)
+        XCTAssertEqual(XCTWaiter.wait(for: [expanded], timeout: 5), .completed)
+        XCTAssertEqual(header.value as? String, "expanded")
+        capture("paired-watch-projects-disabled-expanded-tasks", in: app)
+        assertBothTasks(token: token, in: app)
+        // Watch List materializes rows as they enter the viewport. Scan the section locations
+        // rather than treating an offscreen row's absence from one snapshot as lost content.
+        for _ in 0..<5 {
+            XCTAssertFalse(app.buttons["section-header-projects"].exists)
+            XCTAssertFalse(projectGroup(in: app).exists)
+            scroll(in: app, upward: true)
+        }
+        capture("paired-watch-projects-disabled-tasks-retained", in: app)
+    }
+
+    func testWatchObserveProjectsEnabledAgain() throws {
+        let token = try requirePhase("watch-on")
+        let app = XCUIApplication()
+        app.launch()
+        waitForDelivery(projectGroup(in: app), label: "Original \(token), 0 of 2 done", in: app)
+        assertBothTasks(token: token, in: app)
+        capture("paired-watch-projects-reenabled", in: app)
+    }
+
     func testWatchObserveRenameAndComplete() throws {
         let token = try requirePhase("watch-command")
         let app = XCUIApplication()
@@ -105,6 +143,26 @@ final class PairedProjectsSyncUITests: XCTestCase {
         attachment.name = "paired-projects-watch-renamed-completed"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func assertBothTasks(token: String, in app: XCUIApplication) {
+        let first = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label == %@",
+            "task-checkbox-", "Task \(token)")).firstMatch // label-query: discovers the seeded task whose exact text is under test
+        reveal(first, in: app, upward: false)
+        if !first.exists || !first.isHittable { reveal(first, in: app) }
+        if !first.exists || !first.isHittable { recordProjectControls(in: app) }
+        XCTAssertTrue(first.isHittable)
+        XCTAssertEqual(first.label, "Task \(token)")
+        XCTAssertEqual(first.value as? String, "Not completed")
+        let firstID = first.identifier
+        let second = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label == %@",
+            "task-checkbox-", "Delete \(token)")).firstMatch // label-query: discovers the second seeded task whose text must remain available
+        reveal(second, in: app)
+        if !second.exists || !second.isHittable { recordProjectControls(in: app) }
+        XCTAssertTrue(second.isHittable)
+        XCTAssertEqual(second.label, "Delete \(token)")
+        XCTAssertEqual(second.value as? String, "Not completed")
+        XCTAssertNotEqual(second.identifier, firstID, "both original tasks remain independently actionable")
     }
 
     private func capture(_ name: String, in app: XCUIApplication) {

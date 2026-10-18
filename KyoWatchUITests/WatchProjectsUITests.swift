@@ -2,35 +2,17 @@ import XCTest
 
 @MainActor
 final class WatchProjectsUITests: XCTestCase {
-    func testProjectsSectionStartsExpandedAndRemembersCollapseAfterRelaunch() {
-        let app = XCUIApplication()
-        app.launchEnvironment["KYO_COLLAPSED_SECTIONS_SUITE"] = "kyo.watch-projects.ui-tests.\(UUID().uuidString)"
-        app.launch()
-
-        let tasks = app.buttons["section-header-tasks"]
-        XCTAssertTrue(tasks.waitForExistence(timeout: 10))
-        tasks.tap()
-        let projects = app.buttons["section-header-projects"]
-        scrollUntilVisible(projects, in: app)
-        XCTAssertTrue(projects.exists)
-        XCTAssertEqual(projects.value as? String, "expanded")
-        let empty = app.staticTexts["projects-empty"]
-        scrollUntilVisible(empty, in: app)
-        XCTAssertEqual(empty.label, "No project tasks for today")
-        projects.tap()
-        XCTAssertEqual(projects.value as? String, "collapsed")
-        app.terminate()
-        app.launch()
-        scrollUntilVisible(projects, in: app)
-        XCTAssertEqual(projects.value as? String, "collapsed")
-        XCTAssertFalse(empty.exists)
-    }
-
-    private func scrollUntilVisible(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<8 where !element.exists {
-            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-            start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.5)
+    func testAnEmptyProjectsSectionIsAbsentWithEitherPreference() {
+        for enabled in ["0", "1"] {
+            let app = XCUIApplication()
+            app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
+            app.launchEnvironment["KYO_PROJECTS_ENABLED"] = enabled
+            app.launch()
+            XCTAssertTrue(app.buttons["section-header-tasks"].waitForExistence(timeout: 10))
+            app.swipeUp()
+            XCTAssertFalse(app.buttons["section-header-projects"].exists)
+            XCTAssertFalse(app.staticTexts["projects-empty"].exists)
+            app.terminate()
         }
     }
 }

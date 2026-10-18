@@ -73,6 +73,7 @@ struct ProjectsSheet: View {
 }
 
 struct ProjectDetailView: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     @Environment(\.theme) private var theme
     let projectID: UUID
     @ObservedObject var projects: ProjectListStore
@@ -148,19 +149,23 @@ struct ProjectDetailView: View {
             }
         }
         .themedListBackground()
-        .themedNavigationTitle(LocalizedStringKey(name))
+        .opacity(projectsEnabled ? 1 : 0)
+        .accessibilityHidden(!projectsEnabled)
+        .themedNavigationTitle(projectsEnabled ? LocalizedStringKey(name) : "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done", action: onDone)
+                    .opacity(projectsEnabled ? 1 : 0)
+                    .accessibilityHidden(!projectsEnabled)
                     .accessibilityIdentifier("projects-done")
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                if isArchived {
+                if projectsEnabled && isArchived {
                     Button("Restore") { projects.restoreProject(id: projectID) }
                         .accessibilityLabel("Restore project")
                         .accessibilityIdentifier("project-restore")
-                } else {
+                } else if projectsEnabled {
                     Button("Rename") { isRenaming = true }
                         .accessibilityIdentifier("project-rename")
                     Button("Archive") { projects.archiveProject(id: projectID) }
@@ -169,6 +174,9 @@ struct ProjectDetailView: View {
                 }
             }
         }
+        .onChange(of: isAddingTask) { _, showing in
+            onCaptureSurfaceChange(showing ? .otherSheet : nil)
+        }
         .onChange(of: isWritingMemo) { _, showing in
             onCaptureSurfaceChange(showing ? .compose(hasUnsavedDraft: false) : nil)
         }
@@ -176,7 +184,7 @@ struct ProjectDetailView: View {
             onCaptureSurfaceChange(showing ? .recorder : nil)
         }
         .onDisappear {
-            if !isWritingMemo && !isRecordingMemo { onCaptureSurfaceChange(nil) }
+            if !isWritingMemo && !isRecordingMemo && !isAddingTask { onCaptureSurfaceChange(nil) }
         }
         .sheet(isPresented: $isWritingMemo) {
             if let memoStore = projects.memoStore {
@@ -391,12 +399,13 @@ private struct ProjectMemoDetail: View {
 }
 
 struct TaskProjectAssignmentMenu: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     let task: DailyTask
     let projects: [Project]
     let assign: (UUID?) -> Void
 
     var body: some View {
-        if projects.contains(where: { !$0.isArchived }) {
+        if projectsEnabled && projects.contains(where: { !$0.isArchived }) {
             Menu("Move to project", systemImage: "folder") {
                 ForEach(projects.filter { !$0.isArchived }) { project in
                     Button(project.name) { assign(project.id) }
@@ -405,7 +414,7 @@ struct TaskProjectAssignmentMenu: View {
             }
             .accessibilityIdentifier("task-move-project-\(task.id.uuidString)")
         }
-        if task.projectID != nil {
+        if projectsEnabled && task.projectID != nil {
             Button("Remove from project", systemImage: "folder.badge.minus") { assign(nil) }
                 .accessibilityIdentifier("task-remove-project-\(task.id.uuidString)")
         }
@@ -413,6 +422,7 @@ struct TaskProjectAssignmentMenu: View {
 }
 
 struct TaskCaptureProjectPicker: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     let projects: [Project]
     @Binding var projectID: UUID?
 

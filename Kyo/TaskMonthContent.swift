@@ -7,15 +7,21 @@ import Foundation
 final class TaskMonthContent: MonthContentSource {
     let kind = MonthKind.tasks
     private let taskList: TaskListStore
+    private var projectsEnabled = true
     private var projects: [Project]
     private var subscriptions = Set<AnyCancellable>()
     let changes: AnyPublisher<Void, Never>
 
-    init(taskList: TaskListStore) {
+    init(taskList: TaskListStore, projectsPreference: ProjectsPreferenceStore? = nil) {
         self.taskList = taskList
         projects = taskList.projectCatalog
+        projectsEnabled = projectsPreference?.isEnabled ?? true
         let subject = PassthroughSubject<Void, Never>()
         changes = subject.eraseToAnyPublisher()
+        projectsPreference?.$isEnabled.dropFirst().sink { [weak self] enabled in
+            self?.projectsEnabled = enabled
+            subject.send()
+        }.store(in: &subscriptions)
         taskList.$tasks.dropFirst()
             .sink { _ in subject.send() }
             .store(in: &subscriptions)
@@ -55,7 +61,7 @@ final class TaskMonthContent: MonthContentSource {
         return content
     }
     private func row(_ task: DailyTask, isComplete: Bool) -> MonthSummaryRow {
-        let project = projects.first { $0.id == task.projectID }
+        let project = projectsEnabled ? projects.first { $0.id == task.projectID } : nil
         return MonthSummaryRow(id: "task-\(task.id.uuidString)", text: task.text,
                         kind: .task(isComplete: isComplete), projectName: project?.name,
                         accessibilityLabel: project.map { "\(task.text), \($0.name)" }, accessibilityValue: isComplete ? "Completed" : "Planned")

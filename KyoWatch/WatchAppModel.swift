@@ -15,14 +15,20 @@ final class WatchAppModel {
     let memoList: WatchMemoList
     let projectsPreference: WatchProjectsPreferenceStore
     let theme: WatchThemeStore
+    let recordingDefaults: UserDefaults
+    let isolatedRecordingDirectory: URL?
+    private let transport: WatchConnectivityTaskTransport
 
     private init() {
-        let transport = WatchConnectivityTaskTransport.shared
-        taskList = TaskListStore(sync: .mirror(from: transport))
-        habitList = HabitListStore(sync: .mirror(from: transport))
+        let stores = WatchStoreSelection.make()
+        transport = stores.transport
+        recordingDefaults = stores.recordingDefaults
+        isolatedRecordingDirectory = stores.isolatedRecordingDirectory
+        taskList = stores.taskList
+        habitList = stores.habitList
         projectsPreference = ProjectsPreferenceSelection.makeWatch()
-        theme = WatchThemeSelection.make(transport: { transport })
-        memoList = WatchMemoList(outbox: WatchRecordingOutbox(transport: transport), sync: transport)
+        theme = WatchThemeSelection.make(transport: { stores.transport })
+        memoList = stores.memoList
     }
 
     /// The work of a Watch Connectivity background task: make sure the stores exist, then wait
@@ -30,7 +36,6 @@ final class WatchAppModel {
     /// before the system is told the task is done.
     func handleWatchConnectivityRefresh() async {
         _ = Self.shared
-        let transport = WatchConnectivityTaskTransport.shared
-        await WatchConnectivityRefresh.wait { transport.isActivatedWithNoPendingContent }
+        await WatchConnectivityRefresh.wait { self.transport.isActivatedWithNoPendingContent }
     }
 }

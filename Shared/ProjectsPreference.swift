@@ -90,6 +90,9 @@ final class ProjectsPreferenceStore: ObservableObject, ProjectsPreferenceBehavio
     }
 
     func setEnabled(_ enabled: Bool) {
+        // iCloud may already have cached a peer's choice before its notification is delivered.
+        // Observe that logical clock before creating the user's newer explicit choice.
+        reconcile()
         accept(makeRecord(enabled: enabled, explicit: true))
         reconcile()
         publishToWatch()

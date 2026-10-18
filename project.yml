@@ -145,6 +145,7 @@ targets:
         excludes:
           # A placeholder SwiftUI view with no logic to test.
           - ContentView.swift
+      - KyoWatch/WatchAudioRecorder.swift
       - Kyo/CalendarService.swift
       - Kyo/EventDetails.swift
       - Kyo/ScheduleStore.swift

@@ -87,7 +87,9 @@ struct WatchTodayView: View {
         .task {
             // Once per launch: a recording a quit or crash cut short goes into the outbox.
             guard recordingSession == nil, let outbox = memoList.outbox else { return }
-            let session = VoiceRecordingSession(recorder: WatchAudioRecorder(), memos: outbox)
+            let model = WatchAppModel.shared
+            let recorder = WatchAudioRecorder(directory: model.isolatedRecordingDirectory ?? WatchAudioRecorder.defaultDirectory)
+            let session = VoiceRecordingSession(recorder: recorder, memos: outbox, userDefaults: model.recordingDefaults)
             session.recoverInterruptedRecordings()
             recordingSession = session
         }

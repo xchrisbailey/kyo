@@ -544,7 +544,9 @@ struct TodayView: View {
     private func dismissDisabledProjectNavigation() {
         guard !projectsPreference.isEnabled, projectCaptureSurface == nil else { return }
         switch activeSheet {
-        case .allProjects, .project, .newProject, .addProjectTask: activeSheet = nil
+        case .allProjects, .project, .newProject: activeSheet = nil
+        // This sheet is the capture itself. Keep its draft and original assignment until Save or Cancel.
+        case .addProjectTask: break
         default: break
         }
     }

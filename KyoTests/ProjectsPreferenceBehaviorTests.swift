@@ -200,6 +200,25 @@ final class ProjectsPreferenceBehaviorTests: XCTestCase {
         XCTAssertEqual(decoded.themeID, "neko")
     }
 
+    func testUserChoiceAdvancesBeyondCachedRemoteRecordBeforeItsNotificationArrives() throws {
+        let suite = "kyo.projectsCachedRemote.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let cloud = ControllableProjectsPreferenceCloud()
+        let preference = ProjectsPreferenceStore(defaults: defaults, cloud: cloud,
+            now: { Date(timeIntervalSince1970: 100) })
+        preference.setEnabled(false)
+        let remote = ProjectsPreferenceRecord(version: 1, isEnabled: false, isExplicit: true,
+            timestamp: 500_000, deviceID: "peer", recordID: "remote-off")
+        cloud.write(try JSONEncoder().encode(remote)) // cached by iCloud, notification still pending
+        preference.setEnabled(true)
+        XCTAssertTrue(preference.isEnabled)
+        let published = try decode(cloud.data)
+        XCTAssertTrue(published.isEnabled)
+        XCTAssertGreaterThan(published.timestamp, 500_000)
+        XCTAssertTrue(ProjectsPreferenceStore(defaults: defaults).isEnabled)
+    }
+
     private func decode(_ data: Data?) throws -> ProjectsPreferenceRecord {
         try JSONDecoder().decode(ProjectsPreferenceRecord.self, from: XCTUnwrap(data))
     }

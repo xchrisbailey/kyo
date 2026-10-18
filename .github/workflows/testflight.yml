@@ -151,7 +151,7 @@ jobs:
         if: steps.preflight.outputs.enabled == 'true'
         shell: bash
         run: |
-          codesign --display --entitlements - \
+          codesign --display --entitlements - --xml \
             "$RUNNER_TEMP/Kyo.xcarchive/Products/Applications/Kyo.app" \
             > "$RUNNER_TEMP/logs/archive-entitlements.plist"
           python3 - "$RUNNER_TEMP/logs/archive-entitlements.plist" <<'PY'

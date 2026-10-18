@@ -257,6 +257,7 @@ struct WrittenMemoComposeSheet: View {
 /// transcript, or the editable Transcript) and the audio player pinned to the bottom. Deleting
 /// one confirms first.
 struct MemoCardSheet: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     @Environment(\.theme) private var theme
     let memo: Memo
     var projects: [Project] = []
@@ -355,7 +356,7 @@ struct MemoCardSheet: View {
                     capNote(note)
                 }
                 actionRow
-                if !isReadOnly, let onAssign, projects.contains(where: { !$0.isArchived }) || memo.projectID != nil {
+                if projectsEnabled, !isReadOnly, let onAssign, projects.contains(where: { !$0.isArchived }) || memo.projectID != nil {
                     Menu {
                         ForEach(projects.filter { !$0.isArchived }) { project in
                             Button(project.name) { onAssign(project.id) }
@@ -659,11 +660,12 @@ enum MemoPresentation {
 
 /// Optional assignment shared by written and voice capture.
 struct MemoProjectPicker: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     let projects: [Project]
     @Binding var projectID: UUID?
 
     var body: some View {
-        if !projects.isEmpty {
+        if projectsEnabled && !projects.isEmpty {
             Menu {
                 Button("No project") { projectID = nil }
                     .accessibilityIdentifier("memo-project-none")

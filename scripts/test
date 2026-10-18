@@ -30,7 +30,7 @@ usage() {
 paired_projects=0
 if [[ "${1:-}" == "--paired-projects" ]]; then
   [[ $# -eq 1 ]] || usage
-  echo "scripts/test: full Projects round-trip requires a physical iPhone/Watch pair: Simulator does not deliver WCSession.transferUserInfo. Follow docs/development.md physical-device checklist; use --paired-projects-simulator for the four supported phases." >&2
+  echo "scripts/test: full Projects round-trip requires a physical iPhone/Watch pair: Simulator does not deliver WCSession.transferUserInfo. Follow docs/development.md physical-device checklist; use --paired-projects-simulator for the eight supported phases." >&2
   exit 2
 elif [[ "${1:-}" == "--paired-projects-simulator" ]]; then
   [[ $# -eq 1 ]] || usage

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LaterSheet: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var taskList: TaskListStore
@@ -22,7 +23,7 @@ struct LaterSheet: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(task.text)
                                 .accessibilityIdentifier("later-task-\(task.id.uuidString)")
-                            if let project = taskList.projectCatalog.first(where: { $0.id == task.projectID }) {
+                            if projectsEnabled, let project = taskList.projectCatalog.first(where: { $0.id == task.projectID }) {
                                 Text(project.name)
                                     .font(.subheadline)
                                     .foregroundStyle(theme.secondaryText)
@@ -46,7 +47,7 @@ struct LaterSheet: View {
                             Button("Bring to Today") { taskList.bringTaskToToday(id: task.id) }
                                 .buttonStyle(.borderless)
                                 .accessibilityIdentifier("task-bring-to-today-\(task.id.uuidString)")
-                            if task.projectID != nil {
+                            if projectsEnabled && task.projectID != nil {
                                 Button("Return to project") { taskList.returnTaskToProject(id: task.id) }
                                     .buttonStyle(.borderless)
                                     .accessibilityIdentifier("later-task-return-to-project-\(task.id.uuidString)")

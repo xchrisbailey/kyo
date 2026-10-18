@@ -5,6 +5,7 @@ import UIKit
 struct TodayView: View {
     @Environment(\.theme) private var theme
     @StateObject private var taskList: TaskListStore
+    @StateObject private var projectsPreference: ProjectsPreferenceStore
     @StateObject private var projects: ProjectListStore
     @StateObject private var habitList: HabitListStore
     @StateObject private var memoStore: MemoStore
@@ -16,6 +17,7 @@ struct TodayView: View {
     @ObservedObject private var quickCapture: QuickCaptureRouter
     @Environment(\.scenePhase) private var scenePhase
     @State private var activeSheet: TodayPreviewSheet?
+    @State private var sheetAfterDismissal: TodayPreviewSheet?
     /// Which main view the bottom bar has selected. Kyo always launches into Today.
     @State private var mainView: MainView = .today
     @StateObject private var month: MonthModel
@@ -46,6 +48,8 @@ struct TodayView: View {
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var taskList = TaskListStore(modelContainer: modelContainer, sync: sync)
         _taskList = StateObject(wrappedValue: taskList)
+        lazy var preference = ProjectsPreferenceSelection.make(modelContainer: modelContainer)
+        _projectsPreference = StateObject(wrappedValue: preference)
         let habitSync: HabitListSync? = isInMemory ? nil : .publish(to: WatchConnectivityTaskTransport.shared)
         // Built on first use, once, so a new TodayView value made while the view is on screen builds nothing.
         lazy var habits = HabitListStore(modelContainer: modelContainer, sync: habitSync)
@@ -69,7 +73,7 @@ struct TodayView: View {
         _schedule = StateObject(wrappedValue: schedule)
         _sections = StateObject(wrappedValue: CollapsedSectionsSelection.make())
         _month = StateObject(wrappedValue: MonthModel(sources: [
-            TaskMonthContent(taskList: taskList),
+            TaskMonthContent(taskList: taskList, projectsPreference: preference),
             MemoMonthContent(store: memoStore),
             HabitMonthContent(habits: habits),
             EventMonthContent(schedule: schedule, calendar: .current),
@@ -126,7 +130,10 @@ struct TodayView: View {
                 .sheet(item: $activeSheet, onDismiss: openCaptureAfterSheetDismissal) { sheet in
                     switch sheet {
                     case .settings:
-                        SettingsSheet(schedule: schedule, themes: .shared, palette: .shared)
+                        SettingsSheet(schedule: schedule, themes: .shared, palette: .shared, projectsPreference: projectsPreference, onOpenProjects: {
+                            sheetAfterDismissal = .allProjects
+                            activeSheet = nil
+                        })
                     case .habitForm:
                         HabitFormSheet(onSave: { name, schedule in habitList.addHabit(name: name, schedule: schedule) != nil })
                     case .composeMemo:
@@ -219,6 +226,13 @@ struct TodayView: View {
                 }
             }
         }
+        .environment(\.projectsEnabled, projectsPreference.isEnabled)
+        .onChange(of: projectsPreference.isEnabled) { _, _ in
+            dismissDisabledProjectNavigation()
+        }
+        .onChange(of: projectCaptureSurface) { _, _ in
+            dismissDisabledProjectNavigation()
+        }
         .task {
             // Once per launch: a recording a quit or crash cut short becomes a Voice memo.
             guard voiceRecording == nil else { return }
@@ -261,6 +275,7 @@ struct TodayView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                projectsPreference.refresh()
                 taskList.refreshForCurrentDay()
                 habitList.refreshForCurrentDay()
                 memoStore.refreshForCurrentDay()
@@ -294,6 +309,8 @@ struct TodayView: View {
     /// taken its place for a while, so nothing here is recreated by switching.
     @ViewBuilder
     private func todaySections(scrollProxy: ScrollViewProxy) -> some View {
+        let tasks = taskList.tasksSection(projectsEnabled: projectsPreference.isEnabled)
+        let visibleProjects = taskList.projectSections(projectsEnabled: projectsPreference.isEnabled)
         header
         summaryStats
         if schedule.showsSection {
@@ -304,7 +321,7 @@ struct TodayView: View {
         TodaySection(
             title: "Tasks",
             note: "For today",
-            collapsedSummary: taskList.everydayTasks.isEmpty ? "No tasks" : "\(taskList.everydayTasks.filter(\.isComplete).count) of \(taskList.everydayTasks.count) done",
+            collapsedSummary: tasks.isEmpty ? "No tasks" : "\(tasks.filter(\.isComplete).count) of \(tasks.count) done",
             section: .tasks,
             sections: sections,
             linkTitle: "Later",
@@ -312,14 +329,14 @@ struct TodayView: View {
             linkAction: { activeSheet = .later }
         ) {
             VStack(spacing: 0) {
-                if taskList.everydayTasks.isEmpty && !isShowingTaskDraft {
+                if tasks.isEmpty && !isShowingTaskDraft {
                     Text("No tasks yet")
                         .font(.body)
                         .foregroundStyle(theme.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
                         .padding(.horizontal, 14)
                 }
-                ForEach(Array(taskList.everydayTasks.enumerated()), id: \.element.id) { index, task in
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
                     if index > 0 { rowDivider }
                     TaskRow(
                         task: task,
@@ -332,7 +349,7 @@ struct TodayView: View {
                     )
                 }
                 if isShowingTaskDraft {
-                    if !taskList.everydayTasks.isEmpty { rowDivider }
+                    if !tasks.isEmpty { rowDivider }
                     TaskDraftRow(
                         text: $taskDraft, projectID: $taskDraftProjectID, projects: projects.projects, isFocused: $isTaskDraftFocused, submit: saveTaskDraft,
                         schedule: {
@@ -351,33 +368,21 @@ struct TodayView: View {
                 }
             }
         }
-        TodaySection(
-            title: "Projects",
-            note: "For today",
-            collapsedSummary: projects.todayProjects.isEmpty ? "No project tasks for today" : "\(projects.todayProjects.count) projects",
-            section: .projects,
-            sections: sections,
-            linkTitle: "All projects",
-            linkHint: "Opens all projects",
-            linkAction: { activeSheet = .allProjects }
-        ) {
-            VStack(alignment: .leading, spacing: 0) {
-                if projects.todayProjects.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("No project tasks for today")
-                            .foregroundStyle(theme.secondaryText)
-                            .accessibilityIdentifier("projects-empty")
-                        if projects.projects.isEmpty {
-                            Button("New project") { activeSheet = .newProject }
-                                .foregroundStyle(theme.accent)
-                                .accessibilityIdentifier("projects-new")
-                        }
+        if !visibleProjects.isEmpty {
+            TodaySection(
+                title: "Projects",
+                note: "For today",
+                collapsedSummary: "\(visibleProjects.count) projects",
+                section: .projects,
+                sections: sections,
+                linkTitle: "All projects",
+                linkHint: "Opens all projects",
+                linkAction: { activeSheet = .allProjects }
+            ) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(visibleProjects) { project in
+                        projectGroup(project)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 55, alignment: .leading)
-                    .padding(14)
-                }
-                ForEach(projects.todayProjects) { project in
-                    projectGroup(project)
                 }
             }
         }
@@ -534,6 +539,16 @@ struct TodayView: View {
         width > 680 ? 28 : (width < 360 ? 15 : 20)
     }
 
+    /// Let a capture already in progress finish with its retained assignment before closing its
+    /// project route. Hiding organization must not discard a written draft or stop a recording.
+    private func dismissDisabledProjectNavigation() {
+        guard !projectsPreference.isEnabled, projectCaptureSurface == nil else { return }
+        switch activeSheet {
+        case .allProjects, .project, .newProject, .addProjectTask: activeSheet = nil
+        default: break
+        }
+    }
+
     /// What quick capture needs to know is showing over Today.
     private var captureSurface: QuickCaptureRouter.Surface {
         if let projectCaptureSurface { return projectCaptureSurface }
@@ -571,6 +586,11 @@ struct TodayView: View {
     private func openCaptureAfterSheetDismissal() {
         projectCaptureSurface = nil
         composeHasDraft = false
+        if let sheet = sheetAfterDismissal {
+            sheetAfterDismissal = nil
+            if projectsPreference.isEnabled { activeSheet = sheet }
+            return
+        }
         guard let target = captureAfterSheetDismissal else { return }
         captureAfterSheetDismissal = nil
         open(target)
@@ -720,6 +740,7 @@ private enum TodayPreviewSheet: Identifiable {
 }
 
 private struct TaskDraftRow: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     @Environment(\.theme) private var theme
     @Binding var text: String
     @Binding var projectID: UUID?
@@ -731,7 +752,7 @@ private struct TaskDraftRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !projects.isEmpty {
+            if projectsEnabled && !projects.isEmpty {
                 TaskCaptureProjectPicker(projects: projects, projectID: $projectID)
                     .foregroundStyle(theme.accent)
             }
@@ -1135,6 +1156,7 @@ private struct HabitRow: View {
 }
 
 struct TaskRow: View {
+    @Environment(\.projectsEnabled) private var projectsEnabled
     @Environment(\.theme) private var theme
     let task: DailyTask
     let onToggle: () -> Void
@@ -1189,14 +1211,14 @@ struct TaskRow: View {
         }
         .clipped()
         .contextMenu {
-            if let onAssignProject {
+            if projectsEnabled, let onAssignProject {
                 TaskProjectAssignmentMenu(task: task, projects: projects, assign: onAssignProject)
             }
             if !task.isComplete, let onDoLater {
                 Button("Do later", systemImage: "calendar", action: onDoLater)
                     .accessibilityIdentifier("task-do-later-\(task.id.uuidString)")
             }
-            if !task.isComplete, let onReturnToProject {
+            if projectsEnabled, !task.isComplete, let onReturnToProject {
                 Button("Return to project", systemImage: "arrow.uturn.backward", action: onReturnToProject)
                     .accessibilityIdentifier("task-return-to-project-\(task.id.uuidString)")
             }

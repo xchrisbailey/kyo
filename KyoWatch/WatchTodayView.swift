@@ -3,6 +3,7 @@ import WatchKit
 
 struct WatchTodayView: View {
     // Owned by `WatchAppModel`, so a background launch can apply snapshots without this view.
+    @ObservedObject private var projectsPreference = WatchAppModel.shared.projectsPreference
     @ObservedObject private var taskList = WatchAppModel.shared.taskList
     @ObservedObject private var habitList = WatchAppModel.shared.habitList
     @ObservedObject private var memoList = WatchAppModel.shared.memoList
@@ -128,7 +129,7 @@ struct WatchTodayView: View {
 
     @ViewBuilder
     private var taskRows: some View {
-        let tasks = taskList.everydayTasks
+        let tasks = taskList.tasksSection(projectsEnabled: projectsPreference.isEnabled)
         WatchSectionHeader(
             title: "Tasks",
             section: .tasks,
@@ -149,23 +150,18 @@ struct WatchTodayView: View {
 
     @ViewBuilder
     private var projectRows: some View {
-        let projects = taskList.projectCatalog.filter { project in
-            taskList.tasks.contains { $0.projectID == project.id }
-        }
-        let tasks = taskList.tasks.filter { $0.projectID != nil }
-        WatchSectionHeader(
-            title: "Projects",
-            section: .projects,
-            sections: sections,
-            count: WatchCollapsedCount.progress(done: tasks.filter(\.isComplete).count, total: tasks.count)
-        )
-        .listRow(top: 8, bottom: 5)
+        let projects = taskList.projectSections(projectsEnabled: projectsPreference.isEnabled)
+        if !projects.isEmpty {
+            let tasks = taskList.tasks.filter { $0.projectID != nil }
+            WatchSectionHeader(
+                title: "Projects",
+                section: .projects,
+                sections: sections,
+                count: WatchCollapsedCount.progress(done: tasks.filter(\.isComplete).count, total: tasks.count)
+            )
+            .listRow(top: 8, bottom: 5)
 
-        if !sections.isCollapsed(.projects) {
-            if projects.isEmpty {
-                emptyTaskRow("No project tasks for today")
-                    .accessibilityIdentifier("projects-empty")
-            } else {
+            if !sections.isCollapsed(.projects) {
                 ForEach(projects) { project in
                     let tasks = taskList.tasks.filter { $0.projectID == project.id }
                     WatchProjectHeader(project: project, tasks: tasks, sections: sections)

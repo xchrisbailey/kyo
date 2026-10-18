@@ -8,9 +8,8 @@ final class ProjectMemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        let create = app.buttons["projects-new"]
-        XCTAssertTrue(create.waitForExistence(timeout: 10))
-        create.tap()
+        openProjects(in: app)
+        app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
@@ -57,9 +56,7 @@ final class ProjectMemoUITests: XCTestCase {
         compose.tap()
         compose.typeText("Everyday capture in project")
         app.buttons["memo-compose-save"].tap()
-        let allProjects = app.buttons["section-link-projects"]
-        for _ in 0..<4 where !allProjects.isHittable { app.scrollViews.firstMatch.swipeDown() }
-        allProjects.tap()
+        openProjects(in: app)
         project.tap()
         XCTAssertTrue(memo.waitForExistence(timeout: 5))
         XCTAssertEqual(memo.label, "Everyday capture in project")

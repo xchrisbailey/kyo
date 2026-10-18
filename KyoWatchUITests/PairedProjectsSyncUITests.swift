@@ -33,6 +33,33 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertEqual(task.label, "Task \(token)")
     }
 
+    func testWatchObserveProjectsDisabled() throws {
+        let token = try requirePhase("watch-off")
+        let app = XCUIApplication()
+        app.launch()
+        let deadline = Date.now.addingTimeInterval(90)
+        let empty = app.staticTexts["tasks-empty"]
+        while Date.now < deadline && empty.exists {
+            scroll(in: app, upward: false)
+        }
+        let task = taskButton(in: app)
+        reveal(task, in: app)
+        XCTAssertEqual(task.label, "Task \(token)")
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).count, 2)
+        XCTAssertFalse(app.buttons["section-header-projects"].exists)
+        XCTAssertFalse(projectGroup(in: app).exists)
+        capture("paired-watch-projects-disabled-tasks-retained", in: app)
+    }
+
+    func testWatchObserveProjectsEnabledAgain() throws {
+        let token = try requirePhase("watch-on")
+        let app = XCUIApplication()
+        app.launch()
+        waitForDelivery(projectGroup(in: app), label: "Original \(token), 0 of 2 done", in: app)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).count, 2)
+        capture("paired-watch-projects-reenabled", in: app)
+    }
+
     func testWatchObserveRenameAndComplete() throws {
         let token = try requirePhase("watch-command")
         let app = XCUIApplication()

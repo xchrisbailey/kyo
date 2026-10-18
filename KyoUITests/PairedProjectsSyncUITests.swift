@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Simulator controller runs four supported phases; phone receipt needs physical devices.
+/// The Simulator controller runs eight supported phases; phone receipt needs physical devices.
 @MainActor
 final class PairedProjectsSyncUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -9,7 +9,7 @@ final class PairedProjectsSyncUITests: XCTestCase {
         let token = try requirePhase("phone-seed")
         let app = XCUIApplication()
         app.launch()
-        revealAndTap(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 10))
@@ -38,6 +38,28 @@ final class PairedProjectsSyncUITests: XCTestCase {
         XCTAssertTrue(checkbox.waitForExistence(timeout: 10))
         XCTAssertEqual(checkbox.label, "Task \(token)")
         XCTAssertEqual(checkbox.value as? String, "Not completed")
+    }
+
+    func testPhoneDisableProjects() throws {
+        _ = try requirePhase("phone-off")
+        setProjectsEnabled(false)
+    }
+
+    func testPhoneEnableProjects() throws {
+        _ = try requirePhase("phone-on")
+        setProjectsEnabled(true)
+    }
+
+    private func setProjectsEnabled(_ enabled: Bool) {
+        let app = XCUIApplication()
+        app.launch()
+        revealAndTap(app.buttons["settings-button"], in: app)
+        let toggle = app.switches["settings-projects-enabled"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        if (toggle.value as? String == "1") != enabled { toggle.switches.firstMatch.tap() }
+        app.buttons["settings-done"].tap()
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-checkbox-")).count, 2)
+        XCTAssertEqual(app.buttons["section-header-projects"].exists, enabled)
     }
 
     func testPhoneRename() throws {

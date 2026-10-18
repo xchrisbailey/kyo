@@ -10,7 +10,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         var projectIDs: [String] = []
         for title in ["Kyo", "House"] {
             app.buttons["project-new"].tap()
@@ -87,7 +87,7 @@ final class ProjectsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["memo-project-option-\(projectIDs[1])"].exists)
         app.buttons["memo-project-none"].tap()
         app.buttons["memo-compose-cancel"].tap()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         XCTAssertTrue(project.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Archived"].exists) // label-query: asserting the archived section title
         capture("active-and-archived-projects", in: app)
@@ -106,7 +106,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -160,7 +160,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         var projectIDs: [String] = []
         for title in ["Kyo", "House"] {
             app.buttons["project-new"].tap()
@@ -204,7 +204,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -267,7 +267,7 @@ final class ProjectsUITests: XCTestCase {
         returned.tap()
         XCTAssertTrue(app.staticTexts["later-task-\(id)"].waitForNonExistence(timeout: 5))
         app.buttons["later-done"].tap()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         project.tap()
         XCTAssertTrue(app.buttons["task-do-today-\(id)"].waitForExistence(timeout: 5))
     }
@@ -276,7 +276,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -325,7 +325,7 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        tapRevealed(app.buttons["section-link-projects"], in: app)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -379,48 +379,31 @@ final class ProjectsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
-        selectTheme("neko", palette: "Light", in: app)
-        let header = app.buttons["section-header-projects"]
-        XCTAssertTrue(header.waitForExistence(timeout: 10))
-        XCTAssertEqual(header.value as? String, "expanded")
-        XCTAssertEqual(app.staticTexts["projects-empty"].label, "No project tasks for today")
-        header.tap()
-        XCTAssertEqual(header.value as? String, "collapsed")
-        app.buttons["section-link-projects"].tap()
+        XCTAssertFalse(app.buttons["section-header-projects"].exists)
+        openProjects(in: app)
         app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        capture("projects-neko-light-new-project", in: app)
         name.tap()
         name.typeText("Kyo")
         app.buttons["project-name-save"].tap()
         let project = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "project-open-")).firstMatch
         XCTAssertTrue(project.waitForExistence(timeout: 5))
-        XCTAssertEqual(project.label, "Kyo")
-        capture("all-projects-neko-light", in: app)
         project.tap()
         app.buttons["project-add-task"].tap()
         let task = app.textFields["project-task-editor"]
         XCTAssertTrue(task.waitForExistence(timeout: 5))
-        capture("project-task-form-neko-light", in: app)
         task.tap()
-        task.typeText("Explore widgets")
+        task.typeText("Build widgets")
+        app.buttons["project-task-today"].tap()
         app.buttons["project-task-save"].tap()
-        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "task-edit-")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        XCTAssertEqual(row.label, "Edit task: Explore widgets")
-        capture("project-detail-neko-light", in: app)
-        let id = String(row.identifier.dropFirst("task-edit-".count))
-        row.tap()
-        let editor = app.textFields["task-editor-\(id)"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 15) + "Build widgets\n")
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        XCTAssertEqual(row.label, "Edit task: Build widgets")
-        row.swipeLeft()
-        app.buttons["task-delete-\(id)"].tap()
-        XCTAssertTrue(row.waitForNonExistence(timeout: 5))
+        app.buttons["projects-done"].tap()
+        let header = app.buttons["section-header-projects"]
+        tapRevealed(header, in: app)
+        XCTAssertEqual(header.value as? String, "collapsed")
+        app.buttons["section-link-projects"].tap()
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+        project.tap()
         app.buttons["project-rename"].tap()
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
@@ -429,7 +412,6 @@ final class ProjectsUITests: XCTestCase {
         app.buttons["projects-done"].tap()
         XCTAssertTrue(header.waitForExistence(timeout: 5))
         XCTAssertEqual(header.value as? String, "collapsed")
-        XCTAssertEqual(app.buttons["section-header-tasks"].label, "Tasks, For today")
     }
 
     func testEmptyTodayNewProjectOpensCaptureDirectly() {
@@ -437,9 +419,9 @@ final class ProjectsUITests: XCTestCase {
         app.launchEnvironment["KYO_IN_MEMORY_STORE"] = "1"
         app.launch()
         selectTheme("techo", palette: "Dark", in: app)
-        let create = app.buttons["projects-new"]
-        XCTAssertTrue(create.waitForExistence(timeout: 10))
-        create.tap()
+        XCTAssertFalse(app.buttons["section-header-projects"].exists)
+        openProjects(in: app)
+        app.buttons["project-new"].tap()
         let name = app.textFields["project-name-editor"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         capture("projects-techo-dark-new-project", in: app)

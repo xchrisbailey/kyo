@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kyo: a planner that shows only today</title>
+<meta name="description" content="Kyo (今日, “today”) is a daily planner for iPhone, iPad and Apple Watch. It shows one day at a time, and what you don’t finish carries forward to tomorrow.">
+<meta name="theme-color" content="#F4EFE4">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kyo: a planner that shows only today">
+<meta property="og:description" content="A daily planner for iPhone, iPad and Apple Watch. One day at a time; unfinished tasks carry forward. No account, no server.">
+<meta property="og:url" content="https://xchrisbailey.github.io/kyo/">
+<meta property="og:image" content="https://xchrisbailey.github.io/kyo/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Kyo app icon beside the words: a planner that shows only today.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kyo: a planner that shows only today">
+<meta name="twitter:description" content="A daily planner for iPhone, iPad and Apple Watch. One day at a time; unfinished tasks carry forward.">
+<meta name="twitter:image" content="https://xchrisbailey.github.io/kyo/assets/og.png">
+<script>document.documentElement.classList.add('js');setTimeout(function(){if(!window.__kyo)document.documentElement.classList.add('js-late')},3000)</script>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="hero grid">
+  <div class="hero__bar">
+    <a class="mark" href="#top" id="top"><img src="assets/icon-128.png" width="44" height="44" alt="">Kyo</a>
+    <a class="hero__gh link" href="https://github.com/xchrisbailey/kyo">GitHub</a>
+  </div>
+
+  <div class="hero__copy">
+    <h1 data-load style="--i:0">A planner that shows<br> only today</h1>
+    <p class="lede" data-load style="--i:1">Kyo (今日) is a daily planner for iPhone, iPad and Apple Watch. What you don’t finish carries forward to tomorrow.</p>
+    <div class="hero__actions" data-load style="--i:2">
+      <a class="btn" href="https://github.com/xchrisbailey/kyo/subscription">Watch the repo</a>
+      <a class="link link--quiet" href="https://github.com/xchrisbailey/kyo#build-from-source">Build from source →</a>
+    </div>
+  </div>
+
+  <figure class="hero__print" data-load style="--i:4"><img src="assets/calendar-1873.jpg" width="1280" height="1556" alt="A printed Japanese calendar from 1873: a black block of dates beside a column of brush calligraphy." fetchpriority="high"><figcaption>Printed calendar, Japan, 1873</figcaption></figure>
+
+  <div class="hero__demo" data-load style="--i:3">
+    <div class="today" data-ui id="today" role="group" aria-label="Kyo’s Today screen. Tick tasks and habits, then end the day.">
+      <div class="today__head">
+        <p class="today__title">Today</p>
+        <p class="today__date" id="today-date" aria-live="polite">Tuesday 3 November · 2 tasks left</p>
+      </div>
+      <section class="t-sec" aria-labelledby="t-h-sched">
+        <div class="t-sech"><span id="t-h-sched">Schedule</span><span class="t-count" id="t-c-sched">2</span></div>
+        <ul class="t-list" id="t-sched">
+          <li class="t-row t-event"><time>9:30</time><span class="t-text">Standup</span><span class="t-meta">15 min</span></li>
+          <li class="t-row t-event"><time>13:00</time><span class="t-text">Lunch with Maya</span><span class="t-meta">Café Ora</span></li>
+        </ul>
+      </section>
+      <section class="t-sec" aria-labelledby="t-h-tasks">
+        <div class="t-sech"><span id="t-h-tasks">Tasks</span><span class="t-count" id="t-c-tasks">1 of 3</span></div>
+        <ul class="t-list" id="t-tasks">
+          <li class="t-row is-hot"><label><input type="checkbox"><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Finish the slides for Thursday</span></label></li>
+          <li class="t-row"><label><input type="checkbox"><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Pick up the dry cleaning</span></label></li>
+          <li class="t-row"><label><input type="checkbox" checked><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Pay the water bill</span></label></li>
+        </ul>
+        <form class="t-add" id="t-form" autocomplete="off">
+          <label class="sr-only" for="t-new">New task</label>
+          <input id="t-new" type="text" placeholder="Add a task" maxlength="60" enterkeyhint="done">
+        </form>
+      </section>
+      <section class="t-sec" aria-labelledby="t-h-habits">
+        <div class="t-sech"><span id="t-h-habits">Habits</span><span class="t-count" id="t-c-habits">0 of 3</span></div>
+        <ul class="t-list" id="t-habits">
+          <li class="t-row"><label><input type="checkbox"><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Stretch for ten minutes</span><span class="t-meta">12-day streak</span></label></li>
+          <li class="t-row"><label><input type="checkbox"><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Swim</span><span class="t-meta"><strong>2/3</strong> this week</span></label></li>
+          <li class="t-row"><label><input type="checkbox"><span class="t-box" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span class="t-text">Journal</span><span class="t-meta">3-day streak</span></label></li>
+        </ul>
+      </section>
+    </div>
+    <div class="demo-bar">
+      <button class="btn btn--ink" type="button" id="end-day" disabled>End the day</button>
+      <button class="link link--quiet" type="button" id="reset-day" hidden>Back to today</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- intro -->
+<section class="intro grid section" aria-labelledby="intro-h" style="margin-top:0">
+  <h2 class="sr-only" id="intro-h">What the name means</h2>
+  <p data-in>Kyō means today<span class="thumb thumb--img" data-ui aria-hidden="true"><img src="assets/calendar-1873.jpg" width="1280" height="1556" alt="" loading="lazy"></span>, and today is all Kyo shows: your <span class="nb">tasks<span class="thumb" data-ui aria-hidden="true"><svg viewBox="0 0 30 30" width="30" height="30"><circle cx="15" cy="15" r="11" fill="#386E57"/><path d="M9.5 15.5l4 4 7-8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>,</span> your <span class="nb">habits<span class="thumb thumb--text" data-ui aria-hidden="true">2/3</span>,</span> your <span class="nb">memos<span class="thumb" data-ui aria-hidden="true"><svg viewBox="0 0 44 30" width="44" height="30"><g fill="#386E57"><rect x="3" y="12" width="3" height="6" rx="1.5"/><rect x="9" y="8" width="3" height="14" rx="1.5"/><rect x="15" y="4" width="3" height="22" rx="1.5"/><rect x="21" y="9" width="3" height="12" rx="1.5"/><rect x="27" y="6" width="3" height="18" rx="1.5"/><rect x="33" y="11" width="3" height="8" rx="1.5"/><rect x="39" y="13" width="3" height="4" rx="1.5"/></g></svg></span>.</span></p>
+</section>
+
+<!-- showcase -->
+<section class="board-wrap" aria-labelledby="board-h">
+  <h2 id="board-h">Today holds the whole day in one list</h2>
+  <div class="board" data-ui id="board">
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Standup</span><span class="b-kind">Schedule</span><span class="b-when">9:30</span><span class="b-detail">15 min</span><span class="b-status b-status--cal">Calendar</span><span class="b-more">From your calendar. Kyo reads events to show them here and never changes or stores them.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Lunch with Maya</span><span class="b-kind">Schedule</span><span class="b-when">13:00</span><span class="b-detail">Café Ora</span><span class="b-status b-status--cal">Calendar</span><span class="b-more">Today shows the next three timed events. The rest are a tap away.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Pay the water bill</span><span class="b-kind">Task</span><span class="b-when">Today</span><span class="b-detail">Checked at 8:12</span><span class="b-status b-status--done">Done</span><span class="b-more">Finished tasks drop to the bottom of Today. Tomorrow they’re gone.</span></button></div>
+    <div class="b-row is-open"><button type="button" aria-expanded="true"><span class="b-name">Finish the slides for Thursday</span><span class="b-kind">Task</span><span class="b-when">Today</span><span class="b-detail">From Monday</span><span class="b-status">Open</span><span class="b-more">Not done yet, so it carries forward to tomorrow on its own. Use Do later to give it another day instead.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Pick up the dry cleaning</span><span class="b-kind">Task</span><span class="b-when">Today</span><span class="b-detail">New today</span><span class="b-status">Open</span><span class="b-more">Unfinished tasks roll on one day at a time. Nothing is marked overdue.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Stretch for ten minutes</span><span class="b-kind">Habit</span><span class="b-when">Every day</span><span class="b-detail">12-day streak</span><span class="b-status b-status--due">Due</span><span class="b-more">Due every day, so it’s on Today every day. The row carries your streak.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Journal</span><span class="b-kind">Habit</span><span class="b-when">Tue, Fri</span><span class="b-detail">3-day streak</span><span class="b-status b-status--due">Due</span><span class="b-more">Listed only on the days it’s due. Miss one and it never piles up on the next day.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Swim</span><span class="b-kind">Habit</span><span class="b-when">3 a week</span><span class="b-detail">2/3 so far</span><span class="b-status b-status--due">Due</span><span class="b-more">A weekly target shows week progress, here 2/3. It can run past the target.</span></button></div>
+    <div class="b-row"><button type="button" aria-expanded="false"><span class="b-name">Idea for Saturday</span><span class="b-kind">Voice memo</span><span class="b-when">7:48</span><span class="b-detail">0:24</span><span class="b-status b-status--cal">Memo</span><span class="b-more">Recorded by voice. The transcript was made on your device, and you can edit it without touching the audio.</span></button></div>
+  </div>
+</section>
+
+<!-- how it works -->
+<section class="how" aria-labelledby="how-h">
+  <div class="how__f">
+    <h2 id="how-h">How a task travels</h2>
+    <div class="how__card" data-ui>
+      <div class="card"><div class="card__top"><span>Today</span><span>Tue 3 Nov</span></div><div class="card__row"><span class="t-box"></span><span>Finish the slides for Thursday<i class="card__caret"></i></span></div><div class="card__foot">Added just now</div></div>
+    </div>
+    <p>First, you type it into Today.</p>
+  </div>
+  <div class="how__f">
+    <div class="how__card" data-ui>
+      <div class="card"><div class="card__top"><span>Today</span><span>11:58 pm</span></div><div class="card__row"><span class="t-box"></span><span>Finish the slides for Thursday</span></div><div class="card__foot">Still open</div></div>
+    </div>
+    <p>Then the day ends and it isn’t done.</p>
+  </div>
+  <div class="how__f">
+    <div class="how__card" data-ui>
+      <div class="card"><div class="card__top"><span>Today</span><span>Wed 4 Nov</span></div><div class="card__row"><span class="t-box"></span><span>Finish the slides for Thursday</span></div><div class="card__foot"><strong>Carried forward</strong> from Tuesday</div></div>
+    </div>
+    <p>So it carries forward to tomorrow, on its own.</p>
+  </div>
+  <div class="how__f">
+    <div class="how__card" data-ui>
+      <div class="card"><div class="card__top"><span>Today</span><span>Wed 4 Nov</span></div><div class="card__row is-done"><span class="t-box is-on"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span>Finish the slides for Thursday</span></div><div class="card__foot"><strong>Done</strong> at 4:40 pm</div></div>
+    </div>
+    <p>Finally, you check it off.</p>
+  </div>
+</section>
+
+<!-- features -->
+<section class="section" aria-labelledby="feat-h">
+  <div class="features-head"><h2 id="feat-h" data-in>What else Kyo does</h2></div>
+  <div class="cells">
+    <article class="cell cell--tt" data-in style="--i:0">
+      <div class="cell__txt"><h3>Do later</h3><p>Pick a weekday, a week out, a month out or an exact date. The task waits in Later and shows up on its planned day.</p></div>
+      <div class="cell__ui"><div class="frag" data-ui><h4>Do later: Pick up the dry cleaning</h4>
+        <div class="frag__row"><span>Friday</span><span class="sp"></span><small data-d="1">Fri, Nov 6</small></div>
+        <div class="frag__row is-sel"><span>In a week</span><span class="sp"></span><small data-d="2">Tue, Nov 10</small></div>
+        <div class="frag__row"><span>In a month</span><span class="sp"></span><small data-d="3">Thu, Dec 3</small></div>
+        <div class="frag__row"><span>Pick a date</span><span class="sp"></span><small>Calendar</small></div>
+      </div></div>
+    </article>
+    <article class="cell cell--ft" data-in style="--i:1">
+      <div class="cell__txt"><h3>Habits</h3><p>A habit is listed only on the days it’s due. Streaks and weekly targets like 2/3 sit on the row, and a missed day never carries over.</p></div>
+      <div class="cell__ui"><div class="frag" data-ui><h4>Journal: repeats on</h4>
+        <div class="seg" aria-hidden="true"><span>Every day</span><span class="is-sel">Days</span><span>Times a week</span></div>
+        <div class="days" aria-hidden="true"><span>M</span><span class="is-sel">T</span><span>W</span><span>T</span><span class="is-sel">F</span><span>S</span><span>S</span></div>
+        <div class="frag__row"><span>Due Tuesday and Friday</span><span class="sp"></span><small>3-day streak</small></div>
+      </div></div>
+    </article>
+    <article class="cell cell--tt" data-in style="--i:2">
+      <div class="cell__txt"><h3>Voice memos</h3><p>Say it and Kyo writes it down, on your device. Edit the transcript without touching the audio, and attach up to four photos.</p></div>
+      <div class="cell__ui"><div class="frag" data-ui>
+        <div class="memo__meta"><span>Idea for Saturday</span><span class="sp"></span><span>0:24</span></div>
+        <div class="wave" aria-hidden="true"><i style="height:10px"></i><i style="height:18px"></i><i style="height:30px"></i><i style="height:22px"></i><i style="height:34px"></i><i style="height:16px"></i><i style="height:26px"></i><i style="height:38px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:28px"></i><i style="height:34px"></i><i style="height:18px"></i><i style="height:8px"></i><i class="q" style="height:14px"></i><i class="q" style="height:22px"></i><i class="q" style="height:10px"></i><i class="q" style="height:18px"></i><i class="q" style="height:8px"></i><i class="q" style="height:12px"></i></div>
+        <p class="memo__t">Maya says the <mark>Saturday walk</mark> works if we start by nine. Bring the thermos, and text her the route.</p>
+      </div></div>
+    </article>
+    <article class="cell cell--ft" data-in style="--i:0">
+      <div class="cell__txt"><h3>Memo to task</h3><p>With Apple Intelligence, Kyo suggests tasks from what you wrote or said. Nothing joins Today until you add it.</p></div>
+      <div class="cell__ui"><div class="frag" data-ui><h4>Suggested from “Idea for Saturday”</h4>
+        <div class="frag__row is-sel"><span>Text Maya the route</span><span class="sp"></span><span class="frag__btn">Add to Today</span></div>
+        <div class="frag__row"><span>Bring the thermos</span><span class="sp"></span><span class="frag__btn frag__btn--plain">Add</span></div>
+        <div class="frag__row"><span>Start the walk by nine</span><span class="sp"></span><span class="frag__btn frag__btn--plain">Add</span></div>
+      </div></div>
+    </article>
+    <article class="cell cell--tt" data-in style="--i:1">
+      <div class="cell__txt"><h3>Apple Watch</h3><p>Check off tasks and habits from your wrist and record a memo. Your iPhone transcribes it, even if it was out of reach.</p></div>
+      <div class="cell__ui"><div class="watch" data-ui>
+        <div class="watch__t"><span>Today</span><span>2 left</span></div>
+        <div class="watch__r"><span class="t-box"></span><span>Pick up the dry cleaning</span></div>
+        <div class="watch__r"><span class="t-box"></span><span>Finish the slides</span></div>
+        <div class="watch__r is-done"><span class="t-box is-on"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg></span><span>Pay the water bill</span></div>
+        <div class="watch__mic">Record memo</div>
+      </div></div>
+    </article>
+    <article class="cell cell--ft" data-in style="--i:2">
+      <div class="cell__txt"><h3>Quick capture</h3><p>Start a memo without opening the app: Control Center, the Lock Screen, the Action button, a Watch complication, or Siri.</p></div>
+      <div class="cell__ui"><div class="frag" data-ui>
+        <div class="ctrl">
+          <div class="ctrl__t is-on"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="8" height="13" rx="4"/><path d="M5 12a8 8 0 0016 0M13 20v3"/></svg><span>Record memo</span></div>
+          <div class="ctrl__t"><svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20l3-1 11-11-2-2L6 17l-1 3zM15 8l2 2"/></svg><span>Write memo</span></div>
+        </div>
+        <div class="frag__row" style="margin-top:8px"><span>Action button</span><span class="sp"></span><small>Record memo</small></div>
+        <div class="frag__row"><span>Siri</span><span class="sp"></span><small>“Record memo”</small></div>
+      </div></div>
+    </article>
+  </div>
+  </section>
+
+<!-- about: founder's letter -->
+<section class="about grid section" aria-labelledby="about-h">
+  <h2 id="about-h" data-in>Why only today</h2>
+  <figure class="reel" data-in style="--i:1">
+    <div class="reel__frame" id="reel">
+      <img class="is-on" src="assets/shinagawa-sunrise.jpg" width="1920" height="1264" alt="Colour woodblock print of the road at Shinagawa at sunrise: travellers with lanterns walk past tea houses, boats with striped sails ride on the bay.">
+      <img src="assets/nihonbashi-dawn.jpg" width="1600" height="1091" alt="Colour woodblock print of Nihonbashi bridge at dawn: porters and travellers cross in the grey light, a pole-carrier in front.">
+      <img src="assets/susaki-sunrise.jpg" width="1600" height="1064" alt="Colour woodblock print of a red sun rising over a snowy shore at Susaki, a shrine and pines under snow.">
+      <img src="assets/koishikawa-snowy-morning.jpg" width="1600" height="1089" alt="Colour woodblock print of a snowy morning: women on a veranda point toward Mount Fuji across snow-covered roofs.">
+    </div>
+    <figcaption id="reel-cap">Shinagawa at sunrise, Utagawa Hiroshige, about 1834</figcaption>
+  </figure>
+  <div class="letter" data-in style="--i:2">
+    <p>I wanted a planner that <mark>only shows today</mark>. Not the week, not the month, just the day I’m in.</p>
+    <p>So that’s all Kyo opens on. What I don’t finish carries forward to tomorrow, and anything that can wait sits in Later until its day.</p>
+    <p>There’s no account and no server. Your tasks, habits and memos stay on your devices, and your iPhone and Apple Watch sync directly with each other.</p>
+    <p>I built it for my own days first. It’s free, it’s open source, and it’s still in beta.</p>
+    <p class="sign"><b>Chris Bailey</b><span>Makes Kyo</span></p>
+  </div>
+</section>
+
+<!-- faq -->
+<section class="faq grid section" aria-labelledby="faq-h">
+  <h2 id="faq-h">Questions</h2>
+  <ul class="faq__list">
+    <li class="faq__item is-on"><button class="faq__q" type="button" aria-expanded="true" aria-controls="a1">Is it free?</button><p class="faq__a" id="a1">Yes. Kyo is free and open source, and the code is on GitHub.</p></li>
+    <li class="faq__item"><button class="faq__q" type="button" aria-expanded="false" aria-controls="a2">When can I get it?</button><p class="faq__a" id="a2">It’s in a TestFlight beta that isn’t public yet. Watch the repo for a public build, or <a href="https://github.com/xchrisbailey/kyo#build-from-source">build it from source</a> with Xcode.</p></li>
+    <li class="faq__item"><button class="faq__q" type="button" aria-expanded="false" aria-controls="a3">What does it need?</button><p class="faq__a" id="a3">iOS 27, iPadOS 27 or watchOS 27.</p></li>
+    <li class="faq__item"><button class="faq__q" type="button" aria-expanded="false" aria-controls="a4">Does it sync?</button><p class="faq__a" id="a4">Your iPhone and Apple Watch sync directly with each other. iCloud sync isn’t built yet, so an iPhone and an iPad each keep their own data.</p></li>
+    <li class="faq__item"><button class="faq__q" type="button" aria-expanded="false" aria-controls="a5">What does it do with my calendar?</button><p class="faq__a" id="a5">It reads your events to show Today’s Schedule. It never changes them and never stores them, and you choose which calendars appear.</p></li>
+    <li class="faq__item"><button class="faq__q" type="button" aria-expanded="false" aria-controls="a6">Does it use AI?</button><p class="faq__a" id="a6">Only on your device. Apple Intelligence writes memo titles and suggests tasks from memos. Everything works without it.</p></li>
+  </ul>
+</section>
+
+<!-- cta -->
+<section class="cta grid" aria-labelledby="cta-h">
+  <h2 class="cta__line" id="cta-h" data-in><span>Not public yet.</span><a class="cta__btn" href="https://github.com/xchrisbailey/kyo/subscription">Watch the repo</a></h2>
+  <p class="cta__sub" data-in style="--i:1">Or <a href="https://github.com/xchrisbailey/kyo#build-from-source">build it from source</a> with Xcode today. It has no third-party dependencies.</p>
+</section>
+
+</main>
+
+<footer class="foot grid">
+  <div class="foot__row" style="grid-column:1 / -1">
+    <div>A daily planner</div>
+    <nav aria-label="Kyo on GitHub"><a href="https://github.com/xchrisbailey/kyo">GitHub</a><a href="https://github.com/xchrisbailey/kyo/issues">Issues</a><a href="https://github.com/xchrisbailey/kyo#build-from-source">Source</a></nav>
+    <div>2026 · <a href="https://github.com/xchrisbailey/kyo#privacy">Privacy</a></div>
+  </div>
+  <p class="credits" style="grid-column:1 / -1">Pictures: <a href="https://commons.wikimedia.org/wiki/File:Print,_Shinagawa_Station,_Sunrise,_in_The_Fifty-Three_Stations_of_the_Tokaido_Road_(Tokaido_Gojusan_Tsugi-no_Uchi),_ca._1834_(CH_18608841).jpg">“Shinagawa Station, Sunrise, from The Fifty-Three Stations of the Tokaido Road”</a>, Utagawa Hiroshige, about 1834, <a href="https://creativecommons.org/publicdomain/mark/1.0/">public domain</a>, via Wikimedia Commons; <a href="https://commons.wikimedia.org/wiki/File:%E6%9D%B1%E6%B5%B7%E9%81%93%E4%BA%94%E5%8D%81%E4%B8%89%E6%AC%A1%E4%B9%8B%E5%86%85_%E6%97%A5%E6%9C%AC%E6%A9%8B_%E6%9B%99%E6%97%85%E7%AB%8B%E3%81%AE%E5%9B%B3.jpg">“Nihonbashi, Dawn Departure (東海道五十三次之内 日本橋 曙旅立の図)”</a>, Utagawa Hiroshige, <a href="https://creativecommons.org/publicdomain/mark/1.0/">public domain</a>, via Wikimedia Commons; <a href="https://www.metmuseum.org/art/collection/search/45295">“New Year’s Sunrise after Snow at Susaki”</a>, Utagawa Hiroshige, about 1831, <a href="https://creativecommons.org/publicdomain/zero/1.0/">public domain (CC0)</a>, via The Metropolitan Museum of Art; <a href="https://commons.wikimedia.org/wiki/File:Snowy_Morning_at_Koishikawa_(5758988303).jpg">“Morning after a Snowfall at Koishikawa”</a>, Katsushika Hokusai, <a href="https://creativecommons.org/publicdomain/mark/1.0/">public domain</a>, via Wikimedia Commons; <a href="https://commons.wikimedia.org/wiki/File:Briefly_Abridged_Calendar_of_1873,_Hiroshige_Museum_of_Art.JPG">“Briefly Abridged Calendar of 1873”</a>, distributed by Furuya Myōsei, Hiroshige Museum of Art, <a href="https://creativecommons.org/publicdomain/mark/1.0/">public domain</a>, via Wikimedia Commons.</p>
+</footer>
+
+<script src="assets/main.js" defer></script>
+</body>
+</html>

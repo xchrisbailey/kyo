@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0021590950647D8C81CF8567 /* ProjectsPreferenceBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DB1D0D6642115A12B2FA6B /* ProjectsPreferenceBehaviorTests.swift */; };
+		00CA466F7A4B27F18EEB8A2E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F1684F10C1BAFAFB3096BE6C /* PrivacyInfo.xcprivacy */; };
 		01B89462EB2F1A5FFED3C4FB /* MemoStoreBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC66624B9DD030335619A70 /* MemoStoreBehaviorTests.swift */; };
 		01EDA9CA6C12B96509D8DB0C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E7CFCB39B5C8BACFA102BCE /* ContentView.swift */; };
 		02A09FFD4A7735B0DA303CC8 /* AudioRecording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83017F1F6E304A53AB78724B /* AudioRecording.swift */; };
@@ -101,6 +102,7 @@
 		3E1AD2BDEE8CBEB8CC8287E8 /* PairedProjectsSyncUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F49140101812C79CEEE87D4 /* PairedProjectsSyncUITests.swift */; };
 		3FEC1AEDF83B303AEBB944EE /* CollapsedSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9A83FB927DFD8F729E2CAF /* CollapsedSections.swift */; };
 		3FFF0BA93A6DAD85547FDB64 /* ScheduleCalendarsBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A0A39A8A72D94FF3F53A2 /* ScheduleCalendarsBehaviorTests.swift */; };
+		40A57825398FC8BDCDD0AA88 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6AA3B1C2A0298EC1EF1B5084 /* PrivacyInfo.xcprivacy */; };
 		40AD475910F2445861FF9049 /* ProjectsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C206801843CC25753039F5A /* ProjectsSheet.swift */; };
 		41699B4BC4DC7681679EBE82 /* WindowPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5217D76D8626E7B4422AD0EC /* WindowPalette.swift */; };
 		419193232AED3C66EEEB379E /* FakeOnDeviceLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBF78EA45D5D2F56269A70B /* FakeOnDeviceLanguageModel.swift */; };
@@ -180,6 +182,7 @@
 		840EBA0A1B3B10274A899F7E /* WatchPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88EEB0B1D04AA7F5E26D0AF0 /* WatchPalette.swift */; };
 		842CAA497561ECB0DADD70E5 /* MonthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9306E716C155B8E896399CF2 /* MonthView.swift */; };
 		85390F6294F4673815B59434 /* QuickCaptureRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CF2F78994555897298356A /* QuickCaptureRouter.swift */; };
+		85929C985385833523709444 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2A5964490D82EA105C6B4794 /* PrivacyInfo.xcprivacy */; };
 		865DD2DF3AEB26468325D14C /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DC028D7DB3945826659DA3 /* TodayView.swift */; };
 		88B02BEA1B434F8E71D5FFE2 /* WatchPaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8A1B5B6636D4DB7FDE69A1 /* WatchPaletteTests.swift */; };
 		895B358CF3E2470DF8FC78A8 /* ApplicationContextEntries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1F9E2AF7EDB3257D0D4B193 /* ApplicationContextEntries.swift */; };
@@ -193,6 +196,7 @@
 		8EC17287A176EC0847C2D183 /* Habit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414C976EFE544386170551C7 /* Habit.swift */; };
 		8FF8BAF3E00AE0115D6BE6B2 /* KyoWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B4B522A2DB959943189C2E4F /* KyoWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		907066128C577AD13F723875 /* SectionCollapseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82A83C12F7FCA3E3EDB669EB /* SectionCollapseUITests.swift */; };
+		92D3CED6B3482C497554EFA0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B3783185D477FE6F20CBF54C /* PrivacyInfo.xcprivacy */; };
 		937292FE94990A28B95D119A /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E92AB9C3B1011BFF5147A6 /* TaskSync.swift */; };
 		960694ABBC31F462C600D795 /* PalettePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201F6E650E2AB408DB3016DC /* PalettePicker.swift */; };
 		961388C59BB53C6FF3C0A4C5 /* WatchMemoList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0859BEDFD9F2BB24A566CACF /* WatchMemoList.swift */; };
@@ -445,6 +449,7 @@
 		27ACD9FD78414F80B3680FAD /* ScheduleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleUITests.swift; sourceTree = "<group>"; };
 		28131AAE7488A3FA49004B8D /* MonthModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthModel.swift; sourceTree = "<group>"; };
 		29ED805313CFC2CAB23D3359 /* DeviceAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAudioRecorder.swift; sourceTree = "<group>"; };
+		2A5964490D82EA105C6B4794 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2C206801843CC25753039F5A /* ProjectsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsSheet.swift; sourceTree = "<group>"; };
 		2D76C8BC5318D09A34468BA0 /* HabitContentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitContentPersistence.swift; sourceTree = "<group>"; };
 		2DEF6578FF5DBDBDFBF92E76 /* VoiceRecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecordingSession.swift; sourceTree = "<group>"; };
@@ -490,6 +495,7 @@
 		684088AB64E84A91843EB676 /* TaskRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRecord.swift; sourceTree = "<group>"; };
 		687E3948210348853E76970C /* KyoWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KyoWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		689D20E2CD33096309DB6B63 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		6AA3B1C2A0298EC1EF1B5084 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6ABE7FF102ACC118370443DD /* ScheduleEventDetailBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleEventDetailBehaviorTests.swift; sourceTree = "<group>"; };
 		6B2362B3CA0D2287DFAF0AD3 /* TaskStoragePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskStoragePersistenceTests.swift; sourceTree = "<group>"; };
 		6C2F379BCB2D2C17CB252E8D /* ScheduleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleStore.swift; sourceTree = "<group>"; };
@@ -554,6 +560,7 @@
 		B1A25F7CB67E163F21DB96A0 /* QuickCaptureControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureControls.swift; sourceTree = "<group>"; };
 		B31A4E18D0934A2E38524F0A /* DailyTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTask.swift; sourceTree = "<group>"; };
 		B327F4CED2AF6D4D5ADE4B01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B3783185D477FE6F20CBF54C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B378E300FD6EAEEEBE0157BC /* MemoHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoHistory.swift; sourceTree = "<group>"; };
 		B3A2339890420970FAB2D52C /* WatchConnectivityTaskTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTaskTransport.swift; sourceTree = "<group>"; };
 		B456EC7BDDC3930178B772BC /* MemoHistoryBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoHistoryBehaviorTests.swift; sourceTree = "<group>"; };
@@ -612,6 +619,7 @@
 		F0357AAC50AE5605D8AA1C92 /* ProjectsPreferenceSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsPreferenceSelection.swift; sourceTree = "<group>"; };
 		F03EDD307CE59DF5F2A81BF3 /* MemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoUITests.swift; sourceTree = "<group>"; };
 		F0613FBBEC1B0028EDC9226D /* TaskListSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListSyncTests.swift; sourceTree = "<group>"; };
+		F1684F10C1BAFAFB3096BE6C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F21B3687DCB5D3A3ED5585AE /* MemoShare.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoShare.swift; sourceTree = "<group>"; };
 		F49BDFA618CEF7E5E78EDA02 /* PairedProjectsSyncUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedProjectsSyncUITests.swift; sourceTree = "<group>"; };
 		F4C00D19DAB99E3F95F5DB8D /* ControllableMemoFileTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllableMemoFileTransport.swift; sourceTree = "<group>"; };
@@ -677,6 +685,7 @@
 				9306E716C155B8E896399CF2 /* MonthView.swift */,
 				201F6E650E2AB408DB3016DC /* PalettePicker.swift */,
 				330B3C23DAF56B40C778098B /* PalettePreferenceStore.swift */,
+				B3783185D477FE6F20CBF54C /* PrivacyInfo.xcprivacy */,
 				8ADC8AAE29780E48CEC4B438 /* ProjectsEnvironment.swift */,
 				2C206801843CC25753039F5A /* ProjectsSheet.swift */,
 				CA2EE40D25C62334FDE67E3C /* QuickCaptureIntents.swift */,
@@ -915,6 +924,7 @@
 			isa = PBXGroup;
 			children = (
 				76E463F30284905F00EE9752 /* KyoWidgetsBundle.swift */,
+				6AA3B1C2A0298EC1EF1B5084 /* PrivacyInfo.xcprivacy */,
 				B1A25F7CB67E163F21DB96A0 /* QuickCaptureControls.swift */,
 			);
 			path = KyoWidgets;
@@ -924,6 +934,7 @@
 			isa = PBXGroup;
 			children = (
 				8F3C09A3D4958D13790C07BF /* KyoWatchWidgetsBundle.swift */,
+				2A5964490D82EA105C6B4794 /* PrivacyInfo.xcprivacy */,
 				870CD63ACC9AA3D03D28FC85 /* WatchQuickCapture.swift */,
 			);
 			path = KyoWatchWidgets;
@@ -934,6 +945,7 @@
 			children = (
 				5B3969547B09464204F0BFDB /* Assets.xcassets */,
 				06001DC45BF49ACB89DC28E0 /* KyoWatchApp.swift */,
+				F1684F10C1BAFAFB3096BE6C /* PrivacyInfo.xcprivacy */,
 				4677F1549BEE6F328CA68A37 /* WatchAppModel.swift */,
 				E672C152DFE62764C58BD8D8 /* WatchAudioRecorder.swift */,
 				795AA8E7C946522C7EC078BB /* WatchPaletteViews.swift */,
@@ -952,6 +964,7 @@
 			buildConfigurationList = 7501C06DFE0041D50469F0B1 /* Build configuration list for PBXNativeTarget "KyoWidgets" */;
 			buildPhases = (
 				E0B0B9F48A6EBAC932181C17 /* Sources */,
+				6609F4857044E275DBAFA54C /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1029,6 +1042,7 @@
 			buildConfigurationList = 163E523B29260CEABDC3986B /* Build configuration list for PBXNativeTarget "KyoWatchWidgets" */;
 			buildPhases = (
 				4691A0720A3D812969A0C296 /* Sources */,
+				C2DC676D3C8D2A577E99E610 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1154,6 +1168,15 @@
 				E0290F75603A10396540BB2F /* GeistMono-SemiBold.ttf in Resources */,
 				B868AE0DDB38B9F5EE2FE6ED /* OFL-Caveat.txt in Resources */,
 				C3477E34D0D0A39AD5B065C7 /* OFL-GeistMono.txt in Resources */,
+				92D3CED6B3482C497554EFA0 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6609F4857044E275DBAFA54C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				40A57825398FC8BDCDD0AA88 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1162,6 +1185,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				CFABA21249F5D34BD870E591 /* Assets.xcassets in Resources */,
+				00CA466F7A4B27F18EEB8A2E /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2DC676D3C8D2A577E99E610 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				85929C985385833523709444 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

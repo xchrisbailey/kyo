@@ -422,6 +422,16 @@ html.js .faq__item.is-on .faq__a { display: block; }
   .faq__a { grid-column: 9 / -1; grid-row: 1 / span 8; position: sticky; top: 120px; align-self: start; font-size: var(--fs-mid); line-height: 1.3; padding: 0; max-width: 30ch; }
 }
 
+/* ---------- policy page: plain text under the hero ---------- */
+.policy { grid-column: 1 / -1; margin-top: 56px; max-width: 34em; }
+.policy section + section { margin-top: 40px; }
+.policy h2 { font-size: var(--fs-mid); font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 12px; }
+.policy p, .policy li { line-height: 1.6; }
+.policy p + p, .policy ul + p { margin-top: 1.1em; }
+.policy li + li { margin-top: 0.4em; }
+.policy a { text-underline-offset: 0.2em; }
+@media (min-width: 1280px) { .policy { grid-column: 4 / 10; } }
+
 /* ---------- phone: its own composition ---------- */
 @media (max-width: 719px) {
   :root { --margin: 20px; --section: 96px; }

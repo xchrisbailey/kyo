@@ -49,47 +49,94 @@ struct MonthView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The month and year, with the chevrons beside them and, away from the current month, the way back.
-    /// The controls move below the title when large text leaves them no room beside it.
+    /// The month and year at full size, with the chevrons beside them and, away from the current month,
+    /// the way back. The controls sit below the title when the widest month name of the year, with the
+    /// way back showing, doesn't fit beside them. That choice depends on the widest name and not on the
+    /// shown month, so the chevrons stay put while the user pages.
     private var header: some View {
-        let title = Text(model.headerText)
-            .headerStyle(.largeTitle)
-            .foregroundStyle(theme.primaryText)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier("month-header")
-        return Group {
+        Group {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) {
                     title
-                    controls
+                    reservingWayBack(controls)
                 }
             } else {
-                HStack(spacing: 8) {
-                    // A long month name shrinks to fit beside the controls instead of wrapping.
-                    title
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    controls
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        reservingWidestTitle(title)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        reservingWayBack(controls)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        // A title too long even for a line of its own shrinks instead of wrapping.
+                        title
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        reservingWayBack(controls)
+                    }
                 }
             }
         }
     }
 
+    private var title: some View {
+        Text(model.headerText)
+            .headerStyle(.largeTitle)
+            .foregroundStyle(theme.primaryText)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("month-header")
+    }
+
     private var controls: some View {
         HStack(spacing: 4) {
             if !model.isShowingCurrentMonth {
-                MonthControl(systemImage: "arrow.uturn.backward", label: "Back to current month", identifier: "month-jump-back") {
-                    model.showCurrentMonth()
-                }
+                wayBackControl
             }
-            MonthControl(systemImage: "chevron.left", label: "Previous month", identifier: "month-previous") {
-                model.showPreviousMonth()
-            }
-            MonthControl(systemImage: "chevron.right", label: "Next month", identifier: "month-next") {
-                model.showNextMonth()
-            }
+            chevronControls
         }
+    }
+
+    private var wayBackControl: some View {
+        MonthControl(systemImage: "arrow.uturn.backward", label: "Back to current month", identifier: "month-jump-back") {
+            model.showCurrentMonth()
+        }
+    }
+
+    @ViewBuilder
+    private var chevronControls: some View {
+        MonthControl(systemImage: "chevron.left", label: "Previous month", identifier: "month-previous") {
+            model.showPreviousMonth()
+        }
+        MonthControl(systemImage: "chevron.right", label: "Next month", identifier: "month-next") {
+            model.showNextMonth()
+        }
+    }
+
+    /// `shown`, laid out in the room the widest month name of the year needs. `ViewThatFits` measures
+    /// that room, so the row stays a row (or stays stacked) for every month.
+    private func reservingWidestTitle(_ shown: some View) -> some View {
+        ZStack(alignment: .leading) {
+            ForEach(Array(model.headerTextsInShownYear.enumerated()), id: \.offset) { _, text in
+                Text(text)
+                    .headerStyle(.largeTitle)
+                    .hidden()
+                    .accessibilityHidden(true)
+            }
+            shown
+        }
+        .lineLimit(1)
+    }
+
+    /// `shown`, laid out in the room the controls need with the way back showing, with the chevrons at
+    /// the slot's trailing end. The way back takes the room to their left when it appears, so the
+    /// chevrons stay put, below the title as well as beside it.
+    private func reservingWayBack(_ shown: some View) -> some View {
+        HStack(spacing: 4) {
+            wayBackControl
+            chevronControls
+        }
+        .hidden()
+        .overlay(alignment: .trailing) { shown }
     }
 
     /// A mostly horizontal drag moves a month. It runs beside the scroll view's own drag, and a mostly

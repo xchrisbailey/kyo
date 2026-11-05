@@ -184,13 +184,24 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(app.buttons[dayIdentifier()].isSelected)
     }
 
-    func testEveryMonthNameStaysOnOneLineBesideTheControls() throws {
-        let app = launchApp()
+    func testEveryMonthNameStaysOnOneLineAndTheChevronsStayPutWhilePaging() throws {
+        try assertPagingAYearKeepsTheHeaderOnOneLineAndTheChevronsInPlace(textSize: nil)
+    }
+
+    /// At this size the longest names no longer fit beside the controls, so they sit below the title.
+    /// The title stays at full size, and it does so for every month, not only the long ones.
+    func testEveryMonthNameStaysOnOneLineAndTheChevronsStayPutAtLargeText() throws {
+        try assertPagingAYearKeepsTheHeaderOnOneLineAndTheChevronsInPlace(textSize: "UICTContentSizeCategoryXXXL")
+    }
+
+    private func assertPagingAYearKeepsTheHeaderOnOneLineAndTheChevronsInPlace(textSize: String?) throws {
+        let app = launchApp(textSize: textSize)
         app.buttons["main-view-month"].tap()
         let header = app.staticTexts["month-header"]
         XCTAssertTrue(header.waitForExistence(timeout: 10))
         let oneLine = header.frame.height  // the current month, at full size
         let next = app.buttons["month-next"]
+        let chevronsOrigin = next.frame
 
         // A year of months passes every long name, with the way back to the current month showing.
         for _ in 0..<12 {
@@ -198,6 +209,8 @@ final class MonthUITests: XCTestCase {
             next.tap()
             XCTAssertTrue(waitForLabel(of: header, toDiffer: shown))
             XCTAssertLessThanOrEqual(header.frame.height, oneLine + 1, "\(header.label) wrapped to a second line")
+            XCTAssertEqual(next.frame.minY, chevronsOrigin.minY, accuracy: 1, "the chevrons moved down or up at \(header.label)")
+            XCTAssertEqual(next.frame.minX, chevronsOrigin.minX, accuracy: 1, "the chevrons moved sideways at \(header.label)")
         }
     }
 

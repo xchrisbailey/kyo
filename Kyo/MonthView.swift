@@ -58,7 +58,7 @@ struct MonthView: View {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) {
                     title
-                    controls
+                    reservingWayBack(controls)
                 }
             } else {
                 ViewThatFits(in: .horizontal) {
@@ -72,7 +72,7 @@ struct MonthView: View {
                         title
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                        controls
+                        reservingWayBack(controls)
                     }
                 }
             }
@@ -127,7 +127,9 @@ struct MonthView: View {
         .lineLimit(1)
     }
 
-    /// `shown`, laid out in the room the controls need with the way back showing.
+    /// `shown`, laid out in the room the controls need with the way back showing, with the chevrons at
+    /// the slot's trailing end. The way back takes the room to their left when it appears, so the
+    /// chevrons stay put, below the title as well as beside it.
     private func reservingWayBack(_ shown: some View) -> some View {
         HStack(spacing: 4) {
             wayBackControl

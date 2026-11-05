@@ -201,7 +201,7 @@ final class MonthUITests: XCTestCase {
         XCTAssertTrue(header.waitForExistence(timeout: 10))
         let oneLine = header.frame.height  // the current month, at full size
         let next = app.buttons["month-next"]
-        let chevronsTop = next.frame.minY
+        let chevronsOrigin = next.frame
 
         // A year of months passes every long name, with the way back to the current month showing.
         for _ in 0..<12 {
@@ -209,7 +209,8 @@ final class MonthUITests: XCTestCase {
             next.tap()
             XCTAssertTrue(waitForLabel(of: header, toDiffer: shown))
             XCTAssertLessThanOrEqual(header.frame.height, oneLine + 1, "\(header.label) wrapped to a second line")
-            XCTAssertEqual(next.frame.minY, chevronsTop, accuracy: 1, "the chevrons moved at \(header.label)")
+            XCTAssertEqual(next.frame.minY, chevronsOrigin.minY, accuracy: 1, "the chevrons moved down or up at \(header.label)")
+            XCTAssertEqual(next.frame.minX, chevronsOrigin.minX, accuracy: 1, "the chevrons moved sideways at \(header.label)")
         }
     }
 

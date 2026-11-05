@@ -210,6 +210,18 @@ final class MonthModel: ObservableObject {
         shownMonth.formatted(format.year().month(.wide))
     }
 
+    /// The header text of every month in the shown month's year. The view sizes the header to the
+    /// widest of them, so its layout doesn't depend on which month is shown.
+    var headerTextsInShownYear: [String] {
+        let calendar = calendar
+        guard let year = calendar.dateInterval(of: .year, for: shownMonth),
+              let months = calendar.range(of: .month, in: .year, for: shownMonth)
+        else { return [headerText] }
+        return (0..<months.count).compactMap { offset in
+            calendar.date(byAdding: .month, value: offset, to: year.start)?.formatted(format.year().month(.wide))
+        }
+    }
+
     /// Whether the shown month holds Today. When it doesn't, Month offers a way back.
     var isShowingCurrentMonth: Bool {
         shownMonth == Self.startOfMonth(containing: today, in: calendar)

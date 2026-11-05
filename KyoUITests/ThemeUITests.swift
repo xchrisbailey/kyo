@@ -38,7 +38,9 @@ final class ThemeUITests: XCTestCase {
     }
 
     /// Geist Mono (Neko) and Caveat (Techo) are bundled faces set through `Font.custom(relativeTo:)`,
-    /// so a header in either grows with the device text size as the system font does.
+    /// so a header in either grows with the device text size as the system font does. It measures the
+    /// month with the widest name, the one most likely to be squeezed, so the result doesn't depend on
+    /// today's date.
     func testHeadersInEveryBundledFaceGrowWithTheDeviceTextSize() {
         for themeID in ["neko", "techo"] {
             let app = launchApp()
@@ -46,10 +48,12 @@ final class ThemeUITests: XCTestCase {
             app.buttons["theme-card-\(themeID)"].tap()
             XCTAssertTrue(waitForSelected(app.buttons["theme-card-\(themeID)"]))
             app.buttons["settings-done"].tap()
-            let normal = monthHeaderHeight(in: app)
+            let widest = showWidestMonthName(in: app)
+            let normal = app.staticTexts["month-header"].frame.height
 
             relaunch(app, textSize: "UICTContentSizeCategoryXXXL")
-            let large = monthHeaderHeight(in: app)
+            showMonth(widest, in: app)
+            let large = app.staticTexts["month-header"].frame.height
 
             XCTAssertGreaterThan(large, normal, "a \(themeID) header scales with the text size")
             app.terminate()
@@ -58,11 +62,34 @@ final class ThemeUITests: XCTestCase {
 
     // MARK: Helpers
 
-    private func monthHeaderHeight(in app: XCUIApplication) -> CGFloat {
+    /// Opens the Month, which starts on the current month, and returns how many months ahead of it
+    /// the month is whose header is widest, which it then shows.
+    private func showWidestMonthName(in app: XCUIApplication) -> Int {
         app.buttons["main-view-month"].tap()
         let header = app.staticTexts["month-header"]
         XCTAssertTrue(header.waitForExistence(timeout: 10))
-        return header.frame.height
+        var widest = (monthsAhead: 0, width: header.frame.width)
+        for monthsAhead in 1..<12 {
+            page(app, "month-next")
+            if header.frame.width > widest.width { widest = (monthsAhead, header.frame.width) }
+        }
+        for _ in widest.monthsAhead..<11 { page(app, "month-previous") }
+        return widest.monthsAhead
+    }
+
+    /// Opens the Month and pages `monthsAhead` months from the current one.
+    private func showMonth(_ monthsAhead: Int, in app: XCUIApplication) {
+        app.buttons["main-view-month"].tap()
+        XCTAssertTrue(app.staticTexts["month-header"].waitForExistence(timeout: 10))
+        for _ in 0..<monthsAhead { page(app, "month-next") }
+    }
+
+    private func page(_ app: XCUIApplication, _ control: String) {
+        let header = app.staticTexts["month-header"]
+        let shown = header.label
+        app.buttons[control].tap()
+        let changed = NSPredicate(format: "label != %@", shown)
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: changed, object: header)], timeout: 10), .completed)
     }
 
     private func launchApp(textSize: String? = nil) -> XCUIApplication {

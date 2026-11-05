@@ -46,6 +46,17 @@ final class MonthNavigationBehaviorTests: MonthTestCase {
         XCTAssertEqual(model.headerText, "December 2025")
     }
 
+    func testTheHeaderSizesToEveryMonthOfTheShownYear() {
+        let model = harness.makeModel()
+
+        XCTAssertEqual(model.headerTextsInShownYear.count, 12)
+        XCTAssertEqual(model.headerTextsInShownYear.first, "January 2026")
+        XCTAssertTrue(model.headerTextsInShownYear.contains(model.headerText))
+
+        for _ in 0..<3 { model.showNextMonth() }
+        XCTAssertEqual(model.headerTextsInShownYear.last, "December 2027")
+    }
+
     func testThereIsNoLimitInEitherDirection() {
         let model = harness.makeModel()
 
